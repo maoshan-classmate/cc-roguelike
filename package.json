@@ -1,0 +1,45 @@
+{
+  "name": "cc-roguelike",
+  "version": "1.0.0",
+  "description": "局域网多人联机Roguelike闯关游戏",
+  "main": "dist/server/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:server\" \"npm run dev:client\"",
+    "dev:server": "ts-node-dev --respawn --transpile-only server/index.ts",
+    "dev:client": "vite",
+    "build": "npm run build:client && npm run build:server",
+    "build:client": "vite build",
+    "build:server": "tsc",
+    "start": "node dist/server/index.js"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "better-sqlite3": "^9.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.2",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.9.1",
+    "reflect-metadata": "^0.2.1",
+    "socket.io": "^4.7.4",
+    "uuid": "^9.0.1",
+    "zustand": "^4.5.0"
+  },
+  "devDependencies": {
+    "@types/bcryptjs": "^2.4.6",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/jsonwebtoken": "^9.0.5",
+    "@types/node": "^20.11.16",
+    "@types/uuid": "^9.0.8",
+    "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^8.2.2",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-router-dom": "^6.22.0",
+    "socket.io-client": "^4.7.4",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.12"
+  }
+}
