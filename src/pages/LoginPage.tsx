@@ -18,24 +18,36 @@ export default function LoginPage() {
     setLoading(true)
 
     try {
-      networkClient.connect()
-
       const event = isRegister ? 'auth:register' : 'auth:login'
+
+      // Connect if not connected, and wait for connection
+      if (!networkClient.isConnected()) {
+        networkClient.connect()
+        // Wait for connection to establish
+        await new Promise<void>((resolve) => {
+          const socket = networkClient.getSocket()
+          if (socket?.connected) {
+            resolve()
+          } else {
+            socket?.once('connect', () => resolve())
+          }
+        })
+      }
 
       // Use promise-based approach
       const result = await new Promise<any>((resolve) => {
-        networkClient.emit(event, { username, password })
-
         const timeout = setTimeout(() => {
-          networkClient.off(event)
           resolve({ success: false, error: 'Timeout' })
         }, 5000)
 
-        networkClient.on(event, (data: any) => {
+        const handler = (data: any) => {
           clearTimeout(timeout)
-          networkClient.off(event)
+          networkClient.off('auth:result', handler)
           resolve(data)
-        })
+        }
+
+        networkClient.on('auth:result', handler)
+        networkClient.emit(event, { username, password })
       })
 
       if (result.success) {
