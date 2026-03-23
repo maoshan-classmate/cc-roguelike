@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(timeout 10 npx ts-node-dev --respawn --transpile-only server/index.ts)",
+      "Bash(timeout 10 npx ts-node-dev -P tsconfig.server.json --respawn --transpile-only server/index.ts)"
+    ]
+  }
+}
