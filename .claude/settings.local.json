@@ -2,7 +2,21 @@
   "permissions": {
     "allow": [
       "Bash(timeout 10 npx ts-node-dev --respawn --transpile-only server/index.ts)",
-      "Bash(timeout 10 npx ts-node-dev -P tsconfig.server.json --respawn --transpile-only server/index.ts)"
+      "Bash(timeout 10 npx ts-node-dev -P tsconfig.server.json --respawn --transpile-only server/index.ts)",
+      "Bash(grep -E 300[01])",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //F //PID 13924)",
+      "Bash(taskkill //F //PID 15272)",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(findstr ':3000 :3001')",
+      "Bash(taskkill //PID 24376 //F)",
+      "Bash(taskkill //PID 8892 //F)",
+      "Bash(taskkill //PID 21836 //F)",
+      "Bash(taskkill //PID 23208 //F)",
+      "Bash(taskkill //PID 10892 //F)",
+      "Bash(taskkill //PID 18636 //F)",
+      "Bash(findstr \"LISTENING\")",
+      "Bash(cat /c/Users/WINDOWS/AppData/Local/Temp/claude/D--cc-roguelike/2a48f0b7-8f44-46db-9106-0ed58f3dc3ea/tasks/*.output)"
     ]
   }
 }

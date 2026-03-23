@@ -12,22 +12,31 @@ export default function LobbyPage() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Connect to server
-    networkClient.connect()
+    // Connect to server if not connected
+    if (!networkClient.isConnected()) {
+      networkClient.connect()
+    }
 
-    // Request room list
-    networkClient.emit('lobby:list')
+    // Wait for connection then request room list
+    const setup = () => {
+      networkClient.emit('lobby:list')
 
-    // Listen for room updates
-    networkClient.on('lobby:list:result', (data: any) => {
-      setRooms(data.rooms)
-    })
+      networkClient.on('lobby:list:result', (data: any) => {
+        setRooms(data.rooms)
+      })
 
-    networkClient.on('room:create:result', (data: any) => {
-      if (data.success) {
-        navigate(`/room/${data.room.id}`)
-      }
-    })
+      networkClient.on('room:create:result', (data: any) => {
+        if (data.success) {
+          navigate(`/room/${data.room.id}`)
+        }
+      })
+    }
+
+    if (networkClient.isConnected()) {
+      setup()
+    } else {
+      networkClient.getSocket()?.once('connect', setup)
+    }
 
     return () => {
       networkClient.off('lobby:list:result')
@@ -37,6 +46,10 @@ export default function LobbyPage() {
 
   const handleCreateRoom = () => {
     if (!roomName.trim()) return
+    if (!networkClient.isConnected()) {
+      alert('正在连接服务器，请稍后...')
+      return
+    }
     networkClient.emit('room:create', { name: roomName })
     setShowCreate(false)
     setRoomName('')

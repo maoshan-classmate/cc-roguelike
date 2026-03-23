@@ -25,41 +25,54 @@ export default function RoomPage() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Join room
-    networkClient.emit('room:join', { roomId })
-
-    // Listen for room events
-    networkClient.on('room:join:push', (data: any) => {
+    // Listen for room events FIRST (before emitting)
+    const handleJoinPush = (data: any) => {
       if (data.room) {
         setRoom(roomId!, data.room, data.room.hostId === user?.id)
       }
-    })
+    }
 
-    networkClient.on('room:leave:push', (data: any) => {
+    const handleLeavePush = (data: any) => {
       removePlayer(data.playerId, data.newHostId)
-    })
+    }
 
-    networkClient.on('room:ready:push', (data: any) => {
+    const handleReadyPush = (data: any) => {
       setPlayerReady(data.playerId, data.ready)
-    })
+    }
 
-    networkClient.on('room:start:push', (data: any) => {
+    const handleStartPush = (data: any) => {
       setGameStarted(true)
       navigate(`/game/${data.roomId}`)
-    })
+    }
 
-    networkClient.on('room:error', (data: any) => {
+    const handleError = (data: any) => {
       alert(data.message)
       navigate('/lobby')
-    })
+    }
+
+    // Register listeners FIRST
+    networkClient.on('room:join:push', handleJoinPush)
+    networkClient.on('room:leave:push', handleLeavePush)
+    networkClient.on('room:ready:push', handleReadyPush)
+    networkClient.on('room:start:push', handleStartPush)
+    networkClient.on('room:error', handleError)
+
+    // THEN emit (after listeners are registered)
+    if (networkClient.isConnected()) {
+      networkClient.emit('room:join', { roomId })
+    } else {
+      networkClient.getSocket()?.once('connect', () => {
+        networkClient.emit('room:join', { roomId })
+      })
+    }
 
     return () => {
-      networkClient.off('room:join:push')
-      networkClient.off('room:leave:push')
-      networkClient.off('room:ready:push')
-      networkClient.off('room:start:push')
-      networkClient.off('room:error')
-      networkClient.emit('room:leave')
+      networkClient.off('room:join:push', handleJoinPush)
+      networkClient.off('room:leave:push', handleLeavePush)
+      networkClient.off('room:ready:push', handleReadyPush)
+      networkClient.off('room:start:push', handleStartPush)
+      networkClient.off('room:error', handleError)
+      // Don't send room:leave here - it will be sent by handleLeave button
       clearRoom()
     }
   }, [roomId])
@@ -134,14 +147,16 @@ export default function RoomPage() {
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
-          {!isHost ? (
-            <button onClick={handleReady} style={{ minWidth: '150px' }}>
-              {isReady ? '取消准备' : '准备'}
-            </button>
-          ) : (
+          {/* 所有玩家都需要准备 */}
+          <button onClick={handleReady} style={{ minWidth: '150px' }}>
+            {isReady ? '取消准备' : '准备'}
+          </button>
+
+          {/* 房主显示开始游戏按钮，需要所有人准备就绪 */}
+          {isHost && (
             <button
               onClick={handleStart}
-              disabled={!allReady && players.length > 0}
+              disabled={!allReady}
               style={{ minWidth: '150px', background: 'var(--success)' }}
             >
               开始游戏

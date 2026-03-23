@@ -33,6 +33,24 @@ export class SocketServer {
     this.io.on('connection', (socket: Socket) => {
       console.log(`🔌 Client connected: ${socket.id}`);
 
+      // Check if already authenticated via token
+      const token = socket.handshake.auth.token;
+      if (token) {
+        const sessionData = this.authManager.verifyToken(token);
+        if (sessionData) {
+          // Restore session from token
+          this.authManager.getCharacter(sessionData.accountId).then(character => {
+            const session: Session = {
+              accountId: sessionData.accountId,
+              username: sessionData.username,
+              characterId: character?.id || ''
+            };
+            this.sessions.set(socket.id, session);
+            console.log(`🔌 Session restored for ${sessionData.username}`);
+          });
+        }
+      }
+
       // Auth handlers
       socket.on(AuthMessages.REGISTER, (data: { username: string; password: string }) => this.handleRegister(socket, data));
       socket.on(AuthMessages.LOGIN, (data: { username: string; password: string }) => this.handleLogin(socket, data));
@@ -65,7 +83,7 @@ export class SocketServer {
   private requireAuth(socket: Socket, callback: (session: Session) => void): void {
     const session = this.getSession(socket.id);
     if (!session) {
-      socket.emit('error', { code: ErrorCodes.AUTH_FAILED, message: 'Not authenticated' });
+      socket.emit('room:error', { code: ErrorCodes.AUTH_FAILED, message: 'Not authenticated' });
       return;
     }
     callback(session);
@@ -122,7 +140,11 @@ export class SocketServer {
   }
 
   private handleRoomCreate(socket: Socket, data: { name: string; maxPlayers?: number }): void {
+    console.log(`[DEBUG] handleRoomCreate called for socket ${socket.id}`);
+    const session = this.getSession(socket.id);
+    console.log(`[DEBUG] Session for socket:`, session ? session.username : 'NONE');
     this.requireAuth(socket, (session) => {
+      console.log(`[DEBUG] requireAuth passed for ${session.username}`);
       // Leave current room if any
       if (session.currentRoom) {
         this.lobbyManager.leaveRoom(session.currentRoom, session.accountId);
@@ -134,15 +156,29 @@ export class SocketServer {
         data.name || `${session.username}'s Room`,
         data.maxPlayers || 4
       );
+      console.log(`[DEBUG] Room created: ${room.id}`);
 
       session.currentRoom = room.id;
       socket.join(`room:${room.id}`);
+      console.log(`[DEBUG] Emitting CREATE_RESULT to ${socket.id}:`, room.id);
       socket.emit(RoomMessages.CREATE_RESULT, { success: true, room });
     });
   }
 
   private handleRoomJoin(socket: Socket, data: { roomId: string }): void {
+    console.log(`[DEBUG] handleRoomJoin called: roomId=${data.roomId}`);
     this.requireAuth(socket, async (session) => {
+      console.log(`[DEBUG] handleRoomJoin auth passed, session.currentRoom=${session.currentRoom}`);
+
+      // Check if already in this room
+      if (session.currentRoom === data.roomId) {
+        // User already in this room - just return success with current room data
+        const room = this.lobbyManager.getRoom(data.roomId);
+        const character = await this.authManager.getCharacter(session.accountId);
+        socket.emit(RoomMessages.JOIN_PUSH, { room, character });
+        return;
+      }
+
       // Leave current room first
       if (session.currentRoom) {
         this.lobbyManager.leaveRoom(session.currentRoom, session.accountId);
@@ -150,6 +186,7 @@ export class SocketServer {
       }
 
       const room = this.lobbyManager.joinRoom(data.roomId, session.accountId, session.username);
+      console.log(`[DEBUG] joinRoom result:`, room ? room.id : 'null');
       if (!room) {
         socket.emit(RoomMessages.ERROR, { code: ErrorCodes.ROOM_NOT_FOUND, message: 'Room not found or full' });
         return;

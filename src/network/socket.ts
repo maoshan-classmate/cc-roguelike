@@ -1,27 +1,26 @@
-import { io, Socket }from 'socket.io-client'
+import { io, Socket } from 'socket.io-client'
 
 class NetworkClient {
   private socket: Socket | null = null
-  private listeners: Map<string, Set<(data: any) => void>> = new Map()
 
-  connect(token?: string) {
+  connect() {
     if (this.socket?.connected) return
 
-    this.socket = io({
-      auth: { token },
-      transports: ['websocket']
+    // Connect directly to backend server on port 3001
+    this.socket = io('http://localhost:3001', {
+      transports: ['websocket', 'polling']
     })
 
     this.socket.on('connect', () => {
-      console.log('Connected to server')
+      console.log('[Socket] Connected to 3001')
     })
 
     this.socket.on('disconnect', () => {
-      console.log('Disconnected from server')
+      console.log('[Socket] Disconnected')
     })
 
-    this.socket.on('error', (error: any) => {
-      console.error('Socket error:', error)
+    this.socket.on('connect_error', (err) => {
+      console.log('[Socket] Connection error:', err.message)
     })
   }
 
@@ -33,31 +32,24 @@ class NetworkClient {
   }
 
   emit(event: string, data?: any) {
-    if (this.socket) {
+    if (this.socket?.connected) {
       this.socket.emit(event, data)
     }
   }
 
   on(event: string, callback: (data: any) => void) {
-    if (!this.listeners.has(event)) {
-      this.listeners.set(event, new Set())
-    }
-    this.listeners.get(event)!.add(callback)
-
     if (this.socket) {
       this.socket.on(event, callback)
     }
   }
 
   off(event: string, callback?: (data: any) => void) {
-    if (callback) {
-      this.listeners.get(event)?.delete(callback)
-      this.socket?.off(event, callback)
-    } else {
-      this.listeners.get(event)?.forEach(cb => {
-        this.socket?.off(event, cb)
-      })
-      this.listeners.delete(event)
+    if (this.socket) {
+      if (callback) {
+        this.socket.off(event, callback)
+      } else {
+        this.socket.off(event)
+      }
     }
   }
 
