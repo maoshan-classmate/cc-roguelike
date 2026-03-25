@@ -130,6 +130,7 @@ export default function GamePage() {
 
       // Calculate angle to mouse
       const localPlayer = players.find(p => p.id === user?.id)
+      console.log('[DEBUG] localPlayer:', localPlayer, 'userId:', user?.id, 'players IDs:', players.map(p => p.id))
       if (localPlayer) {
         const angle = Math.atan2(mouseRef.current.y - localPlayer.y, mouseRef.current.x - localPlayer.x)
 

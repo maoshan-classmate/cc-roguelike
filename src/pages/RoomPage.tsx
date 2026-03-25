@@ -85,6 +85,10 @@ export default function RoomPage() {
   const handleReady = () => {
     const newReady = !isReady
     setReady(newReady)
+    // 同时更新 players 数组中自己的状态
+    if (user?.id) {
+      setPlayerReady(user.id, newReady)
+    }
     networkClient.emit('room:ready', { ready: newReady })
   }
 

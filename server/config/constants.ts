@@ -107,7 +107,7 @@ export const WEAPON_TEMPLATES: Record<string, {
 // 技能模板
 export const SKILL_TEMPLATES: Record<string, {
   name: string;
-  type: 'active' | 'passive' | 'dash' | 'heal';
+  type: 'active' | 'passive' | 'dash' | 'heal' | 'shield' | 'speed_boost';
   cooldown: number;
   energyCost: number;
   duration?: number;
