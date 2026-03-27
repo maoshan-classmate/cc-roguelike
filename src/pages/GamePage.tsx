@@ -4,6 +4,13 @@ import { useAuthStore } from '../store/useAuthStore'
 import { useGameStore } from '../store/useGameStore'
 import { networkClient } from '../network/socket'
 
+// 导入像素精灵图（后续资源就位后启用）
+// import playerBlueImg from '../assets/images/characters/player-blue.png'
+// import enemyBasicImg from '../assets/images/enemies/enemy-basic.png'
+// import healthPackImg from '../assets/images/items/health-pack.png'
+
+// 暂时使用纯色圆形绘制，后续替换为精灵图
+
 export default function GamePage() {
   const { roomId } = useParams<{ roomId: string }>()
   const { user } = useAuthStore()
@@ -125,92 +132,115 @@ export default function GamePage() {
 
     const { players, enemies, bullets, items } = gameStateRef.current
 
-    // Clear
-    ctx.fillStyle = '#1a1a2e'
+    // 清除并填充背景
+    ctx.fillStyle = '#2D1B2E'  // 深紫黑
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    // Draw grid
-    ctx.strokeStyle = '#252540'
+    // 绘制像素风格网格
+    ctx.strokeStyle = '#3D2B3E'
     ctx.lineWidth = 1
-    for (let x = 0; x < canvas.width; x += 40) {
+    for (let x = 0; x < canvas.width; x += 32) {  // 32px 网格
       ctx.beginPath()
       ctx.moveTo(x, 0)
       ctx.lineTo(x, canvas.height)
       ctx.stroke()
     }
-    for (let y = 0; y < canvas.height; y += 40) {
+    for (let y = 0; y < canvas.height; y += 32) {
       ctx.beginPath()
       ctx.moveTo(0, y)
       ctx.lineTo(canvas.width, y)
       ctx.stroke()
     }
 
-    // Draw items
+    // 绘制道具
     for (const item of items) {
-      ctx.fillStyle = item.type === 'health_pack' ? '#ff6b6b' : '#4a9eff'
-      ctx.beginPath()
-      ctx.arc(item.x, item.y, 8, 0, Math.PI * 2)
-      ctx.fill()
+      // 像素风格绘制
+      ctx.fillStyle = item.type === 'health_pack' ? '#32CD32' : '#FFD700'
+      ctx.fillRect(item.x - 8, item.y - 8, 16, 16)
+      // 像素边框
+      ctx.strokeStyle = '#fff'
+      ctx.lineWidth = 2
+      ctx.strokeRect(item.x - 8, item.y - 8, 16, 16)
     }
 
-    // Draw enemies
+    // 绘制敌人
     for (const enemy of enemies) {
       if (!enemy.alive) continue
 
-      ctx.fillStyle = enemy.type?.includes('boss') ? '#ff6b6b' : '#ffd43b'
-      ctx.beginPath()
-      ctx.arc(enemy.x, enemy.y, 15, 0, Math.PI * 2)
-      ctx.fill()
+      const isBoss = enemy.type?.includes('boss')
+      const size = isBoss ? 24 : 16
+      ctx.fillStyle = isBoss ? '#DC143C' : '#FF6B6B'
 
-      // HP bar
+      // 像素风格正方形敌人
+      ctx.fillRect(enemy.x - size/2, enemy.y - size/2, size, size)
+
+      // 像素边框
+      ctx.strokeStyle = '#fff'
+      ctx.lineWidth = 2
+      ctx.strokeRect(enemy.x - size/2, enemy.y - size/2, size, size)
+
+      // HP 条
+      const hpBarWidth = size * 2
       ctx.fillStyle = '#333'
-      ctx.fillRect(enemy.x - 15, enemy.y - 25, 30, 4)
-      ctx.fillStyle = '#ff6b6b'
-      ctx.fillRect(enemy.x - 15, enemy.y - 25, 30 * (enemy.hp / enemy.hpMax), 4)
+      ctx.fillRect(enemy.x - hpBarWidth/2, enemy.y - size/2 - 12, hpBarWidth, 6)
+      ctx.fillStyle = '#DC143C'
+      ctx.fillRect(
+        enemy.x - hpBarWidth/2,
+        enemy.y - size/2 - 12,
+        hpBarWidth * (enemy.hp / enemy.hpMax),
+        6
+      )
     }
 
-    // Draw bullets
+    // 绘制子弹（像素风格小方块）
     for (const bullet of bullets) {
-      ctx.fillStyle = bullet.friendly ? '#4a9eff' : '#ff6b6b'
-      ctx.beginPath()
-      ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2)
-      ctx.fill()
+      ctx.fillStyle = bullet.friendly ? '#4A9EFF' : '#FF6B6B'
+      ctx.fillRect(
+        bullet.x - bullet.radius,
+        bullet.y - bullet.radius,
+        bullet.radius * 2,
+        bullet.radius * 2
+      )
     }
 
-    // Draw players
+    // 绘制玩家（像素风格）
     for (const player of players) {
       if (!player.alive) continue
 
       const isLocal = player.id === user?.id
+      const size = 16
 
-      // Player body
-      ctx.fillStyle = isLocal ? '#4a9eff' : '#51cf66'
-      ctx.beginPath()
-      ctx.arc(player.x, player.y, 16, 0, Math.PI * 2)
-      ctx.fill()
+      // 玩家颜色
+      ctx.fillStyle = isLocal ? '#4A9EFF' : '#51CF66'
+      ctx.fillRect(player.x - size/2, player.y - size/2, size, size)
 
-      // Direction indicator
+      // 像素边框
       ctx.strokeStyle = '#fff'
       ctx.lineWidth = 2
-      ctx.beginPath()
-      ctx.moveTo(player.x, player.y)
-      ctx.lineTo(
-        player.x + Math.cos(player.angle) * 25,
-        player.y + Math.sin(player.angle) * 25
-      )
-      ctx.stroke()
+      ctx.strokeRect(player.x - size/2, player.y - size/2, size, size)
 
-      // HP bar
+      // 方向指示器（像素箭头）
+      ctx.fillStyle = '#fff'
+      const arrowX = player.x + Math.cos(player.angle) * 20
+      const arrowY = player.y + Math.sin(player.angle) * 20
+      ctx.fillRect(arrowX - 3, arrowY - 3, 6, 6)
+
+      // HP 条
       ctx.fillStyle = '#333'
-      ctx.fillRect(player.x - 16, player.y - 28, 32, 4)
-      ctx.fillStyle = '#51cf66'
-      ctx.fillRect(player.x - 16, player.y - 28, 32 * (player.hp / player.hpMax), 4)
+      ctx.fillRect(player.x - 16, player.y - 24, 32, 6)
+      ctx.fillStyle = '#32CD32'
+      ctx.fillRect(
+        player.x - 16,
+        player.y - 24,
+        32 * (player.hp / player.hpMax),
+        6
+      )
 
-      // Name
+      // 名称
       ctx.fillStyle = '#fff'
       ctx.font = '10px Courier New'
       ctx.textAlign = 'center'
-      ctx.fillText(player.name, player.x, player.y - 32)
+      ctx.fillText(player.name, player.x, player.y - 28)
     }
   }, [user])
 
