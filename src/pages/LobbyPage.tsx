@@ -12,12 +12,10 @@ export default function LobbyPage() {
   const navigate = useNavigate()
 
   useEffect(() => {
-    // Connect to server if not connected
     if (!networkClient.isConnected()) {
       networkClient.connect()
     }
 
-    // Wait for connection then request room list
     const setup = () => {
       networkClient.emit('lobby:list')
 
@@ -71,27 +69,38 @@ export default function LobbyPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', padding: '20px' }}>
+    <div style={{
+      minHeight: '100vh',
+      padding: 20,
+      background: 'var(--pixel-bg)'
+    }}>
       {/* Header */}
-      <header style={{
+      <header className="card-pixel" style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
-        marginBottom: '30px',
-        padding: '15px 20px',
-        background: 'var(--bg-card)',
-        borderRadius: '8px'
+        marginBottom: 30
       }}>
-        <div>
-          <h1 style={{ fontSize: '24px', color: 'var(--primary)' }}>⚔️ 大厅</h1>
-          <p style={{ color: '#888', marginTop: '5px' }}>
-            欢迎, {user?.username} | {user?.character?.name || '无角色'}
-          </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
+          <span style={{ fontSize: 32, filter: 'drop-shadow(0 0 10px rgba(255, 215, 0, 0.5))' }}>⚔️</span>
+          <div>
+            <h1 style={{
+              fontSize: 24,
+              color: 'var(--pixel-gold)',
+              fontFamily: 'Courier New, monospace',
+              textShadow: '2px 2px 0 rgba(0,0,0,0.5)'
+            }}>
+              [ 大厅 ]
+            </h1>
+            <p style={{ color: 'var(--pixel-brown)', marginTop: 5, fontSize: 12 }}>
+              欢迎, {user?.username} | {user?.character?.name || '无角色'}
+            </p>
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={handleRefresh}>刷新房间</button>
-          <button onClick={() => setShowCreate(true)}>创建房间</button>
-          <button onClick={handleLogout} style={{ background: 'var(--danger)' }}>登出</button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button onClick={handleRefresh} className="btn-pixel btn-secondary">🔄 刷新</button>
+          <button onClick={() => setShowCreate(true)} className="btn-pixel">+ 创建</button>
+          <button onClick={handleLogout} className="btn-pixel btn-danger">登出</button>
         </div>
       </header>
 
@@ -100,73 +109,108 @@ export default function LobbyPage() {
         <div style={{
           position: 'fixed',
           inset: 0,
-          background: 'rgba(0,0,0,0.7)',
+          background: 'rgba(0,0,0,0.8)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 100
         }}>
-          <div className="card" style={{ width: '350px' }}>
-            <h3 style={{ marginBottom: '20px' }}>创建房间</h3>
+          <div className="card-pixel" style={{ width: 350 }}>
+            <h3 style={{
+              marginBottom: 20,
+              color: 'var(--pixel-gold)',
+              fontFamily: 'Courier New, monospace'
+            }}>
+              [ 创建房间 ]
+            </h3>
             <input
               type="text"
               value={roomName}
               onChange={(e) => setRoomName(e.target.value)}
               placeholder="房间名称"
-              style={{ marginBottom: '15px' }}
+              className="input-pixel"
+              style={{ marginBottom: 15 }}
               autoFocus
+              onKeyDown={(e) => e.key === 'Enter' && handleCreateRoom()}
             />
-            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+            <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
               <button
                 onClick={() => setShowCreate(false)}
-                style={{ background: '#555' }}
+                className="btn-pixel btn-secondary"
               >取消</button>
-              <button onClick={handleCreateRoom}>创建</button>
+              <button onClick={handleCreateRoom} className="btn-pixel">创建</button>
             </div>
           </div>
         </div>
       )}
 
       {/* Room List */}
-      <div className="card">
-        <h2 style={{ marginBottom: '20px' }}>房间列表</h2>
+      <div className="card-pixel">
+        <h2 style={{
+          marginBottom: 20,
+          color: 'var(--text)',
+          fontFamily: 'Courier New, monospace'
+        }}>
+          房间列表
+        </h2>
 
         {rooms.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '40px', color: '#888' }}>
-            暂无房间，创建一个开始游戏吧！
+          <div style={{
+            textAlign: 'center',
+            padding: 40,
+            color: 'var(--pixel-brown)',
+            fontFamily: 'Courier New, monospace'
+          }}>
+            <p style={{ fontSize: 24, marginBottom: 10 }}>🏰</p>
+            <p>暂无房间，创建一个开始冒险吧！</p>
           </div>
         ) : (
-          <div style={{ display: 'grid', gap: '10px' }}>
+          <div style={{ display: 'grid', gap: 10 }}>
             {rooms.map((room) => (
               <div
                 key={room.id}
+                className="card-pixel"
                 style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  padding: '15px',
-                  background: 'var(--bg-darker)',
-                  borderRadius: '6px',
                   cursor: 'pointer',
-                  transition: 'background 0.2s'
+                  transition: 'all 0.1s',
+                  borderColor: room.status === 'waiting' ? 'var(--success)' : 'var(--warning)'
                 }}
                 onClick={() => handleJoinRoom(room.id)}
+                onMouseOver={(e) => {
+                  e.currentTarget.style.transform = 'translate(-2px, -2px)'
+                  e.currentTarget.style.boxShadow = '8px 8px 0 rgba(0,0,0,0.5)'
+                }}
+                onMouseOut={(e) => {
+                  e.currentTarget.style.transform = 'none'
+                  e.currentTarget.style.boxShadow = ''
+                }}
               >
-                <div>
-                  <div style={{ fontWeight: 'bold', marginBottom: '5px' }}>
-                    {room.name}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <div style={{
+                      fontWeight: 'bold',
+                      marginBottom: 5,
+                      color: 'var(--text)',
+                      fontFamily: 'Courier New, monospace'
+                    }}>
+                      {room.name}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--pixel-brown)' }}>
+                      👑 {room.hostName} | 👥 {room.players.length}/{room.maxPlayers}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '12px', color: '#888' }}>
-                    房主: {room.hostName} | {room.players.length}/{room.maxPlayers} 人
+                  <div style={{
+                    padding: '5px 15px',
+                    background: room.status === 'waiting' ? 'var(--success)' : 'var(--warning)',
+                    color: '#000',
+                    borderRadius: 0,
+                    fontSize: 12,
+                    fontWeight: 'bold',
+                    fontFamily: 'Courier New, monospace',
+                    border: '2px solid #fff'
+                  }}>
+                    {room.status === 'waiting' ? '[ 等待中 ]' : '[ 游戏中 ]'}
                   </div>
-                </div>
-                <div style={{
-                  padding: '5px 15px',
-                  background: room.status === 'waiting' ? 'var(--success)' : 'var(--warning)',
-                  borderRadius: '4px',
-                  fontSize: '12px'
-                }}>
-                  {room.status === 'waiting' ? '等待中' : '游戏中'}
                 </div>
               </div>
             ))}
