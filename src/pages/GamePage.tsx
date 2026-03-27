@@ -9,10 +9,6 @@ export default function GamePage() {
   const { user } = useAuthStore()
   const {
     floor,
-    players,
-    enemies,
-    bullets,
-    items,
     isPaused,
     isGameOver,
     isVictory,
@@ -30,6 +26,9 @@ export default function GamePage() {
   const mouseRef = useRef({ x: 0, y: 0, down: false })
   const animationRef = useRef<number>()
 
+  // Use refs to always get latest state in game loop
+  const gameStateRef = useRef({ players: [] as any[], enemies: [] as any[], bullets: [] as any[], items: [] as any[] })
+
   // Set local player ID
   useEffect(() => {
     if (user) {
@@ -37,11 +36,19 @@ export default function GamePage() {
     }
   }, [user])
 
-  // Game state listener
+  // Game state listener - update ref immediately
   useEffect(() => {
     networkClient.on('game:state', (state: any) => {
+      console.log('[GamePage] Received game:state:', state.players?.length, 'players')
       if (state.floorCompleted) {
         setFloor(state.floor + 1)
+      }
+      // Update ref immediately for game loop
+      gameStateRef.current = {
+        players: state.players || [],
+        enemies: state.enemies || [],
+        bullets: state.bullets || [],
+        items: state.items || []
       }
       setState(state)
     })
@@ -108,61 +115,15 @@ export default function GamePage() {
     }
   }, [isPaused])
 
-  // Game loop
-  useEffect(() => {
-    if (isPaused || isGameOver) return
-
-    const gameLoop = () => {
-      // Send input to server
-      const keys = keysRef.current
-      let dx = 0, dy = 0
-
-      if (keys.has('w') || keys.has('arrowup')) dy -= 1
-      if (keys.has('s') || keys.has('arrowdown')) dy += 1
-      if (keys.has('a') || keys.has('arrowleft')) dx -= 1
-      if (keys.has('d') || keys.has('arrowright')) dx += 1
-
-      // Normalize diagonal movement
-      if (dx !== 0 && dy !== 0) {
-        dx *= 0.707
-        dy *= 0.707
-      }
-
-      // Calculate angle to mouse
-      const localPlayer = players.find(p => p.id === user?.id)
-      if (localPlayer) {
-        const angle = Math.atan2(mouseRef.current.y - localPlayer.y, mouseRef.current.x - localPlayer.x)
-
-        networkClient.emit('game:input', {
-          dx,
-          dy,
-          angle,
-          attack: mouseRef.current.down
-        })
-      }
-
-      // Render
-      render()
-
-      animationRef.current = requestAnimationFrame(gameLoop)
-    }
-
-    animationRef.current = requestAnimationFrame(gameLoop)
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current)
-      }
-    }
-  }, [isPaused, isGameOver, players, user])
-
-  // Render
+  // Render function that reads from refs
   const render = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+
+    const { players, enemies, bullets, items } = gameStateRef.current
 
     // Clear
     ctx.fillStyle = '#1a1a2e'
@@ -196,7 +157,7 @@ export default function GamePage() {
     for (const enemy of enemies) {
       if (!enemy.alive) continue
 
-      ctx.fillStyle = enemy.type.includes('boss') ? '#ff6b6b' : '#ffd43b'
+      ctx.fillStyle = enemy.type?.includes('boss') ? '#ff6b6b' : '#ffd43b'
       ctx.beginPath()
       ctx.arc(enemy.x, enemy.y, 15, 0, Math.PI * 2)
       ctx.fill()
@@ -251,12 +212,69 @@ export default function GamePage() {
       ctx.textAlign = 'center'
       ctx.fillText(player.name, player.x, player.y - 32)
     }
-  }, [players, enemies, bullets, items, user])
+  }, [user])
+
+  // Game loop - reads from refs
+  useEffect(() => {
+    if (isPaused || isGameOver) return
+
+    const gameLoop = () => {
+      const keys = keysRef.current
+      let dx = 0, dy = 0
+
+      if (keys.has('w') || keys.has('arrowup')) dy -= 1
+      if (keys.has('s') || keys.has('arrowdown')) dy += 1
+      if (keys.has('a') || keys.has('arrowleft')) dx -= 1
+      if (keys.has('d') || keys.has('arrowright')) dx += 1
+
+      // Normalize diagonal movement
+      if (dx !== 0 && dy !== 0) {
+        dx *= 0.707
+        dy *= 0.707
+      }
+
+      // Read from ref for latest state
+      const { players } = gameStateRef.current
+      const localPlayer = players.find(p => p.id === user?.id)
+
+      if (!localPlayer) {
+        // Just render and continue - might not have state yet
+        render()
+        animationRef.current = requestAnimationFrame(gameLoop)
+        return
+      }
+
+      const angle = Math.atan2(mouseRef.current.y - localPlayer.y, mouseRef.current.x - localPlayer.x)
+
+      // Send input
+      if (dx !== 0 || dy !== 0 || mouseRef.current.down) {
+        networkClient.emit('game:input', {
+          dx,
+          dy,
+          angle,
+          attack: mouseRef.current.down
+        })
+      }
+
+      // Render
+      render()
+
+      animationRef.current = requestAnimationFrame(gameLoop)
+    }
+
+    animationRef.current = requestAnimationFrame(gameLoop)
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current)
+      }
+    }
+  }, [isPaused, isGameOver, user, render])
 
   // Manual render on state change
   useEffect(() => {
     render()
-  }, [players, enemies, bullets, items, render])
+  }, [render])
 
   const handleExit = () => {
     reset()
@@ -268,23 +286,64 @@ export default function GamePage() {
       {/* HUD */}
       <div style={{
         position: 'absolute',
-        top: '10px',
-        left: '10px',
+        top: 10,
+        left: 10,
         zIndex: 10,
         display: 'flex',
-        gap: '20px'
+        gap: 10
       }}>
-        <div className="card" style={{ padding: '10px 15px' }}>
-          <span style={{ color: '#888' }}>楼层: </span>
-          <span style={{ color: 'var(--primary)', fontWeight: 'bold' }}>{floor}/5</span>
+        {/* 楼层 */}
+        <div className="card-pixel" style={{
+          padding: '8px 15px',
+          borderColor: 'var(--pixel-gold)'
+        }}>
+          <span style={{ color: 'var(--pixel-brown)', fontFamily: 'Courier New, monospace', fontSize: 12 }}>
+            楼层
+          </span>
+          <span style={{
+            color: 'var(--pixel-gold)',
+            fontWeight: 'bold',
+            fontFamily: 'Courier New, monospace',
+            marginLeft: 8
+          }}>
+            {floor}/5
+          </span>
         </div>
-        <div className="card" style={{ padding: '10px 15px' }}>
-          <span style={{ color: '#888' }}>玩家: </span>
-          <span style={{ color: 'var(--success)' }}>{players.filter(p => p.alive).length}/{players.length}</span>
+
+        {/* 玩家 */}
+        <div className="card-pixel" style={{
+          padding: '8px 15px',
+          borderColor: 'var(--player-1)'
+        }}>
+          <span style={{ color: 'var(--pixel-brown)', fontFamily: 'Courier New, monospace', fontSize: 12 }}>
+            玩家
+          </span>
+          <span style={{
+            color: 'var(--success)',
+            fontWeight: 'bold',
+            fontFamily: 'Courier New, monospace',
+            marginLeft: 8
+          }}>
+            {gameStateRef.current.players.filter(p => p.alive).length}/{gameStateRef.current.players.length}
+          </span>
         </div>
-        <div className="card" style={{ padding: '10px 15px' }}>
-          <span style={{ color: '#888' }}>敌人: </span>
-          <span style={{ color: 'var(--danger)' }}>{enemies.filter(e => e.alive).length}</span>
+
+        {/* 敌人 */}
+        <div className="card-pixel" style={{
+          padding: '8px 15px',
+          borderColor: 'var(--pixel-red)'
+        }}>
+          <span style={{ color: 'var(--pixel-brown)', fontFamily: 'Courier New, monospace', fontSize: 12 }}>
+            敌人
+          </span>
+          <span style={{
+            color: 'var(--danger)',
+            fontWeight: 'bold',
+            fontFamily: 'Courier New, monospace',
+            marginLeft: 8
+          }}>
+            {gameStateRef.current.enemies.filter(e => e.alive).length}
+          </span>
         </div>
       </div>
 
@@ -298,21 +357,26 @@ export default function GamePage() {
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          border: '2px solid var(--bg-card)',
-          borderRadius: '4px'
+          border: '4px solid var(--pixel-brown)',
+          boxShadow: '6px 6px 0 rgba(0,0,0,0.5)',
+          imageRendering: 'pixelated'
         }}
       />
 
       {/* Controls hint */}
       <div style={{
         position: 'absolute',
-        bottom: '10px',
+        bottom: 10,
         left: '50%',
         transform: 'translateX(-50%)',
-        color: '#555',
-        fontSize: '12px'
+        color: 'var(--pixel-brown)',
+        fontSize: 11,
+        fontFamily: 'Courier New, monospace',
+        textShadow: '2px 2px 0 rgba(0,0,0,0.5)',
+        padding: '5px 15px',
+        background: 'rgba(0,0,0,0.5)'
       }}>
-        WASD移动 | 鼠标瞄准射击 | 1-4技能 | ESC暂停
+        [ WASD移动 | 鼠标瞄准 | 左键射击 | 1-4技能 | ESC暂停 ]
       </div>
 
       {/* Pause overlay */}
@@ -320,16 +384,28 @@ export default function GamePage() {
         <div style={{
           position: 'absolute',
           inset: 0,
-          background: 'rgba(0,0,0,0.8)',
+          background: 'rgba(0,0,0,0.85)',
           display: 'flex',
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           zIndex: 100
         }}>
-          <h2 style={{ fontSize: '48px', marginBottom: '30px' }}>暂停</h2>
-          <button onClick={() => setPaused(false)} style={{ marginBottom: '10px' }}>继续游戏</button>
-          <button onClick={handleExit} style={{ background: 'var(--danger)' }}>退出游戏</button>
+          <h2 style={{
+            fontSize: 48,
+            marginBottom: 30,
+            color: 'var(--pixel-gold)',
+            fontFamily: 'Courier New, monospace',
+            textShadow: '4px 4px 0 rgba(0,0,0,0.5)'
+          }}>
+            [ 暂停 ]
+          </h2>
+          <button onClick={() => setPaused(false)} className="btn-pixel btn-success" style={{ marginBottom: 10, minWidth: 200 }}>
+            [ 继续游戏 ]
+          </button>
+          <button onClick={handleExit} className="btn-pixel btn-danger" style={{ minWidth: 200 }}>
+            [ 退出游戏 ]
+          </button>
         </div>
       )}
 
@@ -346,16 +422,24 @@ export default function GamePage() {
           zIndex: 100
         }}>
           <h2 style={{
-            fontSize: '48px',
-            color: isVictory ? 'var(--success)' : 'var(--danger)',
-            marginBottom: '20px'
+            fontSize: 48,
+            marginBottom: 20,
+            color: isVictory ? 'var(--pixel-gold)' : 'var(--danger)',
+            fontFamily: 'Courier New, monospace',
+            textShadow: '4px 4px 0 rgba(0,0,0,0.5)'
           }}>
-            {isVictory ? '🎉 胜利！' : '💀 失败'}
+            {isVictory ? '[ 胜利! ]' : '[ 失败 ]'}
           </h2>
-          <p style={{ marginBottom: '30px', color: '#888' }}>
+          <p style={{
+            marginBottom: 30,
+            color: 'var(--pixel-brown)',
+            fontFamily: 'Courier New, monospace'
+          }}>
             {isVictory ? '恭喜你通关了地牢！' : '下次再接再厉！'}
           </p>
-          <button onClick={handleExit} style={{ background: 'var(--primary)' }}>返回大厅</button>
+          <button onClick={handleExit} className="btn-pixel" style={{ background: 'var(--primary)', minWidth: 200 }}>
+            [ 返回大厅 ]
+          </button>
         </div>
       )}
     </div>
