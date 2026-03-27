@@ -48,7 +48,7 @@ server/
 
 ## 架构图
 
-详细架构图见：architecture.drawio.png
+![架构图](./architecture.drawio.png)
 
 ## 技术栈
 
