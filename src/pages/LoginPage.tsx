@@ -20,10 +20,8 @@ export default function LoginPage() {
     try {
       const event = isRegister ? 'auth:register' : 'auth:login'
 
-      // Connect if not connected, and wait for connection
       if (!networkClient.isConnected()) {
         networkClient.connect()
-        // Wait for connection to establish
         await new Promise<void>((resolve) => {
           const socket = networkClient.getSocket()
           if (socket?.connected) {
@@ -34,7 +32,6 @@ export default function LoginPage() {
         })
       }
 
-      // Use promise-based approach
       const result = await new Promise<any>((resolve) => {
         const timeout = setTimeout(() => {
           resolve({ success: false, error: 'Timeout' })
@@ -64,17 +61,48 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="page">
-      <h1 className="page-title">⚔️ Roguelike ⚔️</h1>
+    <div className="page" style={{ background: 'var(--pixel-bg)' }}>
+      {/* Logo */}
+      <div style={{
+        width: 64,
+        height: 64,
+        marginBottom: 20,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontSize: 48,
+        filter: 'drop-shadow(0 0 10px rgba(255, 215, 0, 0.5))'
+      }}>
+        ⚔️
+      </div>
 
-      <div className="card" style={{ width: '320px' }}>
-        <h2 style={{ marginBottom: '20px', textAlign: 'center' }}>
-          {isRegister ? '注册账号' : '登录'}
+      <h1 className="page-title" style={{
+        fontFamily: 'Courier New, monospace',
+        textShadow: '4px 4px 0 rgba(0,0,0,0.5), 0 0 20px rgba(74, 158, 255, 0.5)'
+      }}>
+        ROGUELIKE
+      </h1>
+
+      <div className="card-pixel" style={{ width: 320 }}>
+        <h2 style={{
+          marginBottom: 20,
+          textAlign: 'center',
+          fontFamily: 'Courier New, monospace',
+          color: 'var(--pixel-gold)'
+        }}>
+          {isRegister ? '[ 注册 ]' : '[ 登录 ]'}
         </h2>
 
         <form onSubmit={handleSubmit}>
-          <div style={{ marginBottom: '15px' }}>
-            <label style={{ display: 'block', marginBottom: '5px', color: '#888' }}>
+          <div style={{ marginBottom: 15 }}>
+            <label style={{
+              display: 'block',
+              marginBottom: 5,
+              color: 'var(--pixel-brown)',
+              fontWeight: 'bold',
+              fontSize: 12,
+              textTransform: 'uppercase'
+            }}>
               用户名
             </label>
             <input
@@ -85,11 +113,19 @@ export default function LoginPage() {
               required
               minLength={3}
               maxLength={20}
+              className="input-pixel"
             />
           </div>
 
-          <div style={{ marginBottom: '20px' }}>
-            <label style={{ display: 'block', marginBottom: '5px', color: '#888' }}>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{
+              display: 'block',
+              marginBottom: 5,
+              color: 'var(--pixel-brown)',
+              fontWeight: 'bold',
+              fontSize: 12,
+              textTransform: 'uppercase'
+            }}>
               密码
             </label>
             <input
@@ -99,27 +135,36 @@ export default function LoginPage() {
               placeholder="输入密码"
               required
               minLength={6}
+              className="input-pixel"
             />
           </div>
 
           {error && (
-            <div style={{ color: 'var(--danger)', marginBottom: '15px', textAlign: 'center' }}>
-              {error}
+            <div style={{
+              color: 'var(--danger)',
+              marginBottom: 15,
+              textAlign: 'center',
+              fontWeight: 'bold',
+              textTransform: 'uppercase',
+              fontSize: 12
+            }}>
+              ! {error}
             </div>
           )}
 
-          <button type="submit" disabled={loading} style={{ width: '100%' }}>
-            {loading ? '处理中...' : (isRegister ? '注册' : '登录')}
+          <button type="submit" disabled={loading} className="btn-pixel" style={{ width: '100%' }}>
+            {loading ? '>>> 处理中 <<<' : (isRegister ? '>>> 注册 <<<' : '>>> 登录 <<<')}
           </button>
         </form>
 
-        <div style={{ marginTop: '15px', textAlign: 'center' }}>
+        <div style={{ marginTop: 15, textAlign: 'center' }}>
           <button
             type="button"
             onClick={() => setIsRegister(!isRegister)}
-            style={{ background: 'transparent', color: 'var(--primary)' }}
+            className="btn-pixel btn-secondary"
+            style={{ background: 'transparent', color: 'var(--pixel-gold)' }}
           >
-            {isRegister ? '已有账号？登录' : '没有账号？注册'}
+            {isRegister ? '>>> 已有账号？登录 <<<' : '>>> 没有账号？注册 <<<'}
           </button>
         </div>
       </div>
