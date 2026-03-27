@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- Enemy Fast - Pixel Art Style (Red-Orange, slimmer) -->
+  <rect x="12" y="6" width="8" height="6" fill="#FF4500"/>
+  <rect x="14" y="8" width="2" height="2" fill="#FFD700"/>
+  <rect x="18" y="8" width="2" height="2" fill="#FFD700"/>
+  <rect x="10" y="12" width="12" height="10" fill="#FF4500"/>
+  <rect x="8" y="14" width="4" height="6" fill="#FF4500"/>
+  <rect x="20" y="14" width="4" height="6" fill="#FF4500"/>
+  <rect x="12" y="22" width="3" height="6" fill="#FF4500"/>
+  <rect x="17" y="22" width="3" height="6" fill="#FF4500"/>
+</svg>

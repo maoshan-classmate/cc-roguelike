@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16" width="16" height="16">
+  <!-- Health Pack - Pixel Art Style (Green cross on white) -->
+  <rect x="2" y="2" width="12" height="12" fill="#FFFFFF" stroke="#32CD32" stroke-width="1"/>
+  <rect x="6" y="4" width="4" height="8" fill="#32CD32"/>
+  <rect x="4" y="6" width="8" height="4" fill="#32CD32"/>
+</svg>
