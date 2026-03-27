@@ -33,6 +33,23 @@ netstat -ano | grep LISTENING | grep -E "300[01]"
 tail -f logs or check task output
 ```
 
+## 项目结构
+
+```
+src/
+  pages/     # 页面组件 (LoginPage, LobbyPage, RoomPage, GamePage)
+  store/     # Zustand 状态管理
+  network/   # Socket.io 客户端
+server/
+  game/      # 游戏逻辑 (GameManager, GameRoom, Combat, DungeonGenerator)
+  lobby/     # 大厅逻辑 (AuthManager, LobbyManager)
+  network/   # SocketServer
+```
+
+## 架构图
+
+详细架构图见：architecture.drawio.png
+
 ## 技术栈
 
 - 前端：React 18 + TypeScript + Canvas + Zustand + Socket.io-client + Vite
