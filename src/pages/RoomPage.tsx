@@ -3,7 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
 import { useRoomStore } from '../store/useRoomStore'
 import { networkClient } from '../network/socket'
-import { PlayerIcon } from '../components/GameAssets'
+import {
+  PixelSword, PixelShield, PixelGem, PixelCrown, PixelStar, PixelSkull, PixelDragon,
+  PixelAvatarWarrior, PixelAvatarRanger, PixelAvatarMage, PixelAvatarHealer
+} from '../components/PixelIcons'
 
 const PLAYER_COLORS = {
   0: 'var(--player-1)',
@@ -11,6 +14,8 @@ const PLAYER_COLORS = {
   2: 'var(--player-3)',
   3: 'var(--player-4)'
 }
+
+const PLAYER_AVATARS = [PixelAvatarWarrior, PixelAvatarRanger, PixelAvatarMage, PixelAvatarHealer]
 
 // 玩家槽位组件
 function PlayerSlot({
@@ -26,6 +31,7 @@ function PlayerSlot({
 }) {
   const color = PLAYER_COLORS[index as keyof typeof PLAYER_COLORS]
   const isReady = player?.ready
+  const AvatarComponent = PLAYER_AVATARS[index]
 
   return (
     <div
@@ -41,8 +47,50 @@ function PlayerSlot({
         position: 'relative',
       }}
     >
-      {/* 玩家图标 - 使用Penpot设计的SVG资源 */}
-      <PlayerIcon playerIndex={index as 0 | 1 | 2 | 3} size={56} isReady={isReady} />
+      {/* 玩家像素头像 */}
+      {player && AvatarComponent && (
+        <div style={{
+          width: 56,
+          height: 56,
+          borderRadius: 4,
+          border: `3px solid ${color}`,
+          background: 'var(--pixel-bg)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          boxShadow: `0 0 10px ${color}40`,
+          position: 'relative',
+        }}>
+          <AvatarComponent size={48} color={color} />
+          {isReady && (
+            <div style={{
+              position: 'absolute',
+              top: -4,
+              right: -4,
+              width: 12,
+              height: 12,
+              borderRadius: '50%',
+              background: 'var(--pixel-green)',
+              border: '2px solid var(--pixel-bg)',
+            }} />
+          )}
+        </div>
+      )}
+      {!player && (
+        <div style={{
+          width: 56,
+          height: 56,
+          borderRadius: 4,
+          border: `2px dashed var(--pixel-brown)`,
+          background: 'transparent',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          opacity: 0.4,
+        }}>
+          <span style={{ fontSize: 24, color: 'var(--pixel-brown)' }}>?</span>
+        </div>
+      )}
 
       {/* 玩家信息 */}
       <div style={{ flex: 1 }}>
@@ -69,8 +117,11 @@ function PlayerSlot({
               fontSize: 10,
               fontWeight: 'bold',
               fontFamily: 'Courier New, monospace',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
             }}>
-              👑 房主
+              <PixelCrown size={12} color="#8B4513" /> 房主
             </span>
           )}
           {isLocalPlayer && (
@@ -81,8 +132,11 @@ function PlayerSlot({
               fontSize: 10,
               fontWeight: 'bold',
               fontFamily: 'Courier New, monospace',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 4,
             }}>
-              ← 你
+              <PixelStar size={10} color="#8B4513" /> 你
             </span>
           )}
         </div>
@@ -106,8 +160,16 @@ function PlayerSlot({
           fontWeight: 'bold',
           fontFamily: 'Courier New, monospace',
           boxShadow: isReady ? `0 0 10px var(--pixel-green)` : 'none',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
         }}>
-          {isReady ? '[ ✓ 已准备 ]' : '[ ○ 未准备 ]'}
+          {isReady ? (
+            <PixelStar size={14} color="#8B4513" />
+          ) : (
+            <PixelGem size={14} color="#666" />
+          )}
+          {isReady ? '已准备' : '未准备'}
         </div>
       )}
 
@@ -290,7 +352,7 @@ export default function RoomPage() {
             alignItems: 'center',
             gap: 10,
           }}>
-            <span>⚔️</span> 冒险者列表
+            <PixelSword size={20} color="#FFD700" /> 冒险者列表
             <span style={{
               fontSize: 12,
               color: 'var(--pixel-brown)',
@@ -398,8 +460,12 @@ export default function RoomPage() {
               color: 'var(--pixel-brown)',
               fontSize: 12,
               fontFamily: 'Courier New, monospace',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
             }}>
-              💡 提示：所有玩家准备后即可开始游戏
+              <PixelStar size={16} color="#8B4513" />
+              提示：所有玩家准备后即可开始游戏
             </div>
           )}
         </div>
@@ -412,9 +478,9 @@ export default function RoomPage() {
           gap: 20,
           opacity: 0.3,
         }}>
-          <span>🐉</span>
-          <span>💀</span>
-          <span>👑</span>
+          <PixelDragon size={24} color="#DC143C" />
+          <PixelSkull size={24} color="#FFFFFF" />
+          <PixelCrown size={24} color="#FFD700" />
         </div>
       </div>
     </div>

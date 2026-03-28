@@ -2,9 +2,10 @@ import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
 import { networkClient } from '../network/socket'
+import { PixelLogo, PixelSword, PixelShield, PixelCastle, PixelGem, PixelCrown, PixelDragon, PixelSkull, PixelStar } from '../components/PixelIcons'
 
 // 像素装饰图标组件
-function PixelDecoration({ icon, color }: { icon: string; color?: string }) {
+function PixelDecoration({ children, color }: { children: React.ReactNode; color?: string }) {
   return (
     <div style={{
       width: 48,
@@ -12,11 +13,10 @@ function PixelDecoration({ icon, color }: { icon: string; color?: string }) {
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontSize: 28,
       filter: `drop-shadow(0 0 10px ${color || 'rgba(255, 215, 0, 0.5)'})`,
       animation: 'pixel-bounce 2s ease-in-out infinite',
     }}>
-      {icon}
+      {children}
     </div>
   )
 }
@@ -139,13 +139,13 @@ export default function LoginPage() {
         display: 'flex',
         justifyContent: 'center',
         gap: 40,
-        opacity: 0.4,
+        opacity: 0.6,
       }}>
-        <span>⚔️</span>
-        <span>🛡️</span>
-        <span>💎</span>
-        <span>🗝️</span>
-        <span>🏆</span>
+        <PixelSword size={28} color="#C0C0C0" />
+        <PixelShield size={28} color="#4A9EFF" />
+        <PixelGem size={28} color="#4A9EFF" />
+        <PixelCastle size={28} color="#8B4513" />
+        <PixelCrown size={28} color="#FFD700" />
       </div>
 
       {/* Logo区域 */}
@@ -156,7 +156,9 @@ export default function LoginPage() {
         alignItems: 'center',
         animation: 'pixel-fade-in 0.5s ease-out',
       }}>
-        <PixelDecoration icon="⚔️" color="rgba(255, 215, 0, 0.8)" />
+        <PixelDecoration color="rgba(255, 215, 0, 0.8)">
+          <PixelLogo size={64} />
+        </PixelDecoration>
 
         <h1 className="page-header-title" style={{ fontSize: 36 }}>
           地下城突袭
@@ -336,13 +338,13 @@ export default function LoginPage() {
         bottom: 50,
         display: 'flex',
         gap: 30,
-        opacity: 0.3,
+        opacity: 0.5,
       }}>
-        <span>🏰</span>
-        <span>🐉</span>
-        <span>💀</span>
-        <span>👑</span>
-        <span>🌟</span>
+        <PixelCastle size={24} color="#8B4513" />
+        <PixelDragon size={24} color="#DC143C" />
+        <PixelSkull size={24} color="#FFFFFF" />
+        <PixelCrown size={24} color="#FFD700" />
+        <PixelStar size={24} color="#FFD700" />
       </div>
     </div>
   )

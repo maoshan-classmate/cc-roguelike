@@ -3,11 +3,14 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
 import { useLobbyStore } from '../store/useLobbyStore'
 import { networkClient } from '../network/socket'
+import { PixelCastle, PixelDragon, PixelCrown, PixelGem, PixelKey, PixelSword, PixelShield, PixelStar, PixelSkull } from '../components/PixelIcons'
 
 // 玩家槽位组件
 function PlayerSlot({ index, username }: { index: number; username?: string }) {
   const colors = ['var(--player-1)', 'var(--player-2)', 'var(--player-3)', 'var(--player-4)']
   const color = colors[index] || colors[0]
+  const playerIcons = [<PixelSword key="s" size={28} />, <PixelShield key="s" size={28} />, <PixelGem key="g" size={28} />, <PixelCrown key="c" size={28} />]
+  const playerIconsEmpty = [<span key="?" style={{ opacity: 0.3 }}>?</span>]
 
   return (
     <div style={{
@@ -26,10 +29,9 @@ function PlayerSlot({ index, username }: { index: number; username?: string }) {
         justifyContent: 'center',
         background: username ? 'var(--pixel-bg)' : 'transparent',
         boxShadow: username ? `0 0 15px ${color}40, inset 0 0 10px ${color}20` : 'none',
-        fontSize: 24,
         transition: 'all 0.2s',
       }}>
-        {username ? '⚔' : '?'}
+        {username ? playerIcons[index] : playerIconsEmpty}
       </div>
       <span style={{
         fontSize: 10,
@@ -66,15 +68,21 @@ function RoomCard({
           color: 'var(--pixel-gold)',
           fontFamily: 'Courier New, monospace',
           fontSize: 15,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
         }}>
-          🏰 {room.name}
+          <PixelCastle size={16} color="#8B4513" /> {room.name}
         </div>
         <div style={{
           fontSize: 12,
           color: 'var(--pixel-brown)',
           fontFamily: 'Courier New, monospace',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 6,
         }}>
-          👑 {room.hostName}
+          <PixelCrown size={12} color="#FFD700" /> {room.hostName}
         </div>
       </div>
 
@@ -121,7 +129,7 @@ function RoomCard({
           color: 'var(--pixel-brown)',
           fontFamily: 'Courier New, monospace',
         }}>
-          👥 {room.players.length}/{room.maxPlayers}
+          ⚔ {room.players.length}/{room.maxPlayers}
         </div>
       </div>
     </div>
@@ -235,10 +243,9 @@ export default function LobbyPage() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div style={{
-            fontSize: 36,
             filter: 'drop-shadow(0 0 15px rgba(255, 215, 0, 0.6))',
           }}>
-            ⚔️
+            <PixelSword size={36} color="#FFD700" />
           </div>
           <div>
             <h1 style={{
@@ -279,9 +286,9 @@ export default function LobbyPage() {
           <button
             onClick={handleRefresh}
             className="btn-pixel"
-            style={{ background: 'var(--pixel-brown)' }}
+            style={{ background: 'var(--pixel-brown)', display: 'flex', alignItems: 'center', gap: 6 }}
           >
-            🔄 刷新
+            <PixelStar size={14} color="#FFD700" /> 刷新
           </button>
           <button
             onClick={() => setShowCreate(true)}
@@ -322,7 +329,7 @@ export default function LobbyPage() {
           alignItems: 'center',
           gap: 10,
         }}>
-          <span>🏰</span> 房间列表
+          <PixelCastle size={20} color="#8B4513" /> 房间列表
           <span style={{
             fontSize: 12,
             color: 'var(--pixel-brown)',
@@ -339,8 +346,8 @@ export default function LobbyPage() {
             color: 'var(--pixel-brown)',
             fontFamily: 'Courier New, monospace',
           }}>
-            <div style={{ fontSize: 64, marginBottom: 16, opacity: 0.5 }}>
-              🏰
+            <div style={{ marginBottom: 16, opacity: 0.5, display: 'flex', justifyContent: 'center' }}>
+              <PixelCastle size={64} color="#8B4513" />
             </div>
             <p style={{ fontSize: 16, marginBottom: 8 }}>暂无房间</p>
             <p style={{ fontSize: 12, opacity: 0.7 }}>
@@ -366,13 +373,13 @@ export default function LobbyPage() {
         display: 'flex',
         justifyContent: 'center',
         gap: 20,
-        opacity: 0.3,
+        opacity: 0.4,
       }}>
-        <span>🐉</span>
-        <span>💀</span>
-        <span>👑</span>
-        <span>💎</span>
-        <span>🗝️</span>
+        <PixelDragon size={24} color="#DC143C" />
+        <PixelSkull size={24} color="#FFFFFF" />
+        <PixelCrown size={24} color="#FFD700" />
+        <PixelGem size={24} color="#4A9EFF" />
+        <PixelKey size={24} color="#FFD700" />
       </div>
 
       {/* 创建房间弹窗 */}

@@ -230,12 +230,16 @@ export class SocketServer {
   }
 
   private handleRoomReady(socket: Socket, data: { ready: boolean }): void {
+    console.log(`[DEBUG] handleRoomReady called: socket=${socket.id}, ready=${data.ready}`);
     this.requireAuth(socket, (session) => {
+      console.log(`[DEBUG] handleRoomReady auth passed: currentRoom=${session?.currentRoom}`);
       if (!session.currentRoom) return;
 
       const room = this.lobbyManager.setPlayerReady(session.currentRoom, session.accountId, data.ready);
+      console.log(`[DEBUG] setPlayerReady result:`, room ? 'success' : 'null');
       if (room) {
-        socket.to(`room:${room.id}`).emit(RoomMessages.READY_PUSH, {
+        // Emit to ALL players in the room including sender
+        this.io.to(`room:${room.id}`).emit(RoomMessages.READY_PUSH, {
           playerId: session.accountId,
           ready: data.ready
         });
@@ -244,7 +248,9 @@ export class SocketServer {
   }
 
   private handleRoomStart(socket: Socket): void {
+    console.log(`[DEBUG] handleRoomStart called for socket ${socket.id}`);
     this.requireAuth(socket, async (session) => {
+      console.log(`[DEBUG] handleRoomStart auth passed, currentRoom=${session?.currentRoom}`);
       if (!session.currentRoom) return;
 
       const room = this.lobbyManager.getRoom(session.currentRoom);
@@ -252,6 +258,8 @@ export class SocketServer {
         socket.emit(RoomMessages.ERROR, { code: ErrorCodes.NOT_HOST, message: 'Only host can start' });
         return;
       }
+
+      console.log(`[DEBUG] Starting game for room ${room.id}, players: ${room.players.length}`);
 
       // Start the game
       const gameRoom = this.gameManager.createRoom(room.id);
@@ -320,9 +328,14 @@ export class SocketServer {
   private startStateBroadcast(): void {
     // Broadcast game state at 10Hz
     this.stateUpdateInterval = setInterval(() => {
+      const roomCount = this.gameManager['rooms'].size;
+      if (roomCount > 0) {
+        console.log(`[DEBUG] startStateBroadcast: ${roomCount} game rooms, broadcasting state`);
+      }
       for (const [roomId, gameRoom] of this.gameManager['rooms']) {
         if (gameRoom.isRunning()) {
           const state = gameRoom.getState();
+          console.log(`[DEBUG] Broadcasting state for room ${roomId}: ${state.players.length} players, ${state.enemies.length} enemies`);
           this.io.to(`room:${roomId}`).emit(GameMessages.STATE, state);
         }
       }
