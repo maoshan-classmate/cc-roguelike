@@ -91,11 +91,27 @@ export class Combat {
 
     switch (skillId) {
       case 'dash':
-        // Dash in facing direction
+        // Dash in facing direction with collision check
         const dashDist = skill.value || 150;
-        player.x += Math.cos(player.angle) * dashDist;
-        player.y += Math.sin(player.angle) * dashDist;
-        player.invincible = 0.3; // Brief invincibility
+        const dashX = player.x + Math.cos(player.angle) * dashDist;
+        const dashY = player.y + Math.sin(player.angle) * dashDist;
+        // Only dash if target is walkable
+        if (this.room.isWalkable(dashX, dashY)) {
+          player.x = dashX;
+          player.y = dashY;
+        } else {
+          // Try partial dash
+          const halfDist = dashDist / 2;
+          const halfX = player.x + Math.cos(player.angle) * halfDist;
+          const halfY = player.y + Math.sin(player.angle) * halfDist;
+          if (this.room.isWalkable(halfX, halfY)) {
+            player.x = halfX;
+            player.y = halfY;
+          }
+        }
+        player.x = Math.max(20, Math.min(780, player.x));
+        player.y = Math.max(20, Math.min(580, player.y));
+        player.invincible = 0.3;
         break;
 
       case 'shield':
@@ -108,8 +124,10 @@ export class Combat {
         break;
 
       case 'speed_boost':
-        // Speed boost handled in movement - brief invincibility as feedback
-        player.invincible = 0.1;
+        // Speed boost - increase movement speed for duration
+        player.speedBuff = skill.value || 1.5;
+        player.speedBuffTimer = (skill.duration || 5000) / 1000;
+        player.invincible = 0.3;
         break;
     }
   }

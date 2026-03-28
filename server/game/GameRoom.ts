@@ -27,11 +27,15 @@ export interface PlayerState {
   attack: number;
   defense: number;
   speed: number;
+  speedBuff: number;  // 速度倍率（1.0=正常）
+  speedBuffTimer: number;  // 速度增益剩余时间（秒）
   weapon: string;
   skills: string[];
   alive: boolean;
   invincible: number;
   angle: number;
+  gold: number;
+  keys: number;
 }
 
 export interface EnemyState {
@@ -41,6 +45,7 @@ export interface EnemyState {
   y: number;
   hp: number;
   hpMax: number;
+  attack: number;
   alive: boolean;
   state: string;
 }
@@ -84,6 +89,10 @@ export class GameRoom {
   private dungeonGenerator: DungeonGenerator;
   private combat: Combat;
   private currentDungeon: any = null;
+  private _gameOver: boolean = false;
+  private _victory: boolean = false;
+  private _floorChanged: boolean = false;
+  private collisionGrid: boolean[][] = [];  // true = walkable
 
   private currentFloor: number = 1;
   private tick: number = 0;
@@ -114,11 +123,15 @@ export class GameRoom {
       attack: charData.attack || 10,
       defense: charData.defense || 5,
       speed: charData.speed || 5.0,
+      speedBuff: 1.0,
+      speedBuffTimer: 0,
       weapon: charData.weapon || 'pistol',
       skills: JSON.parse(charData.skills || '["dash","shield"]'),
       alive: true,
       invincible: 0,
-      angle: 0
+      angle: 0,
+      gold: 0,
+      keys: 0
     };
     this.players.set(accountId, player);
   }
@@ -160,6 +173,7 @@ export class GameRoom {
     const seed = this.floorSeeds[floor - 1];
     const dungeon = this.dungeonGenerator.generate(floor, seed);
     this.currentDungeon = dungeon;
+    this.collisionGrid = dungeon.collisionGrid || [];
     const config = FLOOR_CONFIG[floor];
 
     // Place players at spawn
@@ -191,6 +205,12 @@ export class GameRoom {
   private createEnemy(type: string, x: number, y: number): EnemyState {
     const id = `enemy_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const baseHp = ENEMY_BASE_HP[type] || 30;
+    const ENEMY_BASE_ATTACK: Record<string, number> = {
+      basic: 8,
+      fast: 10,
+      tank: 15,
+      boss: 25
+    };
 
     return {
       id,
@@ -199,6 +219,7 @@ export class GameRoom {
       y: y + Math.random() * 40 - 20,
       hp: baseHp,
       hpMax: baseHp,
+      attack: ENEMY_BASE_ATTACK[type] || 10,
       alive: true,
       state: 'idle'
     };
@@ -237,9 +258,22 @@ export class GameRoom {
       if (!player.alive) continue;
 
       // Movement
-      const speed = player.speed * GAME_CONFIG.PLAYER_BASE.moveSpeed * dt;
-      player.x += player.dx * speed;
-      player.y += player.dy * speed;
+      const speedMultiplier = player.speedBuff || 1.0;
+      const speed = player.speed * speedMultiplier * GAME_CONFIG.PLAYER_BASE.moveSpeed * dt;
+      const newX = player.x + player.dx * speed;
+      const newY = player.y + player.dy * speed;
+
+      // Collision check - only move if target tile is walkable
+      if (this.isWalkable(newX, newY)) {
+        player.x = newX;
+        player.y = newY;
+      } else if (this.isWalkable(newX, player.y)) {
+        // Slide along X
+        player.x = newX;
+      } else if (this.isWalkable(player.x, newY)) {
+        // Slide along Y
+        player.y = newY;
+      }
 
       // Clamp to dungeon bounds
       player.x = Math.max(20, Math.min(780, player.x));
@@ -253,6 +287,15 @@ export class GameRoom {
       // Invincibility timer
       if (player.invincible > 0) {
         player.invincible -= dt;
+      }
+
+      // Speed buff timer
+      if (player.speedBuffTimer > 0) {
+        player.speedBuffTimer -= dt;
+        if (player.speedBuffTimer <= 0) {
+          player.speedBuff = 1.0;
+          player.speedBuffTimer = 0;
+        }
       }
     }
 
@@ -276,6 +319,9 @@ export class GameRoom {
       // Check collisions
       this.combat.checkBulletCollision(bullet);
     }
+
+    // Item pickup
+    this.checkItemPickup();
 
     // Check floor completion
     this.checkFloorCompletion();
@@ -304,17 +350,57 @@ export class GameRoom {
 
     if (dist > 30) {
       const speed = 60 * dt;
-      enemy.x += (dx / dist) * speed;
-      enemy.y += (dy / dist) * speed;
+      const newEX = enemy.x + (dx / dist) * speed;
+      const newEY = enemy.y + (dy / dist) * speed;
+
+      // Enemy collision check
+      if (this.isWalkable(newEX, newEY)) {
+        enemy.x = newEX;
+        enemy.y = newEY;
+      } else if (this.isWalkable(newEX, enemy.y)) {
+        enemy.x = newEX;
+      } else if (this.isWalkable(enemy.x, newEY)) {
+        enemy.y = newEY;
+      }
+
       enemy.state = 'chase';
     } else {
       enemy.state = 'attack';
-      // Attack player (simple damage)
+      // Attack player
       if (nearestPlayer.invincible <= 0) {
-        nearestPlayer.hp -= 10;
+        nearestPlayer.hp -= (enemy.attack || 10);
         nearestPlayer.invincible = 0.5;
         if (nearestPlayer.hp <= 0) {
           nearestPlayer.alive = false;
+        }
+      }
+    }
+  }
+
+  private checkItemPickup(): void {
+    const pickupRange = GAME_CONFIG.PLAYER_BASE.pickupRange || 50;
+    for (const player of this.players.values()) {
+      if (!player.alive) continue;
+      for (let i = this.items.length - 1; i >= 0; i--) {
+        const item = this.items[i];
+        const dist = Math.hypot(player.x - item.x, player.y - item.y);
+        if (dist < pickupRange) {
+          // Apply item effect
+          switch (item.type) {
+            case 'health':
+              player.hp = Math.min(player.hpMax, player.hp + 30);
+              break;
+            case 'energy':
+              player.energy = Math.min(player.energyMax, player.energy + 30);
+              break;
+            case 'coin':
+              player.gold += 1;
+              break;
+            case 'key':
+              player.keys += 1;
+              break;
+          }
+          this.items.splice(i, 1);
         }
       }
     }
@@ -335,11 +421,29 @@ export class GameRoom {
           clearInterval(this.tickInterval);
           this.tickInterval = null;
         }
+        // Store victory state for next getState call
+        this._gameOver = true;
+        this._victory = true;
       } else {
         // Next floor
         this.startFloor(this.currentFloor + 1);
+        this._floorChanged = true;
       }
     }
+  }
+
+  /**
+   * 检查坐标 (x, y) 是否可行走 (public，Combat.ts 也需要调用)
+   */
+  isWalkable(x: number, y: number): boolean {
+    if (this.collisionGrid.length === 0) return true;
+    const tileSize = 32;
+    const col = Math.floor(x / tileSize);
+    const row = Math.floor(y / tileSize);
+    const rows = this.collisionGrid.length;
+    const cols = this.collisionGrid[0]?.length || 0;
+    if (row < 0 || row >= rows || col < 0 || col >= cols) return false;
+    return this.collisionGrid[row][col];
   }
 
   getState(): GameState {
@@ -386,11 +490,13 @@ export class GameRoom {
       enemy.alive = false;
       // Drop item
       if (Math.random() < 0.3) {
+        const dropTypes = ['health', 'coin', 'coin'];
+        const dropType = dropTypes[Math.floor(Math.random() * dropTypes.length)];
         this.items.push({
           id: `item_${Date.now()}`,
           x: enemy.x,
           y: enemy.y,
-          type: 'health_pack'
+          type: dropType
         });
       }
     }

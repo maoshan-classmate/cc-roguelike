@@ -8,6 +8,7 @@ interface DungeonData {
   exitPoint: { x: number; y: number };
   enemies: { type: string; x: number; y: number; count: number }[];
   items: { id: string; x: number; y: number; type: string }[];
+  collisionGrid: boolean[][];  // true = walkable
 }
 
 interface Room {
@@ -83,7 +84,8 @@ export class DungeonGenerator {
       spawnPoint,
       exitPoint,
       enemies,
-      items
+      items,
+      collisionGrid: this.generateCollisionGrid(rooms, corridors, width, height)
     };
   }
 
@@ -200,5 +202,49 @@ export class DungeonGenerator {
     }
 
     return items;
+  }
+
+  /**
+   * 生成 tile 级碰撞网格
+   * tileSize = 32px, 网格 25x19 (800/32 x 600/32)
+   * true = 可行走, false = 墙壁
+   */
+  private generateCollisionGrid(rooms: Room[], corridors: Corridor[], mapW: number, mapH: number): boolean[][] {
+    const tileSize = 32;
+    const cols = Math.ceil(mapW / tileSize);
+    const rows = Math.ceil(mapH / tileSize);
+
+    // 初始化全部为墙
+    const grid: boolean[][] = Array.from({ length: rows }, () => Array(cols).fill(false));
+
+    // 标记房间区域为可行走
+    for (const room of rooms) {
+      const startCol = Math.floor(room.x / tileSize);
+      const startRow = Math.floor(room.y / tileSize);
+      const endCol = Math.ceil((room.x + room.width) / tileSize);
+      const endRow = Math.ceil((room.y + room.height) / tileSize);
+
+      for (let r = startRow; r < endRow && r < rows; r++) {
+        for (let c = startCol; c < endCol && c < cols; c++) {
+          if (r >= 0 && c >= 0) grid[r][c] = true;
+        }
+      }
+    }
+
+    // 标记走廊区域为可行走（走廊宽度 = 1 tile = 32px）
+    for (const corridor of corridors) {
+      const minC = Math.floor(Math.min(corridor.x1, corridor.x2) / tileSize);
+      const maxC = Math.floor(Math.max(corridor.x1, corridor.x2) / tileSize);
+      const minR = Math.floor(Math.min(corridor.y1, corridor.y2) / tileSize);
+      const maxR = Math.floor(Math.max(corridor.y1, corridor.y2) / tileSize);
+
+      for (let r = minR; r <= maxR && r < rows; r++) {
+        for (let c = minC; c <= maxC && c < cols; c++) {
+          if (r >= 0 && c >= 0) grid[r][c] = true;
+        }
+      }
+    }
+
+    return grid;
   }
 }

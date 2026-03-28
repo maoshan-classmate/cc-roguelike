@@ -117,14 +117,12 @@ export default function GamePage() {
 
     Promise.all([loadChar, loadDungeon]).then(() => {
       setSpritesLoaded(true)
-      console.log('[GamePage] Sprites loaded:', charSpriteSheet.complete, charSpriteSheet.naturalWidth)
     })
   }, [])
 
   // Game state listener
   useEffect(() => {
     networkClient.on('game:state', (state: any) => {
-      console.log('[GamePage] Received game:state:', state.players?.length, 'players')
       if (state.floorCompleted) {
         setFloor(state.floor + 1)
       }
@@ -157,6 +155,8 @@ export default function GamePage() {
 
   // Input handling
   useEffect(() => {
+    const skillKeysDown = new Set<string>()
+
     const handleKeyDown = (e: KeyboardEvent) => {
       keysRef.current.add(e.key.toLowerCase())
 
@@ -164,15 +164,19 @@ export default function GamePage() {
         setPaused(!isPaused)
       }
 
-      // Skill keys
-      if (e.key === '1') networkClient.emit('game:input', { skill: 0 })
-      if (e.key === '2') networkClient.emit('game:input', { skill: 1 })
-      if (e.key === '3') networkClient.emit('game:input', { skill: 2 })
-      if (e.key === '4') networkClient.emit('game:input', { skill: 3 })
+      // Skill keys - prevent repeat on hold
+      const skillKey = e.key
+      if (['1', '2', '3', '4'].includes(skillKey) && !skillKeysDown.has(skillKey)) {
+        skillKeysDown.add(skillKey)
+        networkClient.emit('game:input', { skill: parseInt(skillKey) - 1 })
+      }
     }
 
     const handleKeyUp = (e: KeyboardEvent) => {
       keysRef.current.delete(e.key.toLowerCase())
+      if (['1', '2', '3', '4'].includes(e.key)) {
+        skillKeysDown.delete(e.key)
+      }
     }
 
     const handleMouseMove = (e: MouseEvent) => {
@@ -280,14 +284,14 @@ export default function GamePage() {
     for (const item of items) {
       const itemConfig = ITEMS[item.type] || ITEMS.health
       if (spritesLoaded && dungeonSpriteSheet.complete) {
-        drawDungeonSprite(ctx, dungeonSpriteSheet, itemConfig.spriteIndex, item.x, item.y, 16)
+        drawDungeonSprite(ctx, dungeonSpriteSheet, itemConfig.spriteIndex, item.x, item.y, 24)
       } else {
         // 备用：纯色
         ctx.fillStyle = itemConfig.color
-        ctx.fillRect(item.x - 8, item.y - 8, 16, 16)
+        ctx.fillRect(item.x - 12, item.y - 12, 24, 24)
         ctx.strokeStyle = '#fff'
         ctx.lineWidth = 1
-        ctx.strokeRect(item.x - 8, item.y - 8, 16, 16)
+        ctx.strokeRect(item.x - 12, item.y - 12, 24, 24)
       }
     }
 
@@ -332,7 +336,7 @@ export default function GamePage() {
     for (const bullet of bullets) {
       const spriteIndex = 35 // bullet sprite
       if (spritesLoaded && dungeonSpriteSheet.complete) {
-        drawDungeonSprite(ctx, dungeonSpriteSheet, spriteIndex, bullet.x, bullet.y, 8)
+        drawDungeonSprite(ctx, dungeonSpriteSheet, spriteIndex, bullet.x, bullet.y, 12)
       } else {
         ctx.fillStyle = bullet.friendly ? '#4A9EFF' : '#FF6B6B'
         ctx.beginPath()
@@ -347,7 +351,7 @@ export default function GamePage() {
 
       const isLocal = player.id === user?.id
       const charConfig = CHARACTERS[player.characterType] || CHARACTERS.warrior
-      const size = 16
+      const size = 32
 
       // 根据朝向选择精灵
       let spriteIndex = charConfig.spriteIndex.front
@@ -380,10 +384,10 @@ export default function GamePage() {
       }
 
       // HP条
-      drawHPBar(ctx, player.x - 16, player.y - 24, 32, 6, player.hp, player.hpMax, charConfig.color)
+      drawHPBar(ctx, player.x - 20, player.y - 26, 40, 6, player.hp, player.hpMax, charConfig.color)
 
       // 名称
-      drawNameTag(ctx, player.x, player.y - 28, player.name, charConfig.color)
+      drawNameTag(ctx, player.x, player.y - 32, player.name, charConfig.color)
     }
   }, [user, spritesLoaded])
 

@@ -38,6 +38,19 @@
 - [x] 补全 CSS 变量 `--pixel-bg-dark: #1a0f1e`, `--pixel-white: #EEEEEE`
 - [x] Playwright 逐页验证（登录/大厅/房间/游戏页）
 
+### 游戏闭环 Bug 修复 (2026-03-28)
+- [x] Bug 1: 精灵太小（玩家16px→32px，敌人按比例放大） ✅ Playwright 验证
+- [x] Bug 2: 无墙壁碰撞（DungeonGenerator 生成碰撞网格，GameRoom 检测） ✅ Playwright 验证
+- [x] Bug 3: 技能卡死（删除 SocketServer/GamePage 中所有 DEBUG console.log） ✅ Playwright 验证
+- [x] Bug 4: 技能键自动重复（keydown 防重复，仅首次触发） ✅ Playwright 验证
+- [x] Bug 5: speed_boost 技能无效（添加 speedBuff 到 PlayerState） ✅ 代码验证
+- [x] Bug 6: 敌人伤害硬编码 10（从配置读取 attack） ✅ 代码验证
+- [x] Bug 7: 道具掉落类型不匹配 health_pack→health ✅ 代码验证
+- [x] Bug 8: 道具拾取未实现（GameRoom 检测玩家-道具碰撞并应用效果） ✅ 代码验证
+- [x] Bug 9: gold/keys 始终为 0（PlayerState 添加 gold/keys，拾取时累加） ✅ 代码验证
+- [x] Bug 10: 游戏结束未通知客户端（emit game:end） ✅ 代码验证
+- [x] Bug 11: 楼层切换未通知客户端（emit game:floor:start） ✅ 代码验证
+
 ### 待优化
 - [ ] 优化技能栏图标
 - [ ] 添加角色职业选择界面

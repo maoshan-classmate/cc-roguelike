@@ -140,11 +140,8 @@ export class SocketServer {
   }
 
   private handleRoomCreate(socket: Socket, data: { name: string; maxPlayers?: number }): void {
-    console.log(`[DEBUG] handleRoomCreate called for socket ${socket.id}`);
     const session = this.getSession(socket.id);
-    console.log(`[DEBUG] Session for socket:`, session ? session.username : 'NONE');
     this.requireAuth(socket, (session) => {
-      console.log(`[DEBUG] requireAuth passed for ${session.username}`);
       // Leave current room if any
       if (session.currentRoom) {
         this.lobbyManager.leaveRoom(session.currentRoom, session.accountId);
@@ -156,19 +153,15 @@ export class SocketServer {
         data.name || `${session.username}'s Room`,
         data.maxPlayers || 4
       );
-      console.log(`[DEBUG] Room created: ${room.id}`);
 
       session.currentRoom = room.id;
       socket.join(`room:${room.id}`);
-      console.log(`[DEBUG] Emitting CREATE_RESULT to ${socket.id}:`, room.id);
       socket.emit(RoomMessages.CREATE_RESULT, { success: true, room });
     });
   }
 
   private handleRoomJoin(socket: Socket, data: { roomId: string }): void {
-    console.log(`[DEBUG] handleRoomJoin called: roomId=${data.roomId}`);
     this.requireAuth(socket, async (session) => {
-      console.log(`[DEBUG] handleRoomJoin auth passed, session.currentRoom=${session.currentRoom}`);
 
       // Check if already in this room
       if (session.currentRoom === data.roomId) {
@@ -186,7 +179,6 @@ export class SocketServer {
       }
 
       const room = this.lobbyManager.joinRoom(data.roomId, session.accountId, session.username);
-      console.log(`[DEBUG] joinRoom result:`, room ? room.id : 'null');
       if (!room) {
         socket.emit(RoomMessages.ERROR, { code: ErrorCodes.ROOM_NOT_FOUND, message: 'Room not found or full' });
         return;
@@ -230,13 +222,10 @@ export class SocketServer {
   }
 
   private handleRoomReady(socket: Socket, data: { ready: boolean }): void {
-    console.log(`[DEBUG] handleRoomReady called: socket=${socket.id}, ready=${data.ready}`);
     this.requireAuth(socket, (session) => {
-      console.log(`[DEBUG] handleRoomReady auth passed: currentRoom=${session?.currentRoom}`);
       if (!session.currentRoom) return;
 
       const room = this.lobbyManager.setPlayerReady(session.currentRoom, session.accountId, data.ready);
-      console.log(`[DEBUG] setPlayerReady result:`, room ? 'success' : 'null');
       if (room) {
         // Emit to ALL players in the room including sender
         this.io.to(`room:${room.id}`).emit(RoomMessages.READY_PUSH, {
@@ -248,9 +237,7 @@ export class SocketServer {
   }
 
   private handleRoomStart(socket: Socket): void {
-    console.log(`[DEBUG] handleRoomStart called for socket ${socket.id}`);
     this.requireAuth(socket, async (session) => {
-      console.log(`[DEBUG] handleRoomStart auth passed, currentRoom=${session?.currentRoom}`);
       if (!session.currentRoom) return;
 
       const room = this.lobbyManager.getRoom(session.currentRoom);
@@ -258,8 +245,6 @@ export class SocketServer {
         socket.emit(RoomMessages.ERROR, { code: ErrorCodes.NOT_HOST, message: 'Only host can start' });
         return;
       }
-
-      console.log(`[DEBUG] Starting game for room ${room.id}, players: ${room.players.length}`);
 
       // Start the game
       const gameRoom = this.gameManager.createRoom(room.id);
@@ -292,12 +277,10 @@ export class SocketServer {
   }
 
   private handleGameInput(socket: Socket, data: any): void {
-    console.log('[DEBUG] handleGameInput:', data)
     this.requireAuth(socket, (session) => {
       if (!session.currentRoom) return;
 
       const gameRoom = this.gameManager.getRoom(session.currentRoom);
-      console.log('[DEBUG] gameRoom:', gameRoom?.isRunning(), 'room:', session.currentRoom)
       if (!gameRoom || !gameRoom.isRunning()) return;
 
       gameRoom.handlePlayerInput(session.accountId, data);
@@ -328,15 +311,21 @@ export class SocketServer {
   private startStateBroadcast(): void {
     // Broadcast game state at 10Hz
     this.stateUpdateInterval = setInterval(() => {
-      const roomCount = this.gameManager['rooms'].size;
-      if (roomCount > 0) {
-        console.log(`[DEBUG] startStateBroadcast: ${roomCount} game rooms, broadcasting state`);
-      }
       for (const [roomId, gameRoom] of this.gameManager['rooms']) {
         if (gameRoom.isRunning()) {
           const state = gameRoom.getState();
-          console.log(`[DEBUG] Broadcasting state for room ${roomId}: ${state.players.length} players, ${state.enemies.length} enemies`);
           this.io.to(`room:${roomId}`).emit(GameMessages.STATE, state);
+
+          // Check for floor change
+          if ((gameRoom as any)._floorChanged) {
+            (gameRoom as any)._floorChanged = false;
+            this.io.to(`room:${roomId}`).emit('game:floor:start', { floor: state.floor });
+          }
+        } else if ((gameRoom as any)._gameOver) {
+          // Game ended
+          const victory = (gameRoom as any)._victory;
+          (gameRoom as any)._gameOver = false;
+          this.io.to(`room:${roomId}`).emit('game:end', { win: victory });
         }
       }
     }, 100); // 10 times per second
