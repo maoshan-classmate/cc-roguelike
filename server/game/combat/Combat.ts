@@ -89,7 +89,7 @@ export class Combat {
     player.energy -= skill.energyCost;
     this.lastAttackTime.set(`${player.id}_skill_${skillIndex}`, now);
 
-    switch (skill.type) {
+    switch (skillId) {
       case 'dash':
         // Dash in facing direction
         const dashDist = skill.value || 150;
@@ -99,6 +99,7 @@ export class Combat {
         break;
 
       case 'shield':
+        // Shield skill - brief invincibility
         player.invincible = (skill.duration || 3000) / 1000;
         break;
 
@@ -107,8 +108,8 @@ export class Combat {
         break;
 
       case 'speed_boost':
-        // Temporary speed boost handled in movement
-        player.invincible = (skill.duration || 5000) / 1000;
+        // Speed boost handled in movement - brief invincibility as feedback
+        player.invincible = 0.1;
         break;
     }
   }
@@ -127,10 +128,7 @@ export class Combat {
           bullet.piercing--;
 
           if (bullet.piercing <= 0) {
-            this.room.getState().bullets.splice(
-              this.room.getState().bullets.findIndex(b => b.id === bullet.id),
-              1
-            );
+            this.room.removeBullet(bullet.id);
             return;
           }
         }
@@ -146,6 +144,7 @@ export class Combat {
           bullet.piercing--;
 
           if (bullet.piercing <= 0) {
+            this.room.removeBullet(bullet.id);
             return;
           }
         }

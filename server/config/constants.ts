@@ -46,11 +46,11 @@ export const FLOOR_CONFIG: Record<number, {
   bossType: string;
   enemyTypes: string[];
 }> = {
-  1: { enemyCount: [6, 10], eliteChance: 0.1, bossType: 'slime_king', enemyTypes: ['slime', 'bat'] },
-  2: { enemyCount: [8, 14], eliteChance: 0.15, bossType: 'skeleton_lord', enemyTypes: ['slime', 'bat', 'skeleton'] },
-  3: { enemyCount: [10, 16], eliteChance: 0.2, bossType: 'demon_mage', enemyTypes: ['skeleton', 'orc', 'archer'] },
-  4: { enemyCount: [12, 18], eliteChance: 0.25, bossType: 'dragon', enemyTypes: ['orc', 'archer', 'wizard'] },
-  5: { enemyCount: [15, 22], eliteChance: 0.3, bossType: 'final_boss', enemyTypes: ['elite_orc', 'elite_wizard', 'boss'] }
+  1: { enemyCount: [6, 10], eliteChance: 0.1, bossType: 'boss', enemyTypes: ['basic', 'basic'] },
+  2: { enemyCount: [8, 14], eliteChance: 0.15, bossType: 'boss', enemyTypes: ['basic', 'fast'] },
+  3: { enemyCount: [10, 16], eliteChance: 0.2, bossType: 'boss', enemyTypes: ['fast', 'tank'] },
+  4: { enemyCount: [12, 18], eliteChance: 0.25, bossType: 'boss', enemyTypes: ['fast', 'tank', 'tank'] },
+  5: { enemyCount: [15, 22], eliteChance: 0.3, bossType: 'boss', enemyTypes: ['tank', 'tank', 'tank'] }
 };
 
 // 敌人基础属性

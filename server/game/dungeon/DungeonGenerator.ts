@@ -195,7 +195,7 @@ export class DungeonGenerator {
         id: `item_${Date.now()}_${Math.random().toString(36).slice(2)}`,
         x,
         y,
-        type: this.random() > 0.5 ? 'health_pack' : 'energy_pack'
+        type: this.random() > 0.5 ? 'health' : 'energy'
       });
     }
 

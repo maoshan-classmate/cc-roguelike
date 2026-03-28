@@ -1,12 +1,76 @@
 # TODO 和 BUG 列表
 
+## UI 优化
+
+### 页面图标替换 ✅ 已完成
+- [x] 登录页面 emoji → 像素 SVG 图标
+- [x] 大厅页面 emoji → 像素 SVG 图标
+- [x] 房间页面 emoji → 像素 SVG 图标
+- [x] 游戏页面 HUD emoji → 像素 SVG 图标
+- [x] 房间页面头像 → 像素风格角色头像（战士/游侠/法师/牧师）
+
+### UI 问题修复 ✅ 已完成
+- [x] 修复按钮白色边框 → 移除边框 (`border: none`)
+- [x] 修复 PlayerIcon 组件引用错误
+- [x] 修复缺失的图标导入 (PixelSkull, PixelCrown 等)
+
+### 游戏 Canvas 渲染 ✅ 已完成
+- [x] 修复 DungeonSpritesheet 尺寸 (492px) 使精灵计算正确
+- [x] 服务端发送地牢数据 (rooms, spawnPoint, exitPoint)
+- [x] 客户端渲染地牢墙壁和地板瓦片
+- [x] 渲染出口楼梯
+
+### 待优化
+- [ ] 优化技能栏图标
+- [ ] 添加角色职业选择界面
+- [ ] 添加地牢楼层切换动画
+- [ ] 完善地牢生成算法使房间布局更合理
+
 ## 当前 BUG
 
 ### 1. 房主无法准备和开始游戏 ✅ 已修复
 - **问题**：房主创建房间后，显示"开始游戏"按钮但被禁用，因为房主没有准备
 - **修复**：让所有玩家都能准备，房主准备后可以开始游戏
 
-### 2. 其他待发现...
+### 2. 游戏无法移动和攻击 ✅ 已修复
+- **问题**：游戏开始后玩家无法移动和攻击
+- **根因**：
+  - 服务器端：`GameRoom.start()` 中 tick 计数器递增但从未调用 `update(dt)` 处理游戏逻辑
+  - 客户端：React 闭包问题，游戏循环使用 `players` state 是旧值
+- **已修复**：
+  - 服务器端添加 `this.update(dt)` 调用
+  - 客户端使用 `gameStateRef` 确保读取最新状态
+- **验证**：Playwright 测试确认游戏状态正常同步
+
+### 3. 技能类型 case 错误 ⚠️ 已修复
+- **问题**：`Combat.ts` 中技能 switch 使用 `'shield'` `'speed_boost'` 作为 case，但 skill.type 是 `'active'`
+- **修复**：改为使用 `skill.type` 匹配正确的 case 值
+
+### 4. DungeonGenerator 初始化错误 ⚠️ 已修复
+- **问题**：`random` 属性没有初始化就使用
+- **修复**：添加确定赋值断言 `random!`
+
+### 5. 子弹碰撞删除逻辑错误 ✅ 已修复
+- **问题**：`checkBulletCollision` 用 `splice` 从 `getState()` 副本删除子弹，而非实际 bullets Map
+- **修复**：在 GameRoom 添加 `removeBullet()` 方法
+
+### 6. 敌人类型不匹配 ✅ 已修复
+- **问题**：FLOOR_CONFIG 用 `'slime'/'bat'`，ENEMIES 用 `'basic'/'fast'/'tank'`
+- **修复**：统一使用 `'basic'/'fast'/'tank'`
+
+### 7. createEnemy 硬编码 HP ✅ 已修复
+- **问题**：总是用 `baseHp = 50`，忽略敌人类型
+- **修复**：根据敌人类型从 ENEMY_BASE_HP 映射获取正确 HP
+
+### 8. 道具类型不匹配 ✅ 已修复
+- **问题**：DungeonGenerator 生成 `'health_pack'/'energy_pack'`，ITEMS 配置是 `'health'/'energy'`
+- **修复**：统一使用 `'health'/'energy'`
+
+### 9. 子弹精灵索引错误 ✅ 已修复
+- **问题**：子弹使用精灵索引 30 (energy) 和 31 (coin)
+- **修复**：改用正确的子弹精灵索引 35
+
+### 10. 其他待发现...
 
 ## TODO 功能完善
 
@@ -14,6 +78,7 @@
 - [ ] 修复房间玩家列表显示问题（玩家状态可能不同步）
 - [ ] 修复游戏开始后地图/敌人显示问题
 - [ ] 添加错误提示（网络断开等）
+- [ ] 测试游戏移动和攻击是否正常工作
 
 ### 中优先级
 - [ ] 添加更多武器类型
@@ -36,3 +101,5 @@
 - [x] 地牢程序生成
 - [x] 战斗系统基础
 - [x] 弹幕系统
+- [x] GameRoom.update() 游戏循环修复
+- [x] UI 图标全面替换为像素 SVG

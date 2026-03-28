@@ -1,21 +1,63 @@
-import { useEffect, useRef, useCallback } from 'react'
+import React, { useEffect, useRef, useCallback, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
 import { useGameStore } from '../store/useGameStore'
 import { networkClient } from '../network/socket'
+import {
+  TILE_SIZE,
+  TILE_MARGIN,
+  CHAR_SPRITESHEET_WIDTH,
+  roguelikeCharSheetPath,
+  roguelikeDungeonSheetPath,
+} from '../assets/kenney'
+import { CHARACTERS, getCharacterSpriteIndex } from '../config/characters'
+import { ENEMIES } from '../config/enemies'
+import { ITEMS } from '../config/items'
+import {
+  drawCharacterSprite,
+  drawDungeonSprite,
+  drawHPBar,
+  drawBossCrown,
+  drawDirectionArrow,
+  drawNameTag
+} from '../config/sprites'
+import {
+  PixelCastle,
+  PixelDragon,
+  PixelCrown,
+  PixelGem,
+  PixelKey,
+  PixelSword,
+  PixelShield,
+  PixelSkull,
+  PixelBow,
+  PixelStar,
+} from '../components/PixelIcons'
 
-// 导入像素精灵图（后续资源就位后启用）
-// import playerBlueImg from '../assets/images/characters/player-blue.png'
-// import enemyBasicImg from '../assets/images/enemies/enemy-basic.png'
-// import healthPackImg from '../assets/images/items/health-pack.png'
+// 加载精灵图
+const charSpriteSheet = new Image()
+charSpriteSheet.src = roguelikeCharSheetPath
+const dungeonSpriteSheet = new Image()
+dungeonSpriteSheet.src = roguelikeDungeonSheetPath
 
-// 暂时使用纯色圆形绘制，后续替换为精灵图
+// 技能图标SVG组件数据
+const SKILL_ICONS = [
+  { name: '技能1', color: '#C0C0C0' },
+  { name: '技能2', color: '#4A9EFF' },
+  { name: '技能3', color: '#8B4513' },
+  { name: '技能4', color: '#9B59B6' },
+]
+
+// 技能图标组件映射
+const SkillIconComponents = [PixelSword, PixelShield, PixelBow, PixelStar]
 
 export default function GamePage() {
   const { roomId } = useParams<{ roomId: string }>()
   const { user } = useAuthStore()
   const {
     floor,
+    players,
+    enemies,
     isPaused,
     isGameOver,
     isVictory,
@@ -33,8 +75,19 @@ export default function GamePage() {
   const mouseRef = useRef({ x: 0, y: 0, down: false })
   const animationRef = useRef<number>()
 
+  // 精灵加载状态
+  const [spritesLoaded, setSpritesLoaded] = useState(false)
+
   // Use refs to always get latest state in game loop
-  const gameStateRef = useRef({ players: [] as any[], enemies: [] as any[], bullets: [] as any[], items: [] as any[] })
+  const gameStateRef = useRef({
+    players: [] as any[],
+    enemies: [] as any[],
+    bullets: [] as any[],
+    items: [] as any[],
+    gold: 0,
+    keys: 0,
+    dungeon: null as any
+  })
 
   // Set local player ID
   useEffect(() => {
@@ -43,19 +96,46 @@ export default function GamePage() {
     }
   }, [user])
 
-  // Game state listener - update ref immediately
+  // 预加载精灵图
+  useEffect(() => {
+    const loadChar = new Promise<void>((resolve) => {
+      if (charSpriteSheet.complete && charSpriteSheet.naturalWidth > 0) {
+        resolve()
+      } else {
+        charSpriteSheet.onload = () => resolve()
+        charSpriteSheet.onerror = () => resolve()
+      }
+    })
+    const loadDungeon = new Promise<void>((resolve) => {
+      if (dungeonSpriteSheet.complete && dungeonSpriteSheet.naturalWidth > 0) {
+        resolve()
+      } else {
+        dungeonSpriteSheet.onload = () => resolve()
+        dungeonSpriteSheet.onerror = () => resolve()
+      }
+    })
+
+    Promise.all([loadChar, loadDungeon]).then(() => {
+      setSpritesLoaded(true)
+      console.log('[GamePage] Sprites loaded:', charSpriteSheet.complete, charSpriteSheet.naturalWidth)
+    })
+  }, [])
+
+  // Game state listener
   useEffect(() => {
     networkClient.on('game:state', (state: any) => {
       console.log('[GamePage] Received game:state:', state.players?.length, 'players')
       if (state.floorCompleted) {
         setFloor(state.floor + 1)
       }
-      // Update ref immediately for game loop
       gameStateRef.current = {
         players: state.players || [],
         enemies: state.enemies || [],
         bullets: state.bullets || [],
-        items: state.items || []
+        items: state.items || [],
+        gold: state.gold || 0,
+        keys: state.keys || 0,
+        dungeon: state.dungeon || null
       }
       setState(state)
     })
@@ -122,7 +202,7 @@ export default function GamePage() {
     }
   }, [isPaused])
 
-  // Render function that reads from refs
+  // Render function
   const render = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -130,121 +210,184 @@ export default function GamePage() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const { players, enemies, bullets, items } = gameStateRef.current
+    const { players, enemies, bullets, items, dungeon } = gameStateRef.current
 
-    // 清除并填充背景
-    ctx.fillStyle = '#2D1B2E'  // 深紫黑
+    // 清除背景
+    ctx.fillStyle = '#2D1B2E'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    // 绘制像素风格网格
-    ctx.strokeStyle = '#3D2B3E'
-    ctx.lineWidth = 1
-    for (let x = 0; x < canvas.width; x += 32) {  // 32px 网格
-      ctx.beginPath()
-      ctx.moveTo(x, 0)
-      ctx.lineTo(x, canvas.height)
-      ctx.stroke()
-    }
-    for (let y = 0; y < canvas.height; y += 32) {
-      ctx.beginPath()
-      ctx.moveTo(0, y)
-      ctx.lineTo(canvas.width, y)
-      ctx.stroke()
+    // 绘制地牢瓦片
+    if (dungeon && dungeon.rooms && spritesLoaded && dungeonSpriteSheet.complete) {
+      const tileSize = 32
+      for (const room of dungeon.rooms) {
+        // 绘制房间内的地板
+        for (let x = room.x; x < room.x + room.width; x += tileSize) {
+          for (let y = room.y; y < room.y + room.height; y += tileSize) {
+            drawDungeonSprite(ctx, dungeonSpriteSheet, 4, x + tileSize/2, y + tileSize/2, tileSize)
+          }
+        }
+        // 绘制房间墙壁（上边）
+        for (let x = room.x - tileSize; x < room.x + room.width + tileSize; x += tileSize) {
+          // 上墙
+          if (x >= 0 && x < canvas.width) {
+            drawDungeonSprite(ctx, dungeonSpriteSheet, 10, x + tileSize/2, room.y - tileSize/2, tileSize)
+          }
+          // 下墙
+          if (x >= 0 && x < canvas.width && room.y + room.height + tileSize <= canvas.height) {
+            drawDungeonSprite(ctx, dungeonSpriteSheet, 15, x + tileSize/2, room.y + room.height + tileSize/2, tileSize)
+          }
+        }
+        // 绘制房间墙壁（左边和右边）
+        for (let y = room.y; y < room.y + room.height; y += tileSize) {
+          // 左墙
+          if (room.y >= 0 && room.y < canvas.height) {
+            drawDungeonSprite(ctx, dungeonSpriteSheet, 12, room.x - tileSize/2, y + tileSize/2, tileSize)
+          }
+          // 右墙
+          if (room.x + room.width + tileSize <= canvas.width) {
+            drawDungeonSprite(ctx, dungeonSpriteSheet, 13, room.x + room.width + tileSize/2, y + tileSize/2, tileSize)
+          }
+        }
+        // 角落
+        drawDungeonSprite(ctx, dungeonSpriteSheet, 9, room.x - tileSize/2, room.y - tileSize/2, tileSize)
+        drawDungeonSprite(ctx, dungeonSpriteSheet, 11, room.x + room.width + tileSize/2, room.y - tileSize/2, tileSize)
+        drawDungeonSprite(ctx, dungeonSpriteSheet, 14, room.x - tileSize/2, room.y + room.height + tileSize/2, tileSize)
+        drawDungeonSprite(ctx, dungeonSpriteSheet, 16, room.x + room.width + tileSize/2, room.y + room.height + tileSize/2, tileSize)
+      }
+      // 绘制出口楼梯
+      if (dungeon.exitPoint) {
+        drawDungeonSprite(ctx, dungeonSpriteSheet, 23, dungeon.exitPoint.x, dungeon.exitPoint.y, tileSize)
+      }
+    } else {
+      // 备用：简单网格
+      ctx.strokeStyle = '#3D2B3E'
+      ctx.lineWidth = 1
+      for (let x = 0; x < canvas.width; x += 32) {
+        ctx.beginPath()
+        ctx.moveTo(x, 0)
+        ctx.lineTo(x, canvas.height)
+        ctx.stroke()
+      }
+      for (let y = 0; y < canvas.height; y += 32) {
+        ctx.beginPath()
+        ctx.moveTo(0, y)
+        ctx.lineTo(canvas.width, y)
+        ctx.stroke()
+      }
     }
 
     // 绘制道具
     for (const item of items) {
-      // 像素风格绘制
-      ctx.fillStyle = item.type === 'health_pack' ? '#32CD32' : '#FFD700'
-      ctx.fillRect(item.x - 8, item.y - 8, 16, 16)
-      // 像素边框
-      ctx.strokeStyle = '#fff'
-      ctx.lineWidth = 2
-      ctx.strokeRect(item.x - 8, item.y - 8, 16, 16)
+      const itemConfig = ITEMS[item.type] || ITEMS.health
+      if (spritesLoaded && dungeonSpriteSheet.complete) {
+        drawDungeonSprite(ctx, dungeonSpriteSheet, itemConfig.spriteIndex, item.x, item.y, 16)
+      } else {
+        // 备用：纯色
+        ctx.fillStyle = itemConfig.color
+        ctx.fillRect(item.x - 8, item.y - 8, 16, 16)
+        ctx.strokeStyle = '#fff'
+        ctx.lineWidth = 1
+        ctx.strokeRect(item.x - 8, item.y - 8, 16, 16)
+      }
     }
 
     // 绘制敌人
     for (const enemy of enemies) {
       if (!enemy.alive) continue
 
-      const isBoss = enemy.type?.includes('boss')
-      const size = isBoss ? 24 : 16
-      ctx.fillStyle = isBoss ? '#DC143C' : '#FF6B6B'
+      const enemyConfig = ENEMIES[enemy.type] || ENEMIES.basic
+      const size = enemyConfig.size
 
-      // 像素风格正方形敌人
-      ctx.fillRect(enemy.x - size/2, enemy.y - size/2, size, size)
+      if (spritesLoaded && charSpriteSheet.complete) {
+        drawCharacterSprite(ctx, charSpriteSheet, enemyConfig.spriteIndex, enemy.x, enemy.y, size)
+      } else {
+        ctx.fillStyle = enemyConfig.color
+        ctx.fillRect(enemy.x - size/2, enemy.y - size/2, size, size)
+        ctx.strokeStyle = '#fff'
+        ctx.lineWidth = 1
+        ctx.strokeRect(enemy.x - size/2, enemy.y - size/2, size, size)
+      }
 
-      // 像素边框
-      ctx.strokeStyle = '#fff'
-      ctx.lineWidth = 2
-      ctx.strokeRect(enemy.x - size/2, enemy.y - size/2, size, size)
+      // BOSS皇冠
+      if (enemyConfig.isBoss) {
+        drawBossCrown(ctx, enemy.x, enemy.y - size/2 - 8, 12)
+      }
 
-      // HP 条
-      const hpBarWidth = size * 2
-      ctx.fillStyle = '#333'
-      ctx.fillRect(enemy.x - hpBarWidth/2, enemy.y - size/2 - 12, hpBarWidth, 6)
-      ctx.fillStyle = '#DC143C'
-      ctx.fillRect(
+      // HP条
+      const hpBarWidth = enemyConfig.isBoss ? 48 : size * 2
+      const hpBarHeight = enemyConfig.isBoss ? 8 : 6
+      drawHPBar(
+        ctx,
         enemy.x - hpBarWidth/2,
-        enemy.y - size/2 - 12,
-        hpBarWidth * (enemy.hp / enemy.hpMax),
-        6
+        enemy.y - size/2 - (enemyConfig.isBoss ? 16 : 12),
+        hpBarWidth,
+        hpBarHeight,
+        enemy.hp,
+        enemy.hpMax,
+        enemyConfig.isBoss ? '#FFD700' : '#DC143C'
       )
     }
 
-    // 绘制子弹（像素风格小方块）
+    // 绘制子弹
     for (const bullet of bullets) {
-      ctx.fillStyle = bullet.friendly ? '#4A9EFF' : '#FF6B6B'
-      ctx.fillRect(
-        bullet.x - bullet.radius,
-        bullet.y - bullet.radius,
-        bullet.radius * 2,
-        bullet.radius * 2
-      )
+      const spriteIndex = 35 // bullet sprite
+      if (spritesLoaded && dungeonSpriteSheet.complete) {
+        drawDungeonSprite(ctx, dungeonSpriteSheet, spriteIndex, bullet.x, bullet.y, 8)
+      } else {
+        ctx.fillStyle = bullet.friendly ? '#4A9EFF' : '#FF6B6B'
+        ctx.beginPath()
+        ctx.arc(bullet.x, bullet.y, bullet.radius || 4, 0, Math.PI * 2)
+        ctx.fill()
+      }
     }
 
-    // 绘制玩家（像素风格）
+    // 绘制玩家
     for (const player of players) {
       if (!player.alive) continue
 
       const isLocal = player.id === user?.id
+      const charConfig = CHARACTERS[player.characterType] || CHARACTERS.warrior
       const size = 16
 
-      // 玩家颜色
-      ctx.fillStyle = isLocal ? '#4A9EFF' : '#51CF66'
-      ctx.fillRect(player.x - size/2, player.y - size/2, size, size)
+      // 根据朝向选择精灵
+      let spriteIndex = charConfig.spriteIndex.front
+      if (player.angle !== undefined) {
+        const angle = player.angle
+        if (angle > -Math.PI/4 && angle <= Math.PI/4) {
+          spriteIndex = charConfig.spriteIndex.right
+        } else if (angle > Math.PI/4 && angle <= 3*Math.PI/4) {
+          spriteIndex = charConfig.spriteIndex.back
+        } else if (angle > 3*Math.PI/4 || angle <= -3*Math.PI/4) {
+          spriteIndex = charConfig.spriteIndex.left
+        } else {
+          spriteIndex = charConfig.spriteIndex.front
+        }
+      }
 
-      // 像素边框
-      ctx.strokeStyle = '#fff'
-      ctx.lineWidth = 2
-      ctx.strokeRect(player.x - size/2, player.y - size/2, size, size)
+      if (spritesLoaded && charSpriteSheet.complete) {
+        drawCharacterSprite(ctx, charSpriteSheet, spriteIndex, player.x, player.y, size)
+      } else {
+        ctx.fillStyle = charConfig.color
+        ctx.fillRect(player.x - size/2, player.y - size/2, size, size)
+        ctx.strokeStyle = '#fff'
+        ctx.lineWidth = 1
+        ctx.strokeRect(player.x - size/2, player.y - size/2, size, size)
+      }
 
-      // 方向指示器（像素箭头）
-      ctx.fillStyle = '#fff'
-      const arrowX = player.x + Math.cos(player.angle) * 20
-      const arrowY = player.y + Math.sin(player.angle) * 20
-      ctx.fillRect(arrowX - 3, arrowY - 3, 6, 6)
+      // 本地玩家方向指示器
+      if (isLocal && player.angle !== undefined) {
+        drawDirectionArrow(ctx, player.x, player.y, player.angle, 8)
+      }
 
-      // HP 条
-      ctx.fillStyle = '#333'
-      ctx.fillRect(player.x - 16, player.y - 24, 32, 6)
-      ctx.fillStyle = '#32CD32'
-      ctx.fillRect(
-        player.x - 16,
-        player.y - 24,
-        32 * (player.hp / player.hpMax),
-        6
-      )
+      // HP条
+      drawHPBar(ctx, player.x - 16, player.y - 24, 32, 6, player.hp, player.hpMax, charConfig.color)
 
       // 名称
-      ctx.fillStyle = '#fff'
-      ctx.font = '10px Courier New'
-      ctx.textAlign = 'center'
-      ctx.fillText(player.name, player.x, player.y - 28)
+      drawNameTag(ctx, player.x, player.y - 28, player.name, charConfig.color)
     }
-  }, [user])
+  }, [user, spritesLoaded])
 
-  // Game loop - reads from refs
+  // Game loop
   useEffect(() => {
     if (isPaused || isGameOver) return
 
@@ -257,18 +400,15 @@ export default function GamePage() {
       if (keys.has('a') || keys.has('arrowleft')) dx -= 1
       if (keys.has('d') || keys.has('arrowright')) dx += 1
 
-      // Normalize diagonal movement
       if (dx !== 0 && dy !== 0) {
         dx *= 0.707
         dy *= 0.707
       }
 
-      // Read from ref for latest state
       const { players } = gameStateRef.current
       const localPlayer = players.find(p => p.id === user?.id)
 
       if (!localPlayer) {
-        // Just render and continue - might not have state yet
         render()
         animationRef.current = requestAnimationFrame(gameLoop)
         return
@@ -276,19 +416,11 @@ export default function GamePage() {
 
       const angle = Math.atan2(mouseRef.current.y - localPlayer.y, mouseRef.current.x - localPlayer.x)
 
-      // Send input
       if (dx !== 0 || dy !== 0 || mouseRef.current.down) {
-        networkClient.emit('game:input', {
-          dx,
-          dy,
-          angle,
-          attack: mouseRef.current.down
-        })
+        networkClient.emit('game:input', { dx, dy, angle, attack: mouseRef.current.down })
       }
 
-      // Render
       render()
-
       animationRef.current = requestAnimationFrame(gameLoop)
     }
 
@@ -301,7 +433,6 @@ export default function GamePage() {
     }
   }, [isPaused, isGameOver, user, render])
 
-  // Manual render on state change
   useEffect(() => {
     render()
   }, [render])
@@ -311,70 +442,99 @@ export default function GamePage() {
     navigate('/lobby')
   }
 
+  const { gold, keys } = gameStateRef.current
+
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
-      {/* HUD */}
+      {/* HUD - 顶部 */}
       <div style={{
         position: 'absolute',
         top: 10,
         left: 10,
+        right: 10,
         zIndex: 10,
         display: 'flex',
-        gap: 10
+        justifyContent: 'space-between',
+        alignItems: 'flex-start',
       }}>
-        {/* 楼层 */}
-        <div className="card-pixel" style={{
-          padding: '8px 15px',
-          borderColor: 'var(--pixel-gold)'
-        }}>
-          <span style={{ color: 'var(--pixel-brown)', fontFamily: 'Courier New, monospace', fontSize: 12 }}>
-            楼层
-          </span>
-          <span style={{
-            color: 'var(--pixel-gold)',
-            fontWeight: 'bold',
-            fontFamily: 'Courier New, monospace',
-            marginLeft: 8
-          }}>
-            {floor}/5
-          </span>
+        {/* 左侧状态 */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          {/* 楼层 */}
+          <div className="card-pixel" style={{ padding: '6px 12px', borderColor: 'var(--pixel-gold)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <PixelCastle size={16} color="#8B4513" />
+            <span style={{ color: 'var(--pixel-gold)', fontFamily: 'Courier New', fontSize: 14, fontWeight: 'bold' }}>
+              {floor}/5
+            </span>
+          </div>
+
+          {/* 玩家 */}
+          <div className="card-pixel" style={{ padding: '6px 12px', borderColor: 'var(--player-1)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <PixelSword size={16} color="#C0C0C0" />
+            <span style={{ color: 'var(--success)', fontFamily: 'Courier New', fontSize: 14, fontWeight: 'bold' }}>
+              {players.filter(p => p.alive).length}/{players.length}
+            </span>
+          </div>
+
+          {/* 敌人 */}
+          <div className="card-pixel" style={{ padding: '6px 12px', borderColor: 'var(--pixel-red)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <PixelSkull size={16} color="#FFFFFF" />
+            <span style={{ color: 'var(--danger)', fontFamily: 'Courier New', fontSize: 14, fontWeight: 'bold' }}>
+              {enemies.filter(e => e.alive).length}
+            </span>
+          </div>
         </div>
 
-        {/* 玩家 */}
-        <div className="card-pixel" style={{
-          padding: '8px 15px',
-          borderColor: 'var(--player-1)'
-        }}>
-          <span style={{ color: 'var(--pixel-brown)', fontFamily: 'Courier New, monospace', fontSize: 12 }}>
-            玩家
-          </span>
-          <span style={{
-            color: 'var(--success)',
-            fontWeight: 'bold',
-            fontFamily: 'Courier New, monospace',
-            marginLeft: 8
-          }}>
-            {gameStateRef.current.players.filter(p => p.alive).length}/{gameStateRef.current.players.length}
-          </span>
+        {/* 右侧资源 */}
+        <div style={{ display: 'flex', gap: 8 }}>
+          <div className="card-pixel" style={{ padding: '6px 12px', borderColor: 'var(--pixel-gold)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <PixelGem size={16} color="#FFD700" />
+            <span style={{ color: 'var(--pixel-gold)', fontFamily: 'Courier New', fontSize: 14, fontWeight: 'bold' }}>
+              {gold}
+            </span>
+          </div>
+          <div className="card-pixel" style={{ padding: '6px 12px', borderColor: 'var(--pixel-gold)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <PixelKey size={16} color="#FFD700" />
+            <span style={{ color: 'var(--pixel-gold)', fontFamily: 'Courier New', fontSize: 14, fontWeight: 'bold' }}>
+              {keys}
+            </span>
+          </div>
         </div>
+      </div>
 
-        {/* 敌人 */}
-        <div className="card-pixel" style={{
-          padding: '8px 15px',
-          borderColor: 'var(--pixel-red)'
-        }}>
-          <span style={{ color: 'var(--pixel-brown)', fontFamily: 'Courier New, monospace', fontSize: 12 }}>
-            敌人
-          </span>
-          <span style={{
-            color: 'var(--danger)',
-            fontWeight: 'bold',
-            fontFamily: 'Courier New, monospace',
-            marginLeft: 8
-          }}>
-            {gameStateRef.current.enemies.filter(e => e.alive).length}
-          </span>
-        </div>
+      {/* 技能栏 - 右侧 */}
+      <div style={{
+        position: 'absolute',
+        right: 10,
+        top: '50%',
+        transform: 'translateY(-50%)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 6,
+        zIndex: 10,
+      }}>
+        {SKILL_ICONS.map((skill, i) => (
+          <div
+            key={i}
+            style={{
+              width: 48,
+              height: 48,
+              background: `linear-gradient(135deg, ${skill.color} 0%, ${skill.color}88 100%)`,
+              border: '3px solid #FFFFFF',
+              borderRadius: 4,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: 24,
+              boxShadow: '2px 2px 0 rgba(0,0,0,0.5)',
+              cursor: 'pointer',
+              transition: 'transform 0.1s',
+            }}
+            onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
+            onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            {React.createElement(SkillIconComponents[i], { size: 24, color: skill.color })}
+          </div>
+        ))}
       </div>
 
       {/* Game Canvas */}
@@ -404,7 +564,8 @@ export default function GamePage() {
         fontFamily: 'Courier New, monospace',
         textShadow: '2px 2px 0 rgba(0,0,0,0.5)',
         padding: '5px 15px',
-        background: 'rgba(0,0,0,0.5)'
+        background: 'rgba(0,0,0,0.5)',
+        zIndex: 10,
       }}>
         [ WASD移动 | 鼠标瞄准 | 左键射击 | 1-4技能 | ESC暂停 ]
       </div>

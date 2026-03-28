@@ -4,6 +4,14 @@ import { DungeonGenerator } from './dungeon/DungeonGenerator';
 import { Combat } from './combat/Combat';
 import { Vec2 } from '../utils/Vec2';
 
+// 敌人基础属性映射
+const ENEMY_BASE_HP: Record<string, number> = {
+  basic: 30,
+  fast: 20,
+  tank: 80,
+  boss: 200
+};
+
 export interface PlayerState {
   id: string;
   accountId: string;
@@ -59,6 +67,11 @@ export interface GameState {
   items: { id: string; x: number; y: number; type: string }[];
   boss?: EnemyState;
   floorCompleted: boolean;
+  dungeon?: {
+    rooms: { x: number; y: number; width: number; height: number; type: string }[];
+    spawnPoint: { x: number; y: number };
+    exitPoint: { x: number; y: number };
+  };
 }
 
 export class GameRoom {
@@ -70,6 +83,7 @@ export class GameRoom {
   private items: { id: string; x: number; y: number; type: string }[] = [];
   private dungeonGenerator: DungeonGenerator;
   private combat: Combat;
+  private currentDungeon: any = null;
 
   private currentFloor: number = 1;
   private tick: number = 0;
@@ -125,8 +139,16 @@ export class GameRoom {
     this.startFloor(1);
 
     // Start game loop
+    let lastTime = performance.now();
     const tickMs = 1000 / GAME_CONFIG.TICK_RATE;
-    this.tickInterval = setInterval(() => this.tick++, tickMs);
+
+    this.tickInterval = setInterval(() => {
+      const now = performance.now();
+      const dt = (now - lastTime) / 1000; // Convert to seconds
+      lastTime = now;
+      this.tick++;
+      this.update(dt); // Actually call update!
+    }, tickMs);
   }
 
   private startFloor(floor: number): void {
@@ -137,6 +159,7 @@ export class GameRoom {
 
     const seed = this.floorSeeds[floor - 1];
     const dungeon = this.dungeonGenerator.generate(floor, seed);
+    this.currentDungeon = dungeon;
     const config = FLOOR_CONFIG[floor];
 
     // Place players at spawn
@@ -167,7 +190,7 @@ export class GameRoom {
 
   private createEnemy(type: string, x: number, y: number): EnemyState {
     const id = `enemy_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const baseHp = 50;
+    const baseHp = ENEMY_BASE_HP[type] || 30;
 
     return {
       id,
@@ -327,7 +350,12 @@ export class GameRoom {
       enemies: Array.from(this.enemies.values()),
       bullets: Array.from(this.bullets.values()),
       items: this.items,
-      floorCompleted: false
+      floorCompleted: false,
+      dungeon: this.currentDungeon ? {
+        rooms: this.currentDungeon.rooms,
+        spawnPoint: this.currentDungeon.spawnPoint,
+        exitPoint: this.currentDungeon.exitPoint
+      } : undefined
     };
   }
 
@@ -378,6 +406,10 @@ export class GameRoom {
     if (player.hp <= 0) {
       player.alive = false;
     }
+  }
+
+  removeBullet(bulletId: string): void {
+    this.bullets.delete(bulletId);
   }
 
   isRunning(): boolean {
