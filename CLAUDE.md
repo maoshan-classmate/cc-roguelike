@@ -160,10 +160,17 @@ public/
 道具：29-35 (health/coin/key/potion等)
 ```
 
+### Tailwind CSS
+- 使用 PostCSS 方式：`@tailwindcss/postcss` + `postcss.config.js`（不要用 `@tailwindcss/vite`，它是 ESM-only 会报错）
+- `src/index.css` 顶部添加 `@import "tailwindcss"` + `@theme` 块配置主题变量
+
 ### Canvas 游戏渲染
 - 实体绘制使用 `fillRect()` 纯色占位，或精灵图 `drawSpriteAt()`
 - 绘制时设置 `imageRendering: 'pixelated'` 保持像素风格
 - 精灵加载：`new Image()` + `img.onload`
+- 像素艺术元素（血条、皇冠、箭头等）统一用 `fillRect` 绘制，不要用 `moveTo/lineTo` path
+- 添加 3D 立体感：高光线（顶部/左侧亮色）+ 阴影线（底部/右侧暗色）
+- 名称标签需添加半透明暗色背景面板提升可读性
 
 ### Penpot MCP
 - `export_shape` 工具可能有 http error，可使用 `generateMarkup` 生成 SVG 代码代替
@@ -174,6 +181,7 @@ public/
 - 像素图标模式：内联 `<svg>` + `imageRendering: 'pixelated'`
 - 按钮/卡片使用 `border: none`（无边框）
 - SVG 组件必须显式导入，缺失导入会导致运行时错误
+- 禁止使用 `alert()`，替换为内联错误通知：`useState(errorMsg)` + `setTimeout` 3秒自动消失
 
 ## Git 经验
 
@@ -186,6 +194,7 @@ public/
 - 可用于自动下载网站资源（如 `browser_navigate` + `browser_click`）
 - 下载文件默认保存到 `.playwright-mcp/` 目录
 - 验证 UI 改动：`browser_navigate` + `browser_take_screenshot`
+- 验证完成后必须删除截图文件（`rm -f *.png`）
 
 ## TODO 管理（强制）
 
