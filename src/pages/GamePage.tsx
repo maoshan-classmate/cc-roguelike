@@ -395,6 +395,7 @@ export default function GamePage() {
   useEffect(() => {
     if (isPaused || isGameOver) return
 
+    let lastInputTime = 0
     const gameLoop = () => {
       const keys = keysRef.current
       let dx = 0, dy = 0
@@ -420,7 +421,10 @@ export default function GamePage() {
 
       const angle = Math.atan2(mouseRef.current.y - localPlayer.y, mouseRef.current.x - localPlayer.x)
 
-      if (dx !== 0 || dy !== 0 || mouseRef.current.down) {
+      // 每帧都发送 input（包括 dx=0, dy=0 的静止状态），节流 ~30fps
+      const now = performance.now()
+      if (now - lastInputTime >= 33) {
+        lastInputTime = now
         networkClient.emit('game:input', { dx, dy, angle, attack: mouseRef.current.down })
       }
 

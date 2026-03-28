@@ -28,6 +28,7 @@ interface Character {
   x: number;
   y: number;
   weapon: string;
+  character_type: string;
   skills: string;
   inventory: string;
   highest_floor: number;
@@ -80,8 +81,8 @@ export class AuthManager {
       const defaultSkills = JSON.stringify(['dash', 'shield']);
 
       await this.db.execute(
-        `INSERT INTO characters (id, account_id, name, weapon, skills)
-         VALUES (?, ?, ?, 'pistol', ?)`,
+        `INSERT INTO characters (id, account_id, name, weapon, character_type, skills)
+         VALUES (?, ?, ?, 'pistol', 'warrior', ?)`,
         [characterId, accountId, username, defaultSkills]
       );
 
@@ -111,6 +112,7 @@ export class AuthManager {
             x: 0,
             y: 0,
             weapon: 'pistol',
+            character_type: 'warrior',
             skills: defaultSkills,
             inventory: '[]',
             highest_floor: 0,
@@ -212,6 +214,19 @@ export class AuthManager {
       await this.db.execute(
         `UPDATE characters SET ${fields.join(', ')} WHERE id = ?`,
         values
+      );
+    }
+  }
+
+  async updateCharacterType(accountId: string, characterType: string): Promise<void> {
+    const characters = await this.db.query<Character[]>(
+      'SELECT id FROM characters WHERE account_id = ?',
+      [accountId]
+    );
+    if (characters.length > 0) {
+      await this.db.execute(
+        'UPDATE characters SET character_type = ? WHERE account_id = ?',
+        [characterType, accountId]
       );
     }
   }

@@ -57,9 +57,16 @@
 - [x] Bug: 玩家被锁死在墙内（BSP深度3+最小叶子140px+走廊加宽+出生点3x3清除）
 - [x] Bug: 走廊太窄（collisionPadding=1，走廊宽度2-3 tiles）
 
+### 角色职业 + 移动修复 ✅ 已完成 (2026-03-28)
+- [x] 角色贴图与职业不匹配（全链路 characterType: DB→AuthManager→GameRoom→客户端渲染）
+- [x] 停止移动时贴图消失（移除 input guard，每帧发送含 dx=0,dy=0 的输入包）
+- [x] 按一下方向键持续移动（改为 33ms 节流发送输入，松开键发零速度包）
+- [x] RoomPage 添加职业选择 UI（战士/游侠/法师/牧师 四选一）
+- [x] SocketServer 添加 room:selectClass 事件处理
+- [x] Database ALTER TABLE 添加 character_type 列
+
 ### 待优化
 - [ ] 优化技能栏图标
-- [ ] 添加角色职业选择界面
 - [ ] 添加地牢楼层切换动画
 - [ ] 利用 roguelikeSheet_transparent.png 第三张精灵图增加更多精灵种类
 

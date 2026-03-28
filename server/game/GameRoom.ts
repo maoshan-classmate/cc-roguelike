@@ -30,6 +30,7 @@ export interface PlayerState {
   speedBuff: number;  // 速度倍率（1.0=正常）
   speedBuffTimer: number;  // 速度增益剩余时间（秒）
   weapon: string;
+  characterType: string;
   skills: string[];
   alive: boolean;
   invincible: number;
@@ -126,6 +127,7 @@ export class GameRoom {
       speedBuff: 1.0,
       speedBuffTimer: 0,
       weapon: charData.weapon || 'pistol',
+      characterType: charData.character_type || 'warrior',
       skills: JSON.parse(charData.skills || '["dash","shield"]'),
       alive: true,
       invincible: 0,

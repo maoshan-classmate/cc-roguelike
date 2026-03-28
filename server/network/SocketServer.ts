@@ -66,6 +66,7 @@ export class SocketServer {
       socket.on(RoomMessages.LEAVE, () => this.handleRoomLeave(socket));
       socket.on(RoomMessages.READY, (data: { ready: boolean }) => this.handleRoomReady(socket, data));
       socket.on(RoomMessages.START, () => this.handleRoomStart(socket));
+      socket.on('room:selectClass', (data: { characterType: string }) => this.handleSelectClass(socket, data));
 
       // Game handlers
       socket.on(GameMessages.INPUT, (data: any) => this.handleGameInput(socket, data));
@@ -273,6 +274,14 @@ export class SocketServer {
       for (const player of room.players) {
         // Find socket for this player (in real app, track this better)
       }
+    });
+  }
+
+  private handleSelectClass(socket: Socket, data: { characterType: string }): void {
+    this.requireAuth(socket, async (session) => {
+      const validTypes = ['warrior', 'ranger', 'mage', 'healer'];
+      if (!validTypes.includes(data.characterType)) return;
+      await this.authManager.updateCharacterType(session.accountId, data.characterType);
     });
   }
 

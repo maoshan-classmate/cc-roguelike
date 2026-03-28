@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
 import { useRoomStore } from '../store/useRoomStore'
@@ -16,6 +16,13 @@ const PLAYER_COLORS = {
 }
 
 const PLAYER_AVATARS = [PixelAvatarWarrior, PixelAvatarRanger, PixelAvatarMage, PixelAvatarHealer]
+
+const CHARACTER_CLASSES = [
+  { id: 'warrior', name: '战士', icon: PixelSword, color: '#4A9EFF', desc: '近战，高防御' },
+  { id: 'ranger', name: '游侠', icon: PixelShield, color: '#51CF66', desc: '远程，高速度' },
+  { id: 'mage', name: '法师', icon: PixelStar, color: '#FFA500', desc: '魔法，高攻击' },
+  { id: 'healer', name: '牧师', icon: PixelGem, color: '#9B59B6', desc: '治疗，辅助' },
+]
 
 // 玩家槽位组件
 function PlayerSlot({
@@ -205,6 +212,7 @@ export default function RoomPage() {
     setReady
   } = useRoomStore()
   const navigate = useNavigate()
+  const [selectedClass, setSelectedClass] = useState<string>('warrior')
 
   useEffect(() => {
     const handleJoinPush = (data: any) => {
@@ -258,6 +266,11 @@ export default function RoomPage() {
   const handleLeave = () => {
     networkClient.emit('room:leave')
     navigate('/lobby')
+  }
+
+  const handleSelectClass = (classId: string) => {
+    setSelectedClass(classId)
+    networkClient.emit('room:selectClass', { characterType: classId })
   }
 
   const handleReady = () => {
@@ -375,6 +388,73 @@ export default function RoomPage() {
                   isHost={hostId || ''}
                   isLocalPlayer={isLocalPlayer}
                 />
+              )
+            })}
+          </div>
+        </div>
+
+        {/* 职业选择 */}
+        <div style={{
+          background: 'var(--pixel-bg)',
+          border: '4px solid var(--pixel-brown)',
+          padding: 20,
+          boxShadow: '6px 6px 0 rgba(0,0,0,0.5)',
+          marginBottom: 24,
+        }}>
+          <h2 style={{
+            marginBottom: 16,
+            color: 'var(--pixel-gold)',
+            fontFamily: 'Courier New, monospace',
+            fontSize: 18,
+            display: 'flex',
+            alignItems: 'center',
+            gap: 10,
+          }}>
+            <PixelCrown size={20} color="#FFD700" /> 选择职业
+          </h2>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(4, 1fr)',
+            gap: 12,
+          }}>
+            {CHARACTER_CLASSES.map((cls) => {
+              const isSelected = selectedClass === cls.id
+              const IconComponent = cls.icon
+              return (
+                <button
+                  key={cls.id}
+                  onClick={() => handleSelectClass(cls.id)}
+                  style={{
+                    background: isSelected ? `${cls.color}20` : 'var(--pixel-bg)',
+                    border: isSelected ? `3px solid ${cls.color}` : '3px solid var(--pixel-brown)',
+                    padding: '12px 8px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 8,
+                    boxShadow: isSelected ? `0 0 12px ${cls.color}40` : 'none',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  <IconComponent size={28} color={isSelected ? cls.color : '#8B4513'} />
+                  <span style={{
+                    fontFamily: 'Courier New, monospace',
+                    fontSize: 13,
+                    fontWeight: 'bold',
+                    color: isSelected ? cls.color : 'var(--pixel-brown)',
+                  }}>
+                    {cls.name}
+                  </span>
+                  <span style={{
+                    fontFamily: 'Courier New, monospace',
+                    fontSize: 10,
+                    color: 'var(--pixel-brown)',
+                    opacity: 0.7,
+                  }}>
+                    {cls.desc}
+                  </span>
+                </button>
               )
             })}
           </div>

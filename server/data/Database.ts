@@ -54,6 +54,7 @@ export class Database {
         x FLOAT DEFAULT 0,
         y FLOAT DEFAULT 0,
         weapon VARCHAR(255) DEFAULT 'pistol',
+        character_type VARCHAR(20) DEFAULT 'warrior',
         skills VARCHAR(1000) DEFAULT '["dash","shield"]',
         inventory VARCHAR(2000) DEFAULT '[]',
         highest_floor INT DEFAULT 0,
@@ -83,6 +84,13 @@ export class Database {
       console.log('📦 Database tables initialized');
     } catch (error) {
       console.error('Failed to initialize database tables:', error);
+    }
+
+    // 兼容已有数据库：添加 character_type 列
+    try {
+      await this.pool.execute('ALTER TABLE characters ADD COLUMN character_type VARCHAR(20) DEFAULT \'warrior\' AFTER weapon');
+    } catch (e: any) {
+      if (!e.message.includes('Duplicate column')) throw e;
     }
   }
 
