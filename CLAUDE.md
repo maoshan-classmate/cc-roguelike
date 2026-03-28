@@ -53,6 +53,33 @@
 - 用 `skill.type` 做 switch case 会导致多个 skill 走到同一个分支
 - 修复：用 `skillId` 替代 `skill.type` 做 switch 匹配
 
+### 6. Input Guard 反模式（移动/射击指令）
+- `if (dx !== 0 || dy !== 0)` 这类 guard 会阻止 dx=0/dy=0 的静止包发送
+- 结果：松开方向键后玩家仍然持续移动
+- 正确做法：移除 guard，用节流（33ms）代替，避免无意义的空包也能保证松开键立即停止
+- 验证：松开键后玩家应立即停下，不是逐渐减速
+
+### 7. Per-Player 数据全链路模式
+- 新增角色属性（如 character_type）需要同时修改多处：
+  1. Database.ts: CREATE/ALTER TABLE 添加列
+  2. AuthManager: Character 接口 + register/login/getCharacter 返回该字段
+  3. GameRoom: PlayerState 接口 + addPlayer() 设置
+  4. SocketServer: 事件处理（如 room:selectClass）更新 DB
+  5. 客户端: 通过 game:state 同步后直接使用 player.characterType 渲染
+- 漏掉任一环节会导致数据不匹配或渲染错误
+
+### 8. ALTER TABLE 向后兼容
+- 新增列时必须同时写 CREATE TABLE 和 ALTER TABLE 两部分
+- ALTER TABLE 用 try/catch 包裹，检查 error.message 包含 'Duplicate column'
+- 示例：Database.ts CREATECharactersTable 末尾添加
+  try { await this.pool.execute('ALTER TABLE ...'); } catch (e: any) {
+    if (!e.message.includes('Duplicate column')) throw e; }
+
+### 9. 技能键 keydown 防重复
+- 直接监听 keydown 会因为键盘重复输入产生大量事件（按住1秒 = 30+ 事件）
+- 修复：用 Set 记录已按下的键，首次按下才发送，keyup 时移除
+- 示例：GamePage.tsx handleKeyDown 用 `skillKeysDown.has(skillKey)` 判断
+
 ## 服务端/客户端配置同步
 - 敌人/道具/技能等配置必须在 server/config/constants.ts 和 src/config/ 中保持 ID 一致
 - 修改配置时要同时检查两端
