@@ -108,6 +108,16 @@ public/
 - **像素风格**：所有游戏内绘制使用 `imageRendering: 'pixelated'`
 - **UI保持可读性**：HUD和信息面板使用明亮强调色
 
+### 资源使用规范（强制）
+
+**优先使用现有资源**：在创建或修改任何图片、图标、精灵之前，**必须**先检查 `src/assets/kenney/`、`src/assets/images/`、`public/fonts/` 目录是否有匹配的资源。只有在确实没有合适资源的情况下，才去网络搜索下载。
+
+**搜索下载规则**：
+1. 首选 Kenney.nl（已下载的资源在 `resources/kenney/`）
+2. 其次 itch.io / opengameart.org（必须 CC0 或 commercial use allowed）
+3. 下载后放入对应目录并更新资源索引
+4. 禁止直接链接外部图片 URL
+
 ### 资源来源
 
 #### Kenney.nl (主要资源)
