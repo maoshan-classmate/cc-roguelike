@@ -88,6 +88,7 @@
 ## 关键命令
 
 ```bash
+npm run dev          # 启动开发服务器（前端 3000 + 后端 3001）
 # 重启服务器
 taskkill //PID <pid> //F && sleep 2 && npm run dev
 
@@ -101,6 +102,7 @@ tail -f logs or check task output
 ## 项目结构
 
 ```
+docs/           # 文档（架构图、计划、设计稿）
 src/
   pages/     # 页面组件 (LoginPage, LobbyPage, RoomPage, GamePage)
   store/     # Zustand 状态管理
@@ -194,7 +196,7 @@ public/
 ```
 角色(roguelikeChar): 0-15 (战士、弓箭手、法师、牧师各4方向)
 地牢(roguelikeDungeon): 0-8地板、9-16墙壁、17-20门、21-22宝箱、23-24楼梯
-敌人：25-28 (basic/fast/tank/boss)
+敌人：25-28 (⚠️ 经调研确认这些是空白/装饰占位符，非真实怪物贴图)
 道具：29-35 (health/coin/key/potion等)
 ```
 
