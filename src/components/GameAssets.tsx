@@ -197,18 +197,22 @@ export function WeaponIcon({ type, size = 32 }: { type: 'sword' | 'bow' | 'staff
   );
 }
 
-// 状态图标
+// 状态图标 - 使用 SVG 像素图标
 export function StatusIcon({ type, size = 24 }: { type: 'hp' | 'mp' | 'exp'; size?: number }) {
   const colors = { hp: '#32CD32', mp: '#4A9EFF', exp: '#FFD700' };
-  const icons = { hp: '♥', mp: '◆', exp: '★' };
+  const s = size * 0.8;
 
-  return (
-    <span style={{
-      fontSize: size,
-      color: colors[type],
-      textShadow: `0 0 8px ${colors[type]}`,
-    }}>
-      {icons[type]}
-    </span>
-  );
+  const icons = {
+    hp: <svg width={s} height={s} viewBox="0 0 12 12" style={{imageRendering:'pixelated'}}>
+      <path d="M6,10 Q1,7 1,4 Q1,1 3.5,1 Q5,1 6,3 Q7,1 8.5,1 Q11,1 11,4 Q11,7 6,10 Z" fill={colors.hp}/>
+    </svg>,
+    mp: <svg width={s} height={s} viewBox="0 0 12 12" style={{imageRendering:'pixelated'}}>
+      <polygon points="6,1 8,4 11,5 9,8 9,11 6,10 3,11 3,8 1,5 4,4" fill={colors.mp}/>
+    </svg>,
+    exp: <svg width={s} height={s} viewBox="0 0 12 12" style={{imageRendering:'pixelated'}}>
+      <polygon points="6,0 8,4 12,5 9,8 10,12 6,10 2,12 3,8 0,5 4,4" fill={colors.exp}/>
+    </svg>,
+  };
+
+  return <span style={{ display:'inline-flex', alignItems:'center', filter: `drop-shadow(0 0 4px ${colors[type]})` }}>{icons[type]}</span>;
 }

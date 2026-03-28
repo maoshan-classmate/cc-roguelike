@@ -21,20 +21,10 @@ function PixelDecoration({ children, color }: { children: React.ReactNode; color
   )
 }
 
-// 装饰线组件
+// 像素风格装饰线
 function DecorativeLine() {
   return (
-    <div style={{
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      gap: 12,
-      margin: '16px 0',
-    }}>
-      <span style={{ color: 'var(--pixel-brown)', fontSize: 12 }}>━━━</span>
-      <span style={{ color: 'var(--pixel-gold)', fontSize: 16 }}>◆</span>
-      <span style={{ color: 'var(--pixel-brown)', fontSize: 12 }}>━━━</span>
-    </div>
+    <div className="decorative-line" style={{ width: '80%', maxWidth: 280 }} />
   )
 }
 
@@ -164,13 +154,7 @@ export default function LoginPage() {
           地下城突袭
         </h1>
 
-        <p style={{
-          color: 'var(--pixel-brown)',
-          fontSize: 14,
-          marginTop: 8,
-          fontFamily: 'Courier New, monospace',
-          letterSpacing: 2,
-        }}>
+        <p className="page-header-subtitle">
           DUNGEON RAID
         </p>
       </div>
@@ -201,27 +185,28 @@ export default function LoginPage() {
         <h2 style={{
           marginBottom: 20,
           textAlign: 'center',
-          fontFamily: 'Courier New, monospace',
           color: 'var(--pixel-gold)',
           fontSize: 20,
           textTransform: 'uppercase',
           letterSpacing: 2,
         }}>
-          {isRegister ? '[ ◆ 注册 ◆ ]' : '[ ◆ 登录 ◆ ]'}
+          {isRegister ? '注册新冒险者' : '冒险者登录'}
         </h2>
 
         <form onSubmit={handleSubmit}>
           <div style={{ marginBottom: 16 }}>
             <label style={{
-              display: 'block',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
               marginBottom: 8,
               color: 'var(--pixel-brown)',
               fontWeight: 'bold',
               fontSize: 12,
               textTransform: 'uppercase',
-              fontFamily: 'Courier New, monospace',
             }}>
-              ◆ 用户名
+              <PixelStar size={12} color="#FFD700" />
+              用户名
             </label>
             <input
               type="text"
@@ -237,15 +222,17 @@ export default function LoginPage() {
 
           <div style={{ marginBottom: 20 }}>
             <label style={{
-              display: 'block',
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
               marginBottom: 8,
               color: 'var(--pixel-brown)',
               fontWeight: 'bold',
               fontSize: 12,
               textTransform: 'uppercase',
-              fontFamily: 'Courier New, monospace',
             }}>
-              ◆ 密码
+              <PixelShield size={12} color="#8B4513" />
+              密码
             </label>
             <input
               type="password"
@@ -260,18 +247,22 @@ export default function LoginPage() {
 
           {error && (
             <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
               color: 'var(--pixel-red)',
               marginBottom: 16,
               textAlign: 'center',
               fontWeight: 'bold',
               fontSize: 12,
-              fontFamily: 'Courier New, monospace',
               animation: 'pixel-shake 0.3s ease-in-out',
               padding: '8px',
               border: '2px solid var(--pixel-red)',
               background: 'rgba(220, 20, 60, 0.1)',
             }}>
-              ⚠ {error}
+              <PixelSkull size={14} color="#DC143C" />
+              {error}
             </div>
           )}
 
@@ -285,9 +276,20 @@ export default function LoginPage() {
               padding: '14px 24px',
               background: loading ? 'var(--pixel-brown)' : 'var(--pixel-gold)',
               color: 'var(--pixel-bg)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
             }}
           >
-            {loading ? '>>> 处理中 <<<' : (isRegister ? '>>> 创建冒险者 <<<' : '>>> 进入冒险 <<<')}
+            {loading ? (
+              <>
+                <PixelStar size={14} color="#2D1B2E" className="pixel-loading" />
+                处理中...
+              </>
+            ) : (
+              isRegister ? '创建冒险者' : '进入冒险'
+            )}
           </button>
         </form>
 
@@ -301,20 +303,14 @@ export default function LoginPage() {
               background: 'transparent',
               border: 'none',
               color: 'var(--pixel-gold)',
-              fontFamily: 'Courier New, monospace',
               fontSize: 12,
               cursor: 'pointer',
               padding: '8px 16px',
               transition: 'all 0.2s',
             }}
-            onMouseOver={(e) => {
-              e.currentTarget.style.textShadow = '0 0 10px rgba(255, 215, 0, 0.5)'
-            }}
-            onMouseOut={(e) => {
-              e.currentTarget.style.textShadow = 'none'
-            }}
+            className="pixel-glow-gold"
           >
-            {isRegister ? '<<< 已有账号？登录 >>>' : '<<< 没有账号？注册 >>>'}
+            {isRegister ? '已有账号？登录' : '没有账号？注册'}
           </button>
         </div>
       </div>
@@ -326,7 +322,6 @@ export default function LoginPage() {
         textAlign: 'center',
         color: 'var(--pixel-brown)',
         fontSize: 11,
-        fontFamily: 'Courier New, monospace',
         opacity: 0.6,
       }}>
         多人联机 Roguelike 闯关游戏

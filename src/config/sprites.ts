@@ -111,7 +111,7 @@ export function drawPixelRect(
 }
 
 /**
- * 绘制像素血条
+ * 绘制像素血条 - 带高光和阴影的立体效果
  */
 export function drawHPBar(
   ctx: CanvasRenderingContext2D,
@@ -131,17 +131,31 @@ export function drawHPBar(
   ctx.fillRect(x, y, width, height)
 
   // 血条填充
-  ctx.fillStyle = color
-  ctx.fillRect(x + 1, y + 1, (width - 2) * percent, height - 2)
+  const fillWidth = (width - 2) * percent
+  if (fillWidth > 0) {
+    ctx.fillStyle = color
+    ctx.fillRect(x + 1, y + 1, fillWidth, height - 2)
 
-  // 像素边框效果
-  ctx.strokeStyle = '#8B4513'
-  ctx.lineWidth = 2
-  ctx.strokeRect(x, y, width, height)
+    // 高光（上半部分更亮）
+    ctx.fillStyle = 'rgba(255,255,255,0.2)'
+    ctx.fillRect(x + 1, y + 1, fillWidth, Math.floor((height - 2) / 2))
+
+    // 底部阴影线
+    ctx.fillStyle = 'rgba(0,0,0,0.3)'
+    ctx.fillRect(x + 1, y + height - 2, fillWidth, 1)
+  }
+
+  // 像素边框 - 上/左亮色，下/右暗色（3D 效果）
+  ctx.fillStyle = 'rgba(139,69,19,0.8)'
+  ctx.fillRect(x, y, width, 1)  // 上边
+  ctx.fillRect(x, y, 1, height)  // 左边
+  ctx.fillStyle = 'rgba(50,20,5,0.9)'
+  ctx.fillRect(x, y + height - 1, width, 1)  // 下边
+  ctx.fillRect(x + width - 1, y, 1, height)  // 右边
 }
 
 /**
- * 绘制BOSS皇冠
+ * 绘制BOSS皇冠 - 像素块风格
  */
 export function drawBossCrown(
   ctx: CanvasRenderingContext2D,
@@ -149,20 +163,40 @@ export function drawBossCrown(
   y: number,
   size: number = 16
 ): void {
+  const s = Math.round(size / 8)  // 像素单元大小
+  const cx = Math.round(x)
+
+  // 金色皇冠主体
   ctx.fillStyle = '#FFD700'
-  // 皇冠形状
-  ctx.beginPath()
-  ctx.moveTo(x - size/2, y + size/3)
-  ctx.lineTo(x - size/3, y - size/3)
-  ctx.lineTo(x, y)
-  ctx.lineTo(x + size/3, y - size/3)
-  ctx.lineTo(x + size/2, y + size/3)
-  ctx.closePath()
-  ctx.fill()
+
+  // 底部横条
+  ctx.fillRect(cx - 4 * s, y + 2 * s, 8 * s, 2 * s)
+
+  // 左塔
+  ctx.fillRect(cx - 4 * s, y, 2 * s, 4 * s)
+  // 中塔
+  ctx.fillRect(cx - 1 * s, y - 1 * s, 2 * s, 5 * s)
+  // 右塔
+  ctx.fillRect(cx + 2 * s, y, 2 * s, 4 * s)
+
+  // 高光
+  ctx.fillStyle = 'rgba(255,255,255,0.3)'
+  ctx.fillRect(cx - 4 * s, y + 2 * s, 8 * s, 1 * s)  // 底条高光
+  ctx.fillRect(cx - 4 * s, y, 2 * s, 1 * s)  // 左塔顶高光
+  ctx.fillRect(cx - 1 * s, y - 1 * s, 2 * s, 1 * s)  // 中塔顶高光
+  ctx.fillRect(cx + 2 * s, y, 2 * s, 1 * s)  // 右塔顶高光
+
+  // 宝石
+  ctx.fillStyle = '#DC143C'
+  ctx.fillRect(cx - 3 * s, y + 2 * s, 1 * s, 1 * s)
+  ctx.fillStyle = '#4A9EFF'
+  ctx.fillRect(cx, y + 2 * s, 1 * s, 1 * s)
+  ctx.fillStyle = '#32CD32'
+  ctx.fillRect(cx + 3 * s, y + 2 * s, 1 * s, 1 * s)
 }
 
 /**
- * 绘制方向指示器
+ * 绘制方向指示器 - 像素块箭头
  */
 export function drawDirectionArrow(
   ctx: CanvasRenderingContext2D,
@@ -175,19 +209,24 @@ export function drawDirectionArrow(
   ctx.translate(x, y)
   ctx.rotate(angle)
 
+  const p = Math.max(1, Math.round(size / 4))  // 像素单元
+
+  // 阴影
+  ctx.fillStyle = 'rgba(0,0,0,0.4)'
+  ctx.fillRect(1 * p, -1 * p + 1, 4 * p, 2 * p)
+
+  // 箭头主体 - 简洁像素风
   ctx.fillStyle = '#FFFFFF'
-  ctx.beginPath()
-  ctx.moveTo(size, 0)  // 箭头指向右（0度）
-  ctx.lineTo(-size/2, -size/2)
-  ctx.lineTo(-size/2, size/2)
-  ctx.closePath()
-  ctx.fill()
+  // 箭头尖
+  ctx.fillRect(3 * p, -1 * p, 2 * p, 2 * p)
+  // 箭头杆
+  ctx.fillRect(-1 * p, 0, 4 * p, p)
 
   ctx.restore()
 }
 
 /**
- * 绘制名称标签
+ * 绘制名称标签 - 带暗色背景面板
  */
 export function drawNameTag(
   ctx: CanvasRenderingContext2D,
@@ -197,15 +236,25 @@ export function drawNameTag(
   color: string = '#FFFFFF',
   fontSize: number = 10
 ): void {
-  ctx.fillStyle = color
-  ctx.font = `${fontSize}px "Courier New", monospace`
+  ctx.font = `${fontSize}px "Kenney Mini Square Mono", monospace`
   ctx.textAlign = 'center'
   ctx.textBaseline = 'bottom'
 
-  // 文字阴影
-  ctx.fillStyle = 'rgba(0,0,0,0.8)'
-  ctx.fillText(name, x + 1, y + 1)
+  // 测量文字宽度
+  const metrics = ctx.measureText(name)
+  const textWidth = metrics.width
+  const padding = 3
 
+  // 暗色背景面板
+  ctx.fillStyle = 'rgba(26,15,30,0.75)'
+  ctx.fillRect(
+    x - textWidth / 2 - padding,
+    y - fontSize - 1,
+    textWidth + padding * 2,
+    fontSize + 3
+  )
+
+  // 文字
   ctx.fillStyle = color
   ctx.fillText(name, x, y)
 }

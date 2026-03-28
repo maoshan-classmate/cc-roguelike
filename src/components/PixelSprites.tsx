@@ -312,7 +312,12 @@ interface PlayerAvatarProps {
 
 const PLAYER_COLORS = ['#4A9EFF', '#51CF66', '#FFA500', '#9B59B6'];
 const PLAYER_NAMES = ['战士', '游侠', '法师', '牧师'];
-const PLAYER_ICONS = ['🛡️', '⚔️', '🔮', '✨'];
+const PLAYER_ICONS = [
+  <svg key="shield" width="28" height="28" viewBox="0 0 16 16" style={{imageRendering:'pixelated'}}><path d="M8,1 L14,4 L14,9 Q14,14 8,15 Q2,14 2,9 L2,4 Z" fill="#4A9EFF" stroke="#2a5a8f" strokeWidth="1"/></svg>,
+  <svg key="sword" width="28" height="28" viewBox="0 0 16 16" style={{imageRendering:'pixelated'}}><rect x="7" y="1" width="2" height="10" fill="#C0C0C0"/><rect x="4" y="10" width="8" height="2" fill="#8B4513"/><rect x="7" y="12" width="2" height="3" fill="#8B4513"/></svg>,
+  <svg key="orb" width="28" height="28" viewBox="0 0 16 16" style={{imageRendering:'pixelated'}}><circle cx="8" cy="8" r="6" fill="#9B59B6"/><circle cx="6" cy="6" r="2" fill="#D8A0FF"/></svg>,
+  <svg key="sparkle" width="28" height="28" viewBox="0 0 16 16" style={{imageRendering:'pixelated'}}><path d="M8,1 L9,6 L14,8 L9,10 L8,15 L7,10 L2,8 L7,6 Z" fill="#FFD700"/></svg>,
+];
 
 export function PlayerAvatar({ playerIndex, size = 56, isReady = false }: PlayerAvatarProps) {
   const color = PLAYER_COLORS[playerIndex];
@@ -427,10 +432,26 @@ interface SkillIconProps {
 
 export function PixelSkillIcon({ type, size = 48, cooldown = false, onClick }: SkillIconProps) {
   const configs = {
-    sword: { bg: 'linear-gradient(135deg, #C0C0C0 0%, #808080 100%)', icon: '⚔️' },
-    shield: { bg: 'linear-gradient(135deg, #4A9EFF 0%, #2a5a8f 100%)', icon: '🛡️' },
-    arrow: { bg: 'linear-gradient(135deg, #8B4513 0%, #5a3a1a 100%)', icon: '🏹' },
-    potion: { bg: 'linear-gradient(135deg, #DC143C 0%, #8a0a2a 100%)', icon: '🧪' },
+    sword: { bg: 'linear-gradient(135deg, #C0C0C0 0%, #808080 100%)', icon: (
+      <svg width={size*0.45} height={size*0.45} viewBox="0 0 16 16" style={{imageRendering:'pixelated'}}>
+        <rect x="7" y="1" width="2" height="10" fill="#E0E0E0"/><rect x="4" y="10" width="8" height="2" fill="#8B4513"/><rect x="7" y="12" width="2" height="3" fill="#8B4513"/>
+      </svg>
+    )},
+    shield: { bg: 'linear-gradient(135deg, #4A9EFF 0%, #2a5a8f 100%)', icon: (
+      <svg width={size*0.45} height={size*0.45} viewBox="0 0 16 16" style={{imageRendering:'pixelated'}}>
+        <path d="M8,2 L13,4 L13,8 Q13,13 8,14 Q3,13 3,8 L3,4 Z" fill="#6AB4FF" stroke="#2a5a8f" strokeWidth="1"/>
+      </svg>
+    )},
+    arrow: { bg: 'linear-gradient(135deg, #8B4513 0%, #5a3a1a 100%)', icon: (
+      <svg width={size*0.45} height={size*0.45} viewBox="0 0 16 16" style={{imageRendering:'pixelated'}}>
+        <line x1="2" y1="14" x2="14" y2="2" stroke="#C0C0C0" strokeWidth="2"/><polygon points="14,2 10,2 14,6" fill="#C0C0C0"/><polygon points="2,14 6,14 2,10" fill="#8B4513"/>
+      </svg>
+    )},
+    potion: { bg: 'linear-gradient(135deg, #DC143C 0%, #8a0a2a 100%)', icon: (
+      <svg width={size*0.45} height={size*0.45} viewBox="0 0 16 16" style={{imageRendering:'pixelated'}}>
+        <rect x="6" y="2" width="4" height="3" fill="#8E44AD"/><rect x="4" y="5" width="8" height="9" fill="#DC143C" rx="1"/><rect x="5" y="8" width="3" height="2" fill="#FF6B6B"/>
+      </svg>
+    )},
   };
   const config = configs[type];
 

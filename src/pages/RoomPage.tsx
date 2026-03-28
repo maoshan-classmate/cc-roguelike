@@ -88,7 +88,7 @@ function PlayerSlot({
           justifyContent: 'center',
           opacity: 0.4,
         }}>
-          <span style={{ fontSize: 24, color: 'var(--pixel-brown)' }}>?</span>
+          <span style={{ fontSize: 24, color: 'var(--pixel-brown)', fontWeight: 'bold' }}>?</span>
         </div>
       )}
 
@@ -180,7 +180,7 @@ function PlayerSlot({
           color: 'var(--pixel-brown)',
           opacity: 0.3,
         }}>
-          ◆
+          <PixelStar size={16} color="var(--pixel-brown)" />
         </div>
       )}
     </div>
@@ -227,7 +227,7 @@ export default function RoomPage() {
     }
 
     const handleError = (data: any) => {
-      alert(data.message)
+      // 直接跳转回大厅，错误信息显示在大厅页面
       navigate('/lobby')
     }
 
@@ -317,7 +317,7 @@ export default function RoomPage() {
             textShadow: '4px 4px 0 rgba(0,0,0,0.8)',
             letterSpacing: 2,
           }}>
-            [ ◆ {roomName || '房间'} ◆ ]
+            {roomName || '房间'}
           </h1>
           <button
             onClick={handleLeave}
@@ -402,7 +402,7 @@ export default function RoomPage() {
                 background: isReady ? 'var(--pixel-green)' : 'var(--pixel-brown)',
               }}
             >
-              {isReady ? '[ ✓ 取消准备 ]' : '[ ○ 点击准备 ]'}
+              {isReady ? '[ 取消准备 ]' : '[ 点击准备 ]'}
             </button>
 
             {isHost && (
@@ -418,7 +418,7 @@ export default function RoomPage() {
                   cursor: allReady ? 'pointer' : 'not-allowed',
                 }}
               >
-                [ ◆ 开始冒险 ]
+                [ 开始冒险 ]
               </button>
             )}
           </div>
@@ -434,7 +434,7 @@ export default function RoomPage() {
               fontFamily: 'Courier New, monospace',
               textAlign: 'center',
             }}>
-              ⏳ 等待房主开始游戏...
+              等待房主开始游戏...
             </div>
           )}
 
@@ -448,7 +448,7 @@ export default function RoomPage() {
               fontFamily: 'Courier New, monospace',
               animation: 'pixel-flash 1s ease-in-out infinite',
             }}>
-              ✓ 所有玩家已准备！等待开始...
+              所有玩家已准备！等待开始...
             </div>
           )}
 

@@ -9,8 +9,7 @@ import { PixelCastle, PixelDragon, PixelCrown, PixelGem, PixelKey, PixelSword, P
 function PlayerSlot({ index, username }: { index: number; username?: string }) {
   const colors = ['var(--player-1)', 'var(--player-2)', 'var(--player-3)', 'var(--player-4)']
   const color = colors[index] || colors[0]
-  const playerIcons = [<PixelSword key="s" size={28} />, <PixelShield key="s" size={28} />, <PixelGem key="g" size={28} />, <PixelCrown key="c" size={28} />]
-  const playerIconsEmpty = [<span key="?" style={{ opacity: 0.3 }}>?</span>]
+  const playerIcons = [<PixelSword key="s" size={28} />, <PixelShield key="d" size={28} />, <PixelGem key="g" size={28} />, <PixelCrown key="c" size={28} />]
 
   return (
     <div style={{
@@ -31,12 +30,11 @@ function PlayerSlot({ index, username }: { index: number; username?: string }) {
         boxShadow: username ? `0 0 15px ${color}40, inset 0 0 10px ${color}20` : 'none',
         transition: 'all 0.2s',
       }}>
-        {username ? playerIcons[index] : playerIconsEmpty}
+        {username ? playerIcons[index] : <div className="player-slot-empty" style={{ width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center' }} />}
       </div>
       <span style={{
         fontSize: 10,
         color: username ? color : 'var(--pixel-brown)',
-        fontFamily: 'Courier New, monospace',
         opacity: username ? 1 : 0.5,
       }}>
         {username || `玩家 ${index + 1}`}
@@ -66,7 +64,6 @@ function RoomCard({
           fontWeight: 'bold',
           marginBottom: 6,
           color: 'var(--pixel-gold)',
-          fontFamily: 'Courier New, monospace',
           fontSize: 15,
           display: 'flex',
           alignItems: 'center',
@@ -77,7 +74,6 @@ function RoomCard({
         <div style={{
           fontSize: 12,
           color: 'var(--pixel-brown)',
-          fontFamily: 'Courier New, monospace',
           display: 'flex',
           alignItems: 'center',
           gap: 6,
@@ -101,7 +97,7 @@ function RoomCard({
               borderRadius: 2,
               background: i < room.players.length
                 ? (['var(--player-1)', 'var(--player-2)', 'var(--player-3)', 'var(--player-4)'][i])
-                : 'var(--pixel-bg-dark)',
+                : 'var(--pixel-bg-dark, #1a0f1e)',
               border: '1px solid var(--pixel-brown)',
             }}
           />
@@ -118,18 +114,19 @@ function RoomCard({
           padding: '4px 10px',
           fontSize: 11,
           fontWeight: 'bold',
-          fontFamily: 'Courier New, monospace',
           background: isWaiting ? 'var(--pixel-green)' : 'var(--pixel-red)',
           color: isWaiting ? 'var(--pixel-bg)' : 'white',
         }}>
-          {isWaiting ? '[ 等待中 ]' : '[ 游戏中 ]'}
+          {isWaiting ? '等待中' : '游戏中'}
         </div>
         <div style={{
           fontSize: 11,
           color: 'var(--pixel-brown)',
-          fontFamily: 'Courier New, monospace',
+          display: 'flex',
+          alignItems: 'center',
+          gap: 4,
         }}>
-          ⚔ {room.players.length}/{room.maxPlayers}
+          <PixelSword size={10} color="#C0C0C0" /> {room.players.length}/{room.maxPlayers}
         </div>
       </div>
     </div>
@@ -141,6 +138,7 @@ export default function LobbyPage() {
   const { rooms, setRooms, addRoom, updateRoom, removeRoom } = useLobbyStore()
   const [showCreate, setShowCreate] = useState(false)
   const [roomName, setRoomName] = useState('')
+  const [errorMsg, setErrorMsg] = useState('')
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -169,9 +167,10 @@ export default function LobbyPage() {
       networkClient.getSocket()?.once('connect', setup)
     }
 
-    // Listen for errors
     networkClient.on('room:error', (data: any) => {
       console.log('[DEBUG] room:error received:', data)
+      setErrorMsg(data.message || '操作失败')
+      setTimeout(() => setErrorMsg(''), 3000)
     })
 
     return () => {
@@ -180,10 +179,15 @@ export default function LobbyPage() {
     }
   }, [])
 
+  const showError = (msg: string) => {
+    setErrorMsg(msg)
+    setTimeout(() => setErrorMsg(''), 3000)
+  }
+
   const handleCreateRoom = () => {
     if (!roomName.trim()) return
     if (!networkClient.isConnected()) {
-      alert('正在连接服务器，请稍后...')
+      showError('正在连接服务器，请稍后...')
       return
     }
     console.log('[DEBUG] Emitting room:create with name:', roomName)
@@ -229,6 +233,30 @@ export default function LobbyPage() {
         pointerEvents: 'none',
       }} />
 
+      {/* 内联错误提示 */}
+      {errorMsg && (
+        <div style={{
+          position: 'fixed',
+          top: 20,
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 200,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          padding: '10px 20px',
+          background: 'rgba(220, 20, 60, 0.15)',
+          border: '2px solid var(--pixel-red)',
+          color: 'var(--pixel-red)',
+          fontWeight: 'bold',
+          fontSize: 12,
+          animation: 'pixel-fade-in 0.2s ease-out',
+        }}>
+          <PixelSkull size={14} color="#DC143C" />
+          {errorMsg}
+        </div>
+      )}
+
       {/* Header */}
       <header style={{
         display: 'flex',
@@ -251,11 +279,10 @@ export default function LobbyPage() {
             <h1 style={{
               fontSize: 24,
               color: 'var(--pixel-gold)',
-              fontFamily: 'Courier New, monospace',
               textShadow: '3px 3px 0 rgba(0,0,0,0.8)',
               letterSpacing: 2,
             }}>
-              [ ◆ 大厅 ◆ ]
+              大厅
             </h1>
             <div style={{
               display: 'flex',
@@ -266,7 +293,6 @@ export default function LobbyPage() {
               <span style={{
                 color: 'var(--pixel-brown)',
                 fontSize: 12,
-                fontFamily: 'Courier New, monospace',
               }}>
                 欢迎, {user?.username}
               </span>
@@ -274,7 +300,6 @@ export default function LobbyPage() {
               <span style={{
                 color: 'var(--player-1)',
                 fontSize: 12,
-                fontFamily: 'Courier New, monospace',
               }}>
                 {user?.character?.name || '无角色'}
               </span>
@@ -307,11 +332,7 @@ export default function LobbyPage() {
       </header>
 
       {/* 装饰线 */}
-      <div style={{
-        height: 4,
-        background: 'linear-gradient(90deg, transparent, var(--pixel-brown), var(--pixel-gold), var(--pixel-brown), transparent)',
-        marginBottom: 24,
-      }} />
+      <div className="decorative-line" style={{ marginBottom: 24 }} />
 
       {/* 房间列表 */}
       <div style={{
@@ -323,7 +344,6 @@ export default function LobbyPage() {
         <h2 style={{
           marginBottom: 20,
           color: 'var(--pixel-gold)',
-          fontFamily: 'Courier New, monospace',
           fontSize: 18,
           display: 'flex',
           alignItems: 'center',
@@ -344,7 +364,6 @@ export default function LobbyPage() {
             textAlign: 'center',
             padding: 60,
             color: 'var(--pixel-brown)',
-            fontFamily: 'Courier New, monospace',
           }}>
             <div style={{ marginBottom: 16, opacity: 0.5, display: 'flex', justifyContent: 'center' }}>
               <PixelCastle size={64} color="#8B4513" />
@@ -403,11 +422,10 @@ export default function LobbyPage() {
             <h3 style={{
               marginBottom: 20,
               color: 'var(--pixel-gold)',
-              fontFamily: 'Courier New, monospace',
               fontSize: 18,
               textAlign: 'center',
             }}>
-              [ ◆ 创建房间 ◆ ]
+              创建房间
             </h3>
 
             <div style={{ marginBottom: 16 }}>
@@ -416,7 +434,6 @@ export default function LobbyPage() {
                 marginBottom: 8,
                 color: 'var(--pixel-brown)',
                 fontSize: 12,
-                fontFamily: 'Courier New, monospace',
                 textTransform: 'uppercase',
               }}>
                 房间名称

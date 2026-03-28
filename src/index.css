@@ -1,3 +1,19 @@
+@import "tailwindcss";
+
+@theme {
+  --color-pixel-bg: #2D1B2E;
+  --color-pixel-brown: #8B4513;
+  --color-pixel-gold: #FFD700;
+  --color-pixel-red: #DC143C;
+  --color-pixel-green: #32CD32;
+  --color-pixel-dark: #1a0f1e;
+  --color-pixel-white: #EEEEEE;
+  --color-player-1: #4A9EFF;
+  --color-player-2: #51CF66;
+  --color-player-3: #FFA500;
+  --color-player-4: #9B59B6;
+}
+
 :root {
   /* 现有变量保持不变 */
   --primary: #4a9eff;
@@ -17,10 +33,12 @@
 
   /* 像素调色板 */
   --pixel-bg: #2D1B2E;        /* 深紫黑背景 */
+  --pixel-bg-dark: #1a0f1e;   /* 更深背景 */
   --pixel-brown: #8B4513;     /* 棕色石墙 */
   --pixel-gold: #FFD700;      /* 金色宝藏 */
   --pixel-red: #DC143C;       /* 深红敌人 */
   --pixel-green: #32CD32;     /* 草绿生命 */
+  --pixel-white: #EEEEEE;     /* 像素白 */
 
   /* 玩家标识色 */
   --player-1: #4A9EFF;
@@ -36,7 +54,7 @@
 }
 
 body {
-  font-family: 'Courier New', monospace;
+  font-family: 'Kenney Pixel', sans-serif;
   background: var(--bg-dark);
   color: var(--text);
 }
@@ -111,7 +129,7 @@ input:focus {
   color: white;
   border: none;
   padding: 12px 24px;
-  font-family: 'Courier New', monospace;
+  font-family: 'Kenney Mini Square Mono', monospace;
   font-weight: bold;
   text-transform: uppercase;
   cursor: pointer;
@@ -167,7 +185,7 @@ input:focus {
   border: none;
   color: var(--text);
   padding: 12px 16px;
-  font-family: 'Courier New', monospace;
+  font-family: 'Kenney Mini Square Mono', monospace;
   font-size: 14px;
   width: 100%;
   box-shadow: inset 2px 2px 0 rgba(0,0,0,0.3);
@@ -319,7 +337,7 @@ input:focus {
   gap: 6px;
   padding: 4px 12px;
   border: 2px solid;
-  font-family: 'Courier New', monospace;
+  font-family: 'Kenney Mini Square Mono', monospace;
   font-size: 11px;
   font-weight: bold;
   text-transform: uppercase;
@@ -385,7 +403,7 @@ input:focus {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-family: 'Courier New', monospace;
+  font-family: 'Kenney Mini Square Mono', monospace;
   font-size: 11px;
   font-weight: bold;
   color: white;
@@ -477,7 +495,7 @@ input:focus {
 }
 
 .room-card-title {
-  font-family: 'Courier New', monospace;
+  font-family: 'Kenney Mini Square Mono', monospace;
   font-size: 16px;
   font-weight: bold;
   color: var(--pixel-gold);
@@ -494,7 +512,7 @@ input:focus {
   padding: 4px 10px;
   font-size: 11px;
   font-weight: bold;
-  font-family: 'Courier New', monospace;
+  font-family: 'Kenney Mini Square Mono', monospace;
 }
 
 .room-card-status-waiting {
@@ -515,7 +533,7 @@ input:focus {
 }
 
 .page-header-title {
-  font-family: 'Courier New', monospace;
+  font-family: 'Kenney Mini Square Mono', monospace;
   font-size: 32px;
   font-weight: bold;
   color: var(--pixel-gold);
@@ -550,7 +568,7 @@ input:focus {
   color: var(--pixel-brown);
   font-size: 14px;
   margin-top: 8px;
-  font-family: 'Courier New', monospace;
+  font-family: 'Kenney Mini Square Mono', monospace;
 }
 
 /* 底部装饰线 */
