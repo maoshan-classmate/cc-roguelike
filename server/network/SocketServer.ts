@@ -284,10 +284,12 @@ export class SocketServer {
   }
 
   private handleGameInput(socket: Socket, data: any): void {
+    console.log('[DEBUG] handleGameInput:', data)
     this.requireAuth(socket, (session) => {
       if (!session.currentRoom) return;
 
       const gameRoom = this.gameManager.getRoom(session.currentRoom);
+      console.log('[DEBUG] gameRoom:', gameRoom?.isRunning(), 'room:', session.currentRoom)
       if (!gameRoom || !gameRoom.isRunning()) return;
 
       gameRoom.handlePlayerInput(session.accountId, data);

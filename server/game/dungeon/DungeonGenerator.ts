@@ -38,7 +38,7 @@ interface BSPNode {
 }
 
 export class DungeonGenerator {
-  private random: () => number;
+  private random!: () => number;
 
   generate(floor: number, seed: number): DungeonData {
     this.random = MathUtils.seededRandom(seed);

@@ -148,6 +148,7 @@ export default function LobbyPage() {
       })
 
       networkClient.on('room:create:result', (data: any) => {
+        console.log('[DEBUG] room:create:result received:', data)
         if (data.success) {
           navigate(`/room/${data.room.id}`)
         }
@@ -159,6 +160,11 @@ export default function LobbyPage() {
     } else {
       networkClient.getSocket()?.once('connect', setup)
     }
+
+    // Listen for errors
+    networkClient.on('room:error', (data: any) => {
+      console.log('[DEBUG] room:error received:', data)
+    })
 
     return () => {
       networkClient.off('lobby:list:result')
@@ -172,6 +178,7 @@ export default function LobbyPage() {
       alert('正在连接服务器，请稍后...')
       return
     }
+    console.log('[DEBUG] Emitting room:create with name:', roomName)
     networkClient.emit('room:create', { name: roomName })
     setShowCreate(false)
     setRoomName('')

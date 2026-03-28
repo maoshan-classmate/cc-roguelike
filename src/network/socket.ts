@@ -1,13 +1,23 @@
 import { io, Socket } from 'socket.io-client'
+import { useAuthStore } from '../store/useAuthStore'
 
 class NetworkClient {
   private socket: Socket | null = null
 
   connect() {
+    const token = useAuthStore.getState().token
+
+    // If already connected but no token, reconnect with token
+    if (this.socket?.connected && !token) {
+      this.socket.disconnect()
+      this.socket = null
+    }
+
     if (this.socket?.connected) return
 
     // Connect directly to backend server on port 3001
     this.socket = io('http://localhost:3001', {
+      auth: { token },
       transports: ['websocket', 'polling']
     })
 
