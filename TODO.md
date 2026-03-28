@@ -20,11 +20,30 @@
 - [x] 客户端渲染地牢墙壁和地板瓦片
 - [x] 渲染出口楼梯
 
+### 全面 UI 优化 ✅ 已完成 (2026-03-28)
+- [x] 引入 Tailwind CSS v4 (PostCSS 方式 `@tailwindcss/postcss`)
+- [x] 配置像素主题色和 Tailwind `@theme` 变量
+- [x] 加载 Kenney 像素字体 (Pixel/High/Mini/Mini Square Mono) @font-face
+- [x] Canvas 血条 drawHPBar → 像素立体风格 (高光/阴影/分段)
+- [x] Canvas 皇冠 drawBossCrown → fillRect 像素块皇冠 + 三色宝石
+- [x] Canvas 箭头 drawDirectionArrow → fillRect 像素块箭头 + 阴影
+- [x] Canvas 名称 drawNameTag → 暗色背景面板 + Kenney 字体
+- [x] 登录页：消除 `━━━` `◆` `⚠` `>>> <<<` 装饰，改用 SVG 图标和 CSS 类
+- [x] 大厅页：消除 `⚔` emoji，替换 `alert()` 为内联错误通知 (3s 自动消失)
+- [x] 房间页：消除 `✓` `○` `◆` `⏳` Unicode 字符
+- [x] PixelSprites：消除 `🛡️⚔️🔮✨` emoji 头像，改用内联 SVG
+- [x] PixelSprites：消除 `⚔️🛡️🏹🧪` emoji 技能图标，改用 SVG
+- [x] GameAssets：消除 `♥` `◆` `★` Unicode，改用 SVG 图标
+- [x] 全局字体 Courier New → Kenney Mini Square Mono
+- [x] 补全 CSS 变量 `--pixel-bg-dark: #1a0f1e`, `--pixel-white: #EEEEEE`
+- [x] Playwright 逐页验证（登录/大厅/房间/游戏页）
+
 ### 待优化
 - [ ] 优化技能栏图标
 - [ ] 添加角色职业选择界面
 - [ ] 添加地牢楼层切换动画
 - [ ] 完善地牢生成算法使房间布局更合理
+- [ ] 利用 roguelikeSheet_transparent.png 第三张精灵图增加更多精灵种类
 
 ## 当前 BUG
 
@@ -103,3 +122,5 @@
 - [x] 弹幕系统
 - [x] GameRoom.update() 游戏循环修复
 - [x] UI 图标全面替换为像素 SVG
+- [x] 全面 UI 优化：Tailwind CSS + 像素字体 + 消除所有 emoji/Unicode
+- [x] Canvas 像素艺术风格血条/皇冠/箭头/名称标签
