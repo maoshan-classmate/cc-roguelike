@@ -27,17 +27,28 @@
 
 ## Bug 模式警告
 
-### 1. getState() 返回副本
+### 1. 地牢生成尺寸单位
+- `ROOM_MIN_SIZE` / `ROOM_MAX_SIZE` 单位是**像素**，不是 tile（32px=1 tile，所以最小96px=3 tiles）
+- BSP 最小叶子尺寸必须 >= ROOM_MIN_SIZE + padding，否则生成的房间为 0px
+- 走廊是 1px 宽的线段，碰撞网格必须加 `corridorPadding`（至少1 tile）才能让 48px 精灵通过
+- 出生/出口点必须强制清除周围 3x3 tile 区域，不能假设 BSP 房间一定覆盖
+
+### 2. 精灵尺寸规范（800x600 Canvas）
+- 玩家：48px，敌人 basic=48/fast=44/tank=56/boss=64
+- 道具：28px，子弹：16px
+- HP条/名称标签偏移量随精灵 size 调整：玩家 HP 条 y = size/2 + 偏移，名称 y = size/2 + 更大偏移
+
+### 3. getState() 返回副本
 - `GameRoom.getState()` 返回的是内部状态的**副本**
 - 修改副本（如 `splice`、`push`）不会影响实际数据
 - 修复：在 GameRoom 中添加专用方法（如 `removeBullet()`）直接修改 Map
 
-### 2. 服务端/客户端类型必须匹配
+### 4. 服务端/客户端类型必须匹配
 - FLOOR_CONFIG.enemyTypes 用 `'slime'/'bat'`，但 ENEMIES 用 `'basic'/'fast'`
 - DungeonGenerator 生成 `'health_pack'`，但 ITEMS 配置是 `'health'`
 - 修复：确保服务端 constants.ts 和客户端 config 文件使用相同的 ID
 
-### 3. Switch case 用 skill.type 的陷阱
+### 5. Switch case 用 skill.type 的陷阱
 - `shield` 和 `speed_boost` 的 type 都是 `'active'`
 - 用 `skill.type` 做 switch case 会导致多个 skill 走到同一个分支
 - 修复：用 `skillId` 替代 `skill.type` 做 switch 匹配
