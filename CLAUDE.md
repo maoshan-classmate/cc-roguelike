@@ -55,3 +55,27 @@ server/
 - 前端：React 18 + TypeScript + Canvas + Zustand + Socket.io-client + Vite
 - 后端：Node.js + Express + Socket.io + MySQL (mysql2)
 - 端口：前端 3000，后端 3001
+
+## UI 设计规范
+
+### 像素复古风格颜色
+- 背景：`#2D1B2E` (深紫黑)
+- 墙壁：`#8B4513` (棕色)
+- 金色：`#FFD700` (强调色)
+- 敌人红：`#DC143C`
+- 生命绿：`#32CD32`
+- 玩家色：玩家1 `#4A9EFF`、玩家2 `#51CF66`、玩家3 `#FFA500`、玩家4 `#9B59B6`
+
+### SVG 资源
+- 放置在 `src/assets/images/` 目录
+- 使用 ES6 import：`import x from './x.svg'`（不要用 require）
+- 资源组件：`src/components/GameAssets.tsx`、`src/components/PixelSprites.tsx`
+
+### Penpot MCP
+- `export_shape` 工具可能有 http error，可使用 `generateMarkup` 生成 SVG 代码代替
+- 创建图片资源后用 `generateMarkup` 提取坐标和颜色信息，在代码中重建 SVG
+
+## Git 经验
+
+- 遇到 "diverged branch" 冲突时：先 `git stash`，再 `git pull --rebase`，最后 `git stash pop`
+- 推送前先解决本地冲突再 push
