@@ -15,8 +15,8 @@ export const GAME_CONFIG = {
   FLOOR_COUNT: 5,
   DUNGEON_WIDTH: 800,
   DUNGEON_HEIGHT: 600,
-  ROOM_MIN_SIZE: 6,
-  ROOM_MAX_SIZE: 12,
+  ROOM_MIN_SIZE: 96,    // 最小房间尺寸(像素) = 3 tiles
+  ROOM_MAX_SIZE: 280,   // 最大房间尺寸(像素) = ~9 tiles
 
   // 玩家属性
   PLAYER_BASE: {
@@ -25,7 +25,7 @@ export const GAME_CONFIG = {
     armor: 0,
     moveSpeed: 200,
     pickupRange: 50,
-    radius: 16
+    radius: 20
   },
 
   // 战斗

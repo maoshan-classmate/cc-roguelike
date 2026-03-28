@@ -48,8 +48,8 @@ export class DungeonGenerator {
     const height = GAME_CONFIG.DUNGEON_HEIGHT;
     const roomCount = 6 + floor * 2;
 
-    // Generate BSP tree
-    const root = this.splitBSP(0, 0, width, height, 4);
+    // Generate BSP tree (depth 3 = up to 8 rooms, realistically 5-7)
+    const root = this.splitBSP(0, 0, width, height, 3);
 
     // Generate rooms from BSP
     const rooms = this.generateRooms(root, roomCount);
@@ -57,8 +57,9 @@ export class DungeonGenerator {
     // Connect rooms with corridors
     const corridors = this.connectRooms(rooms);
 
-    // Place spawn and exit
-    const spawnPoint = { x: rooms[0].x + rooms[0].width / 2, y: rooms[0].y + rooms[0].height / 2 };
+    // Place spawn and exit (validate they're in walkable tiles)
+    const spawnRoom = rooms[0];
+    const spawnPoint = { x: spawnRoom.x + spawnRoom.width / 2, y: spawnRoom.y + spawnRoom.height / 2 };
     const exitRoom = rooms[rooms.length - 1];
     const exitPoint = { x: exitRoom.x + exitRoom.width / 2, y: exitRoom.y + exitRoom.height / 2 };
 
@@ -78,6 +79,35 @@ export class DungeonGenerator {
     // Spawn items
     const items = this.spawnItems(rooms);
 
+    const collisionGrid = this.generateCollisionGrid(rooms, corridors, width, height);
+
+    // Validate spawn and exit points are walkable, force-clear if needed
+    const tileSize = 32;
+    const cols = Math.ceil(width / tileSize);
+    const rows = Math.ceil(height / tileSize);
+
+    // Ensure spawn area (3x3 tiles) is walkable
+    const spawnCol = Math.floor(spawnPoint.x / tileSize);
+    const spawnRow = Math.floor(spawnPoint.y / tileSize);
+    for (let r = spawnRow - 1; r <= spawnRow + 1; r++) {
+      for (let c = spawnCol - 1; c <= spawnCol + 1; c++) {
+        if (r >= 0 && r < rows && c >= 0 && c < cols) {
+          collisionGrid[r][c] = true;
+        }
+      }
+    }
+
+    // Ensure exit area is walkable
+    const exitCol = Math.floor(exitPoint.x / tileSize);
+    const exitRow = Math.floor(exitPoint.y / tileSize);
+    for (let r = exitRow - 1; r <= exitRow + 1; r++) {
+      for (let c = exitCol - 1; c <= exitCol + 1; c++) {
+        if (r >= 0 && r < rows && c >= 0 && c < cols) {
+          collisionGrid[r][c] = true;
+        }
+      }
+    }
+
     return {
       rooms,
       corridors,
@@ -85,21 +115,22 @@ export class DungeonGenerator {
       exitPoint,
       enemies,
       items,
-      collisionGrid: this.generateCollisionGrid(rooms, corridors, width, height)
+      collisionGrid
     };
   }
 
   private splitBSP(x: number, y: number, w: number, h: number, depth: number): BSPNode {
     const node: BSPNode = { x, y, width: w, height: h };
+    const minLeafSize = 140; // ensure leaf nodes large enough for rooms
 
-    if (depth > 0 && w > 80 && h > 80) {
+    if (depth > 0 && w > minLeafSize && h > minLeafSize) {
       const splitHorizontally = this.random() > 0.5;
 
-      if (splitHorizontally && h > 60) {
+      if (splitHorizontally && h > minLeafSize) {
         const splitY = y + h * (0.3 + this.random() * 0.4);
         node.left = this.splitBSP(x, y, w, splitY - y, depth - 1);
         node.right = this.splitBSP(x, splitY, w, h - (splitY - y), depth - 1);
-      } else if (w > 60) {
+      } else if (w > minLeafSize) {
         const splitX = x + w * (0.3 + this.random() * 0.4);
         node.left = this.splitBSP(x, y, splitX - x, h, depth - 1);
         node.right = this.splitBSP(splitX, y, w - (splitX - x), h, depth - 1);
@@ -114,11 +145,21 @@ export class DungeonGenerator {
 
     if (!node.left && !node.right) {
       // Leaf node - create room
-      const padding = 2;
-      const roomW = Math.floor(this.random() * (node.width - GAME_CONFIG.ROOM_MIN_SIZE - padding * 2)) + GAME_CONFIG.ROOM_MIN_SIZE;
-      const roomH = Math.floor(this.random() * (node.height - GAME_CONFIG.ROOM_MIN_SIZE - padding * 2)) + GAME_CONFIG.ROOM_MIN_SIZE;
-      const roomX = node.x + padding + Math.floor(this.random() * (node.width - roomW - padding * 2));
-      const roomY = node.y + padding + Math.floor(this.random() * (node.height - roomH - padding * 2));
+      const padding = 8;
+      const maxSize = GAME_CONFIG.ROOM_MAX_SIZE || 280;
+      const minSize = GAME_CONFIG.ROOM_MIN_SIZE || 96;
+
+      // Calculate room size: between minSize and min(nodeSize - padding, maxSize)
+      const maxW = Math.min(node.width - padding * 2, maxSize);
+      const maxH = Math.min(node.height - padding * 2, maxSize);
+      const roomW = Math.floor(this.random() * (maxW - minSize)) + minSize;
+      const roomH = Math.floor(this.random() * (maxH - minSize)) + minSize;
+
+      // Position room within node with some randomness
+      const maxOffsetX = Math.max(0, node.width - roomW - padding * 2);
+      const maxOffsetY = Math.max(0, node.height - roomH - padding * 2);
+      const roomX = node.x + padding + Math.floor(this.random() * maxOffsetX);
+      const roomY = node.y + padding + Math.floor(this.random() * maxOffsetY);
 
       rooms.push({
         id: `room_${rooms.length}`,
@@ -231,12 +272,13 @@ export class DungeonGenerator {
       }
     }
 
-    // 标记走廊区域为可行走（走廊宽度 = 1 tile = 32px）
+    // 标记走廊区域为可行走（走廊宽度 = 2 tiles = 64px, 方便48px玩家通过）
+    const corridorPadding = 1; // 额外加1 tile宽度
     for (const corridor of corridors) {
-      const minC = Math.floor(Math.min(corridor.x1, corridor.x2) / tileSize);
-      const maxC = Math.floor(Math.max(corridor.x1, corridor.x2) / tileSize);
-      const minR = Math.floor(Math.min(corridor.y1, corridor.y2) / tileSize);
-      const maxR = Math.floor(Math.max(corridor.y1, corridor.y2) / tileSize);
+      const minC = Math.floor(Math.min(corridor.x1, corridor.x2) / tileSize) - corridorPadding;
+      const maxC = Math.floor(Math.max(corridor.x1, corridor.x2) / tileSize) + corridorPadding;
+      const minR = Math.floor(Math.min(corridor.y1, corridor.y2) / tileSize) - corridorPadding;
+      const maxR = Math.floor(Math.max(corridor.y1, corridor.y2) / tileSize) + corridorPadding;
 
       for (let r = minR; r <= maxR && r < rows; r++) {
         for (let c = minC; c <= maxC && c < cols; c++) {

@@ -284,14 +284,14 @@ export default function GamePage() {
     for (const item of items) {
       const itemConfig = ITEMS[item.type] || ITEMS.health
       if (spritesLoaded && dungeonSpriteSheet.complete) {
-        drawDungeonSprite(ctx, dungeonSpriteSheet, itemConfig.spriteIndex, item.x, item.y, 24)
+        drawDungeonSprite(ctx, dungeonSpriteSheet, itemConfig.spriteIndex, item.x, item.y, 28)
       } else {
         // 备用：纯色
         ctx.fillStyle = itemConfig.color
-        ctx.fillRect(item.x - 12, item.y - 12, 24, 24)
+        ctx.fillRect(item.x - 14, item.y - 14, 28, 28)
         ctx.strokeStyle = '#fff'
         ctx.lineWidth = 1
-        ctx.strokeRect(item.x - 12, item.y - 12, 24, 24)
+        ctx.strokeRect(item.x - 14, item.y - 14, 28, 28)
       }
     }
 
@@ -314,16 +314,16 @@ export default function GamePage() {
 
       // BOSS皇冠
       if (enemyConfig.isBoss) {
-        drawBossCrown(ctx, enemy.x, enemy.y - size/2 - 8, 12)
+        drawBossCrown(ctx, enemy.x, enemy.y - size/2 - 10, 16)
       }
 
       // HP条
-      const hpBarWidth = enemyConfig.isBoss ? 48 : size * 2
+      const hpBarWidth = enemyConfig.isBoss ? 64 : size * 1.5
       const hpBarHeight = enemyConfig.isBoss ? 8 : 6
       drawHPBar(
         ctx,
         enemy.x - hpBarWidth/2,
-        enemy.y - size/2 - (enemyConfig.isBoss ? 16 : 12),
+        enemy.y - size/2 - (enemyConfig.isBoss ? 20 : 14),
         hpBarWidth,
         hpBarHeight,
         enemy.hp,
@@ -336,7 +336,7 @@ export default function GamePage() {
     for (const bullet of bullets) {
       const spriteIndex = 35 // bullet sprite
       if (spritesLoaded && dungeonSpriteSheet.complete) {
-        drawDungeonSprite(ctx, dungeonSpriteSheet, spriteIndex, bullet.x, bullet.y, 12)
+        drawDungeonSprite(ctx, dungeonSpriteSheet, spriteIndex, bullet.x, bullet.y, 16)
       } else {
         ctx.fillStyle = bullet.friendly ? '#4A9EFF' : '#FF6B6B'
         ctx.beginPath()
@@ -351,7 +351,7 @@ export default function GamePage() {
 
       const isLocal = player.id === user?.id
       const charConfig = CHARACTERS[player.characterType] || CHARACTERS.warrior
-      const size = 32
+      const size = 48
 
       // 根据朝向选择精灵
       let spriteIndex = charConfig.spriteIndex.front
@@ -380,14 +380,14 @@ export default function GamePage() {
 
       // 本地玩家方向指示器
       if (isLocal && player.angle !== undefined) {
-        drawDirectionArrow(ctx, player.x, player.y, player.angle, 8)
+        drawDirectionArrow(ctx, player.x, player.y, player.angle, 12)
       }
 
       // HP条
-      drawHPBar(ctx, player.x - 20, player.y - 26, 40, 6, player.hp, player.hpMax, charConfig.color)
+      drawHPBar(ctx, player.x - 24, player.y - 34, 48, 6, player.hp, player.hpMax, charConfig.color)
 
       // 名称
-      drawNameTag(ctx, player.x, player.y - 32, player.name, charConfig.color)
+      drawNameTag(ctx, player.x, player.y - 40, player.name, charConfig.color)
     }
   }, [user, spritesLoaded])
 
