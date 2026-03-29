@@ -4,6 +4,7 @@
 
 ## 索引
 
+- **[架构问题（最高优先级）](docs/todo/architecture.md)**
 - [UI 优化](docs/todo/ui-optimization.md)
 - [游戏逻辑](docs/todo/game-logic.md)
 - [功能待办](docs/todo/features.md)
