@@ -162,10 +162,9 @@ y = row * (tileSize + margin)
 
 | 文件 | 尺寸 | 用途 |
 |------|------|------|
-| `pumpkin_dude.png` | 128×32，4帧×32px | Jack-o'-lantern 风格怪物（MONSTER），CC0 |
+| `pumpkin_dude.png` | 128×32，4帧×32px | Jack-o'-lantern 风格怪物（休眠资源，未在游戏中使用） |
 
-**注册 key**：`pumpkin_dude_kenney`（MONSTER，4帧动画，32px）
-**绘制函数**：`drawPumpkinDudeSprite(ctx, img, frame, x, y, size)`
+> ⚠️ `pumpkin_dude_kenney` 已从 SPRITE_REGISTRY 移除（无敌人类型使用，`drawPumpkinDudeSprite` 为死代码）
 
 | 分类 | 精灵 key | 说明 |
 |------|---------|------|

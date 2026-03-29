@@ -548,7 +548,7 @@ export default function GamePage() {
       warrior: 'weapon_knight_sword',   // 骑士长剑
       ranger:  'weapon_bow',            // 弓（修正：不用arrow）
       mage:    'weapon_red_magic_staff', // 红色魔杖
-      cleric:  'weapon_knight_sword',  // 牧师用法杖（与战士同款，形状已区分）
+      cleric:  'weapon_red_magic_staff', // 牧师魔法杖
     }
 
     for (const bullet of bullets) {

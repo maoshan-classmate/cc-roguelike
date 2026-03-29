@@ -234,18 +234,14 @@ const SPRITES = [
   { n:'bat_kenney',   c:'MONSTER',idx:1665,w:16,h:16,sw:968,u:true,g:'蝙蝠 fast fallback',   s:'Kenney', ref:'src/config/enemies.ts:41' },
   { n:'boss_kenney',  c:'MONSTER',idx:1668,w:16,h:16,sw:968,u:true,g:'恶魔 boss fallback',   s:'Kenney', ref:'src/config/enemies.ts:72' },
 
-  // ── Kenney MONSTER (1) — pumpkin_dude.png, 48宽, perRow=1 ──
-  { n:'pumpkin_dude_kenney', c:'MONSTER',idx:0,w:32,h:32,sw:48,u:true,g:'南瓜怪 (4帧动画)', s:'Kenney', ref:'src/pages/GamePage.tsx:503' },
-
-  // ── Kenney ITEM (4+1) — roguelikeDungeon, 492宽, perRow=28 ──
+  // ── Kenney ITEM (3) — roguelikeDungeon, 492宽, perRow=28 ──
   // 注意：items.ts 中 health/energy/coin/key/potion/shield 优先使用 0x72（flask_big_red 等），
   //       0x72 加载失败时才 fallback 到这些 Kenney 精灵。chest 用 0x72 渲染（chest_full_open_anim_f0）。
-  //       bullet 只有 Kenney 版本（无 0x72 对应贴图）。
+  //       bullet 直接使用 drawDungeonSprite(idx=35) 渲染，无需注册。
   { n:'health_kenney', c:'ITEM',idx:29,w:16,h:16,sw:492,u:true, g:'医疗包 Kenney fallback(0x72优先)', s:'Kenney', ref:'src/config/items.ts:26' },
   { n:'energy_kenney', c:'ITEM',idx:30,w:16,h:16,sw:492,u:true, g:'能量包 Kenney fallback(0x72优先)', s:'Kenney', ref:'src/config/items.ts:89' },
   { n:'coin_kenney',   c:'ITEM',idx:31,w:16,h:16,sw:492,u:true, g:'金币 Kenney fallback(0x72优先)',   s:'Kenney', ref:'src/config/items.ts:37' },
-  { n:'bullet_kenney', c:'ITEM',idx:35,w:16,h:16,sw:492,u:true, g:'能量弹(无0x72对应)',             s:'Kenney', ref:'src/config/items.ts:80' },
-  // dungeon exit stairs — drawn via Kenney roguelikeDungeon index 23 (0x72 atlas 无此出口)
+  // dungeon exit stairs — drawn via Kenney roguelikeDungeon index 23
   { n:'floor_stairs',  c:'SCENE',idx:23,w:16,h:16,sw:492,u:true, g:'楼梯出口',                   s:'Kenney', ref:'src/pages/GamePage.tsx:420' },
 ];
 
@@ -256,7 +252,6 @@ const SHEETS = {
   kenney_char:    { el: new Image(), src: '../src/assets/kenney/Spritesheet/roguelikeChar_transparent.png' },
   kenney_dungeon: { el: new Image(), src: '../src/assets/kenney/Spritesheet/roguelikeDungeon_transparent.png' },
   kenney_sheet:   { el: new Image(), src: '../src/assets/kenney/Spritesheet/roguelikeSheet_transparent.png' },
-  kenney_pumpkin: { el: new Image(), src: '../src/assets/kenney/Spritesheet/pumpkin_dude.png' },
 };
 let sheetsReady = false;
 
@@ -351,8 +346,7 @@ function renderCard(sp) {
   if (sp.s === '0x72') {
     spriteHtml = `<img src="${BASE}/${sp.c}/${sp.n}.png" alt="${sp.n}" onerror="this.style.display='none';this.parentElement.style.background='#333'">`;
   } else {
-    const sheetKey = sp.n === 'pumpkin_dude_kenney' ? 'kenney_pumpkin'
-                  : sp.n === 'floor_stairs' ? 'kenney_dungeon'  // floor_stairs 来自 dungeon sheet
+    const sheetKey = sp.n === 'floor_stairs' ? 'kenney_dungeon'  // floor_stairs 来自 dungeon sheet
                   : sp.c === 'CHARACTER' ? 'kenney_char'
                   : sp.c === 'ITEM' ? 'kenney_dungeon'
                   : 'kenney_sheet';

@@ -4,7 +4,7 @@
 > 资产策略：优先使用 0x72 Dungeon Tileset II (PWYW商业可用)，Kenney CC0 作为 fallback
 > 生成时间：2026-03-29
 >
-> **交互预览（推荐）**：`sprite-viewer.html` — 109个精灵全部可视化，含 0x72 PNG 预览 + Kenney canvas 渲染
+> **交互预览（推荐）**：`sprite-viewer.html` — 107个精灵全部可视化，含 0x72 PNG 预览 + Kenney canvas 渲染
 > **静态文档**：`docs/sprite-inventory.md` — 本文档，快速检索用
 
 ---
@@ -83,7 +83,7 @@ src/assets/
 
 ---
 
-### 2.2 怪物 (MONSTER) — 22 0x72 + 4 Kenney
+### 2.2 怪物 (MONSTER) — 22 0x72 + 3 Kenney
 
 #### 0x72（22个）
 
@@ -112,14 +112,13 @@ src/assets/
 | `ogre_idle_anim_f0` | (16,380) | 32×36 | — | ❌ | |
 | `doc_idle_anim_f0` | (368,345) | 16×23 | — | ❌ | |
 
-#### Kenney CC0（4个）
+#### Kenney CC0（3个）
 
 | 贴图名称 | Atlas索引 | 尺寸 | spritesheet | 游戏用途 | 状态 | 代码引用 |
 |---------|----------|------|------------|---------|------|---------|
 | `slime_kenney` | idx=1671 | 16×16 | roguelikeSheet(968) | 史莱姆 fallback | ✅ | `enemies.ts:26` |
 | `bat_kenney` | idx=1665 | 16×16 | roguelikeSheet(968) | 蝙蝠 fallback | ✅ | `enemies.ts:41` |
 | `boss_kenney` | idx=1668 | 16×16 | roguelikeSheet(968) | 恶魔 fallback | ✅ | `enemies.ts:72` |
-| `pumpkin_dude_kenney` | idx=0 | 32×32 | pumpkin_dude(48) | 南瓜怪4帧动画 | ✅ | `GamePage.tsx:503` |
 
 #### 敌人→精灵映射
 
@@ -175,7 +174,7 @@ src/assets/
 
 ---
 
-### 2.4 道具 (ITEM) — 13 0x72 + 5 Kenney
+### 2.4 道具 (ITEM) — 13 0x72 + 4 Kenney
 
 #### 0x72（13个）预览路径：`frames/ITEM/*.png`
 
@@ -195,17 +194,16 @@ src/assets/
 | `chest_full_open_anim_f0` | (304,416) | 16×16 | 宝箱 chest | ✅ | `items.ts:101` |
 | `bomb_f0` | (288,320) | 16×16 | — | ❌ | |
 
-#### Kenney CC0（3+2个）— roguelikeDungeon, 宽492, perRow=28
+#### Kenney CC0（3+1个）— roguelikeDungeon, 宽492, perRow=28
 
-> ⚠️ 注意：health/energy/coin/key/potion/shield 优先使用上方 0x72 精灵（flask_big_red 等），Kenney 版本为 0x72 加载失败时的 fallback。chest 用 0x72 渲染。bullet 只有 Kenney 版本（无 0x72 对应贴图）。floor_stairs 无 0x72 版本，固定使用 Kenney index=23。
+> ⚠️ 注意：health/energy/coin/key/potion/shield 优先使用上方 0x72 精灵（flask_big_red 等），Kenney 版本为 0x72 加载失败时的 fallback。chest 用 0x72 渲染。bullet 直接使用 drawDungeonSprite(idx=35) 渲染，无需注册到 SPRITE_REGISTRY。floor_stairs 固定使用 Kenney index=23。
 
 | 贴图名称 | Atlas索引 | 尺寸 | 游戏用途 | 状态 | 代码引用 |
 |---------|----------|------|---------|------|---------|
 | `health_kenney` | idx=29, sheetW=492 | 16×16 | 医疗包 Kenney fallback(0x72优先) | ✅ | `items.ts:26` |
 | `energy_kenney` | idx=30, sheetW=492 | 16×16 | 能量包 Kenney fallback(0x72优先) | ✅ | `items.ts:89` |
 | `coin_kenney` | idx=31, sheetW=492 | 16×16 | 金币 Kenney fallback(0x72优先) | ✅ | `items.ts:37` |
-| `bullet_kenney` | idx=35, sheetW=492 | 16×16 | 能量弹(无0x72对应) | ✅ | `items.ts:80` |
-| `floor_stairs` | idx=23 → (414,0) | 16×16 | 楼梯出口(无0x72对应) | ✅ | `GamePage.tsx:420` |
+| `floor_stairs` | idx=23 → (414,0) | 16×16 | 楼梯出口(Kenney idx=23) | ✅ | `GamePage.tsx:420` |
 
 ---
 
@@ -259,7 +257,6 @@ src/assets/
 | `drawDungeonSprite()` | sprites.ts | 绘制Kenney地牢精灵 |
 | `drawWeaponSprite()` | sprites.ts | 绘制武器精灵（旋转朝鼠标） |
 | `drawBulletSprite()` | sprites.ts | 绘制子弹精灵 |
-| `drawPumpkinDudeSprite()` | sprites.ts | 绘制南瓜怪4帧动画 |
 | `drawHPBar()` | sprites.ts | 绘制像素血条 |
 | `drawBossCrown()` | sprites.ts | 绘制BOSS皇冠 |
 

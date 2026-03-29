@@ -63,9 +63,6 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
   bat_kenney:   { category: 'MONSTER', source: 'kenney', atlasKey: 1665, size: 16, animated: false, frameCount: 1 },
   boss_kenney:  { category: 'MONSTER', source: 'kenney', atlasKey: 1668, size: 16, animated: false, frameCount: 1 },
 
-  // Kenney pumpkin_dude — Jack-o'-lantern 风格怪物，4帧行走动画（CC0）
-  pumpkin_dude_kenney: { category: 'MONSTER', source: 'kenney', atlasKey: 0, size: 32, animated: true, frameCount: 4 },
-
   // ── WEAPON ────────────────────────────────────────────────────────────────
   weapon_knight_sword:    { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_knight_sword',   size: 32, animated: false, frameCount: 1 },
   weapon_arrow:          { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_arrow',          size: 32, animated: false, frameCount: 1 },
@@ -83,18 +80,17 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
   crate:               { category: 'ITEM', source: '0x72', atlasKey: 'crate',             size: 28, animated: false, frameCount: 1 },
   chest_full_open_anim_f0:{ category:'ITEM',source:'0x72',atlasKey:'chest_full_open_anim_f0', size: 28, animated: true, frameCount: 3 },
 
-  // Kenney fallback ITEM
+  // Kenney fallback ITEM（bullet 使用 drawDungeonSprite(idx=35) 直接渲染，无需注册）
   health_kenney: { category: 'ITEM', source: 'kenney', atlasKey: 29, size: 16, animated: false, frameCount: 1 },
   energy_kenney: { category: 'ITEM', source: 'kenney', atlasKey: 30, size: 16, animated: false, frameCount: 1 },
   coin_kenney:   { category: 'ITEM', source: 'kenney', atlasKey: 31, size: 16, animated: false, frameCount: 1 },
-  // bullet_kenney: 无 0x72 对应贴图，固定使用 Kenney roguelikeDungeon index=35
-  bullet_kenney:  { category: 'ITEM', source: 'kenney', atlasKey: 35, size: 16, animated: false, frameCount: 1 },
 
   // ── SCENE ────────────────────────────────────────────────────────────────
   wall_left:        { category: 'SCENE', source: '0x72', atlasKey: 'wall_left',        size: 32, animated: false, frameCount: 1 },
   wall_mid:         { category: 'SCENE', source: '0x72', atlasKey: 'wall_mid',         size: 32, animated: false, frameCount: 1 },
   wall_right:       { category: 'SCENE', source: '0x72', atlasKey: 'wall_right',       size: 32, animated: false, frameCount: 1 },
-  // floor_stairs: 来自 Kenney roguelikeDungeon index=23，非 0x72（atlas无此出口）
+  // floor_stairs: 游戏使用 Kenney roguelikeDungeon index=23（出口楼梯）
+  // 注：0x72 atlas 也有 floor_stairs (x=80,y=192) 但与 Kenney idx=23 是不同 sprite，未被游戏使用
   floor_stairs:     { category: 'SCENE', source: 'kenney', atlasKey: 23,               size: 32, animated: false, frameCount: 1 },
   doors_leaf_closed: { category: 'SCENE', source: '0x72', atlasKey: 'doors_leaf_closed', size: 64, animated: false, frameCount: 1 },
 
@@ -220,22 +216,6 @@ export function drawSheetSprite(
   const pos = getSpritePosition(index, SHEET_SPRITESHEET_WIDTH)
   const halfSize = size / 2
   ctx.drawImage(img, pos.x, pos.y, TILE_SIZE, TILE_SIZE, x - halfSize, y - halfSize, size, size)
-}
-
-/**
- * 绘制 pumpkin_dude 精灵（Kenney CC0，128x32，4帧横排动画）
- */
-export function drawPumpkinDudeSprite(
-  ctx: CanvasRenderingContext2D,
-  img: HTMLImageElement,
-  frame: number,
-  x: number,
-  y: number,
-  size: number = 32
-): void {
-  const frameX = (frame % 4) * 32  // 4帧横排，每帧32px
-  const halfSize = size / 2
-  ctx.drawImage(img, frameX, 0, 32, 32, x - halfSize, y - halfSize, size, size)
 }
 
 /**

@@ -35,6 +35,7 @@
 - [x] 角色死亡后没有弹窗。 — 2026-03-29 GameRoom update() 加全灭检测，设置 _gameOver 触发 game:end
 - [x] 角色图标过小，攻击范围与实际图标大小不符。 — 2026-03-29 SPRITE_REGISTRY CHARACTER size 32→48（atlas原始16px，scale=3x放大到48px使角色在768px canvas中清晰可见）；PLAYER_BASE.radius 保持 20；白色棍子 drawDirectionArrow 已移除
 - [x] 第二次进入游戏角色高速瞬移 — 2026-03-29 GameRoom tick 残留 + session 过滤失效，详见 docs/bugs/2026-03-29-second-entry-teleport.md；修复：handleRoomLeave/disconnect 清理 GameRoom，handleExit 重置 session refs，简化 game:state 过滤逻辑
+- [x] 贴图资产三文件不一致 — 2026-03-29 审计发现 cleric 武器贴图错误（weapon_knight_sword→weapon_red_magic_staff）；移除 pumpkin_dude_kenney 和 bullet_kenney 两个死代码条目；sprites.ts/sprite-inventory.md/sprite-viewer.html 三文件同步修正
 ### 未修复
 
 ## 中优先级
