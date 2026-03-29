@@ -58,6 +58,7 @@ npx tsc --noEmit                                # TypeScript 编译检查
 **收到任务** → 先写 `docs/todo/` 对应子文件，再开发
 **完成一项** → 验证闭环后打钩 `- [x]` + 日期（tsc → build → E2E → 才标记，不要先标后验）
 **发现 bug** → 先写 `docs/bugs/` 对应子文件，再修复
+**架构问题** → 写 `docs/todo/architecture.md`（最高优先级，需先写方案再动手）
 
 ## Windows Bash
 

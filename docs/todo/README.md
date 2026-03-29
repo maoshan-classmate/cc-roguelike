@@ -2,10 +2,11 @@
 
 ## 按领域分类
 
-- [UI 优化](ui-optimization.md)
-- [游戏逻辑](game-logic.md)
-- [功能待办](features.md)
+- **[架构问题](architecture.md)** — 最高优先级，全局设计债/体系不对齐
 - [Bug 修复清单](bugs.md)
+- [游戏逻辑](game-logic.md)
+- [UI 优化](ui-optimization.md)
+- [功能待办](features.md)
 - [装备系统](equipment.md)
 
 ## 记录规范
