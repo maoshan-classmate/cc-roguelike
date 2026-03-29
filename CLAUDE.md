@@ -55,9 +55,10 @@ npx tsc --noEmit                                # TypeScript 编译检查
 
 ## TODO 管理规范
 
-- 收到任务 → 先写 `docs/todo/` 对应子文件，再开发
-- 每完成一项 → 立即打钩 `- [x]` + 日期
-- 发现 bug → 先写 `docs/bugs/` 对应子文件，再修复
+**收到需求** → 先写 `docs/requirements.md`，再拆解到 `docs/todo/` 或 `docs/bugs/`
+**收到任务** → 先写 `docs/todo/` 对应子文件，再开发
+**完成一项** → 立即打钩 `- [x]` + 日期（不要批量标记）
+**发现 bug** → 先写 `docs/bugs/` 对应子文件，再修复
 
 ## Windows Bash
 
