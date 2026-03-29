@@ -19,6 +19,7 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 ## 索引
 
 - [项目结构](docs/project-structure.md)
+- [完整资源审计](docs/resource-audit.md) — 像素级精灵分析，索引→内容映射
 - [调试经验 + Bug 模式](docs/debugging.md)
 - [UI 设计规范](docs/ui-design.md)
 - [精灵/资源使用](docs/sprites.md)
@@ -69,6 +70,11 @@ npx tsc --noEmit                                # TypeScript 编译检查
 
 ## 游戏系统关键常量
 
+- **地牢渲染**: collisionGrid 从服务端发给客户端，逐 tile 渲染（视觉=物理边界），不再用 room 矩形画墙框
+- **敌人碰撞半径** `ENEMY_RADIUS`: basic=16, fast=14, tank=20, boss=28（按 size 计算，不要硬编码固定值）
+- **角色精灵**: 只有 front/back 两个方向，左右用 Canvas `ctx.scale(-1,1)` 翻转，索引 2-5 是空白
+- **怪物精灵**: roguelikeSheet perRow=56，最大索引 1679，超出即越界（如 1721/1725）
+- **地牢色系**: FLOOR=#3A2E2C, GRID=#504440, WALL=#5C4A3A, BG=#1A1210（网格线与底色色差须 >30 色阶才可见）
 - **职业速度** `CLASS_SPEED`: warrior=180, ranger=220, mage=180, cleric=190 (px/s)
 - **职业武器** class→weapon: warrior=sword(近战), ranger/mage/cleric=pistol(远程)
 - **4 技能槽**: dash/shield/heal/speed_boost 按职业不同排列
