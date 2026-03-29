@@ -150,14 +150,17 @@ server/config/
 1. 背景色 / 网格线
 2. 地牢地板（fillRect 像素绘制，不用精灵）
 3. 地牢墙壁（fillRect，不依赖接缝精灵）
-4. 道具（优先 0x72 → Kenney fallback）
-5. 敌人（优先 0x72 → Kenney fallback）
-6. 玩家（优先 0x72 → Kenney fallback）
-7. 子弹/特效
-8. UI 叠加层（血条、名称、皇冠）
+4. 地牢出口楼梯（Kenney sprite 索引23，特殊：唯一用精灵渲染的地牢物体）
+5. 道具（优先 0x72 → Kenney fallback）
+6. 敌人（优先 0x72 → Kenney fallback）
+7. 子弹/特效（子弹需在玩家之前渲染，否则遮挡）
+8. 玩家（优先 0x72 → Kenney fallback）
+9. UI 叠加层（血条、名称、皇冠、方向指示器）
 ```
 
 **你不得**：改变绘制顺序（会导致遮挡关系错误），除非显式注释说明原因
+
+> ⚠️ **已知偏差**：出口楼梯用 `drawDungeonSprite(..., 23, ...)` 渲染，是唯一用精灵的地牢物体，已标注。
 
 ### 6.2 精灵渲染规范
 
@@ -187,6 +190,8 @@ server/config/
 ```
 
 **你必须**：逻辑不得跨层调用（表现层不直接写游戏逻辑，服务端不直接调 Canvas API）
+
+> ⚠️ **已知架构债**：当前 `GamePage.tsx`（876行）混合了网关层（输入处理+socket发送）和表现层（Canvas渲染），`useEffect gameLoop` 块承担了客户端网关职责。目标态应为：网关逻辑提取到 `src/network/` 或 `src/hooks/useGameLoop.ts`，GamePage 专司渲染。
 
 ### 7.2 地牢生成
 
