@@ -25,6 +25,7 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 - [精灵/资源使用](docs/sprites.md)
 - [Playwright MCP](docs/playwright.md)
 - [Bug 记录（按系统）](docs/bugs/)
+- [用户需求原始记录](docs/requirements.md)
 - [待办任务（按领域）](docs/todo/)
 - [Bug 修复清单](docs/todo/bugs.md)
 

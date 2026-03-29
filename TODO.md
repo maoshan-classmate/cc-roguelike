@@ -10,6 +10,10 @@
 - [Bug 修复清单](docs/todo/bugs.md)
 - [装备系统](docs/todo/equipment.md)
 
+## 用户需求
+
+- [用户需求原始记录](docs/requirements.md)
+
 ## Bug 记录
 
 - [游戏核心](docs/bugs/game-core.md)
