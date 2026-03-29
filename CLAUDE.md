@@ -61,9 +61,24 @@ npx tsc --noEmit                                # TypeScript 编译检查
 **发现 bug** → 先写 `docs/bugs/` 对应子文件，再修复
 **架构问题** → 写 `docs/todo/architecture.md`（最高优先级，需先写方案再动手）
 
-## Windows Bash
+## 资源管理流程（外源素材引入）
 
-- 路径格式：`/d/cc-roguelike/`（不是 `D:\cc-roguelike`）
+**入口目录**: `assets/inbox/` — 所有手动下载的 CC0 资源统一放入这里，Agent 负责整合。
+
+**流程**：
+1. 下载 CC0 素材 → 丢进 `assets/inbox/`
+2. 告知 Agent 文件名
+3. Agent 执行：**分析格式** → **移动到 `src/assets/kenney/Spritesheet/`** → **更新 `characters.ts` / `enemies.ts` 索引** → **编译验证**
+
+**已有 CC0 资产**（Kenney，CC0）：
+- `roguelikeChar_transparent.png` — 角色 spritesheet
+- `roguelikeDungeon_transparent.png` — 地牢/道具 spritesheet
+- `roguelikeSheet_transparent.png` — 综合 spritesheet（含怪物）
+
+**索引对应关系**（需随新资源更新）：
+- `src/config/characters.ts` — 4 个职业的 spriteIndex
+- `src/config/enemies.ts` — 4 种怪物的 spriteIndex
+- `src/assets/kenney/index.ts` — spritesheet 路径和尺寸常量
 
 ## Edit 工具注意
 
