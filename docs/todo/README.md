@@ -5,6 +5,7 @@
 - [UI 优化](ui-optimization.md)
 - [游戏逻辑](game-logic.md)
 - [功能待办](features.md)
+- [Bug 修复清单](bugs.md)
 - [装备系统](equipment.md)
 
 ## 记录规范

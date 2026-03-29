@@ -26,6 +26,7 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 - [Playwright MCP](docs/playwright.md)
 - [Bug 记录（按系统）](docs/bugs/)
 - [待办任务（按领域）](docs/todo/)
+- [Bug 修复清单](docs/todo/bugs.md)
 
 ## 关键命令
 
