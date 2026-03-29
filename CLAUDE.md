@@ -49,9 +49,37 @@ npx tsc --noEmit                                # TypeScript 编译检查
 - `isWalkable()` 在 `collisionGrid` 为空时**必须返回 `false`**（不能返回 `true` 会导致穿墙）
 - 生成后验证：`collisionGrid.flat().filter(Boolean).length`
 
+## 0x72 Dungeon Tileset II 集成规范
+
+**Atlas vs Kenney 区别**：
+- Kenney: 网格索引式 (`spriteIndex: 0`)，按行切 spritesheet
+- 0x72: atlas 坐标式 (`spriteName: 'knight_m_idle_anim_f0'`)，直接 `ctx.drawImage(img, sx, sy, sw, sh, ...)`
+
+**精灵命名规范**：
+- `_anim_f{n}` 后缀 = 4帧动画（如 `knight_m_idle_anim_f0`）
+- `_f{n}` 无 `_anim` = 3帧动画（如 `chest_full_open_anim_f0`）
+- 无后缀 = 静态（如 `flask_big_blue`、`skull`）
+- `getAnimSprite()` 对静态项**不追加**帧号，非静态才替换帧后缀
+
+**已知缺失**：`slime_idle_anim_f0` 不存在于 atlas，basic 敌人 fallback 到 `goblin_idle_anim_f0`
+
+**统一 Sprite Registry** (`src/config/sprites.ts`)：
+- `SPRITE_REGISTRY` = 全局单一数据源，key = spriteName 值
+- `getSpriteEntry(spriteName)` → 查 size/animated/frameCount
+- `is0x72Sprite(spriteName)` → source 检测，替代 `spriteName !== undefined`
+- 渲染优先级：0x72 (`is0x72Sprite()?→draw0x72Sprite`) → Kenney fallback
+
+**新资产引入流程**：解析→语义分类(CHARACTER/MONSTER/WEAPON/ITEM/SCENE/UI)→持久化(TS+MD)→替换
+
 ## Playwright MCP 验证流程
 
 登录→创建房间→选择职业→准备→开始冒险（完整流程覆盖）
+
+## 验证规范
+
+- **编译检查**：`npx tsc --noEmit`（零 error 即通过，弃用警告可忽略）
+- **E2E 验证**：Playwright MCP 走完 登录→建房间→选职业→准备→开始冒险，确认零 `[0x72] Sprite not found` 警告
+- **截图存档**：E2E 通过后截图，验证后删除 `.playwright-mcp/` 下的截图文件
 
 ## TODO 管理规范
 
@@ -82,6 +110,12 @@ npx tsc --noEmit                                # TypeScript 编译检查
 - `src/config/characters.ts` — 4 个职业的 spriteIndex
 - `src/config/enemies.ts` — 4 种怪物的 spriteIndex
 - `src/assets/kenney/index.ts` — spritesheet 路径和尺寸常量
+
+**Config → Registry 映射规则**：
+- `characters.ts` 的 `spriteName.front/back` = Registry key（例：`'knight_m_idle_anim_f0'`）
+- `enemies.ts` 的 `spriteName` = Registry key（例：`'goblin_idle_anim_f0'`）
+- `items.ts` 的 `spriteName` = Registry key（例：`'flask_big_red'`）
+- 渲染代码直接 `is0x72Sprite(charConfig.spriteName?.front ?? '')` 判断 source，无需二次查表
 
 ## Edit 工具注意
 
