@@ -16,6 +16,37 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 - 前端端口：3000（Vite）
 - 后端端口：3001（Express + Socket.io）
 
+## 铁律（最高优先级 ⚠️）
+
+> **所有 AI teammate 开工前必须读完此节。违反即为 3.25 绩效。**
+
+### 贴图资产三文件同步（铁律）
+
+```
+sprite-viewer.html  ←→  docs/sprite-inventory.md  ←→  src/config/sprites.ts
+   交互预览                   静态文档                   运行时数据源
+```
+
+**规则**：三个文件**必须完全一致**。任一改动必须同步更新其他两处，缺一不可。
+
+**违禁行为**：
+- ❌ 只改 sprite-viewer.html 不改 MD/TS
+- ❌ 只改 sprites.ts 不改 HTML/MD
+- ❌ 假设"运行时不被引用就忽略"（`floor_stairs` 就是 Kenney 渲染但 sprites.ts 标记为 0x72）
+- ❌ 手动标记"已使用"而不验证代码引用
+
+**验证命令**（每次修改后必跑）：
+```bash
+grep "目标sprite名" sprite-viewer.html docs/sprite-inventory.md src/config/sprites.ts
+# 三处必须同时出现且 source/atlasKey 完全一致
+```
+
+**已知同步历史**：
+- `floor_stairs` → source=kenney, atlasKey=23, category=SCENE（三文件一致）
+- `bullet_kenney` → source=kenney, atlasKey=35, category=ITEM（三文件一致）
+- `orc_shaman_idle_anim_f0/f1` → ⚠️ 已废弃，代码无引用，不注册
+- `wizzard_f_idle_anim_f2/f3` → 存在于atlas但未被使用，不注册
+
 ## 索引
 
 - [项目结构](docs/project-structure.md)
@@ -23,6 +54,8 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 - [调试经验 + Bug 模式](docs/debugging.md)
 - [UI 设计规范](docs/ui-design.md)
 - [精灵/资源使用](docs/sprites.md)
+- **[贴图资产清单（交互）](sprite-viewer.html)** — 109个精灵可视化，0x72+Kenney双源，代码引用可点击
+- **[贴图资产清单（文档）](docs/sprite-inventory.md)** — 与上方HTML 1:1 对应，静态检索
 - [Playwright MCP](docs/playwright.md)
 - [Bug 记录（按系统）](docs/bugs/)
 - [用户需求原始记录](docs/requirements.md)
@@ -71,6 +104,12 @@ npx tsc --noEmit                                # TypeScript 编译检查
 - 渲染优先级：0x72 (`is0x72Sprite()?→draw0x72Sprite`) → Kenney fallback
 
 **新资产引入流程**：解析→语义分类(CHARACTER/MONSTER/WEAPON/ITEM/SCENE/UI)→持久化(TS+MD)→替换
+
+**贴图资产清单**（见上方铁律）：
+- `sprite-viewer.html` — 交互式精灵预览，含源码引用
+- `docs/sprite-inventory.md` — 静态清单，与上方 HTML 1:1 对应
+- `src/config/sprites.ts` — `SPRITE_REGISTRY` 运行时数据源
+- **三文件任一改动必须同步**，违反即为 3.25
 
 ## Playwright MCP 验证流程
 
@@ -144,6 +183,16 @@ npx tsc --noEmit                                # TypeScript 编译检查
 **白色棍子已知来源**：`drawDirectionArrow` 在本地玩家头顶绘制白色 12px 方向箭头，删除 GamePage.tsx 中调用即可，不要误删 PixelSprites
 
 **删除文件前必须全量 grep 引用**：确认零引用才能删；`ui-optimization.md` 可能引用 `PixelSprites.tsx`
+
+**贴图资产三文件同步纪律**：见上方铁律区块（最高优先级）
+
+**验证贴图是否被使用**：grep "sprite名" src/pages/GamePage.tsx src/config/*.ts — 运行时实际引用才是金标准；静态 SPRITE_REGISTRY 条目不等于被使用
+
+**Edit 工具精确匹配**：`old_string` 须含原始缩进和注释，Edit 失败时 re-read 再试，不要凭记忆重写
+
+**UI 状态 bug 根因模式**：`setSource`/`setCategory` 类的条件逻辑，先读源码结构确认 t===el 判断，而非检查 className 是否包含
+
+**弃用文件判断**：`src/assets/0x72/index.ts` 和 `spriteRegistry.ts` 为弃用文件，运行时代码只读 `src/config/sprites.ts`
 
 **Bug 修复验证**：改完代码必须 Playwright E2E + 截图确认，不能只看 `tsc --noEmit`；视觉类 bug 必须拿 screenshot 证据
 

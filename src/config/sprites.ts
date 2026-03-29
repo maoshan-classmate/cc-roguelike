@@ -44,10 +44,8 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
   wizzard_m_idle_anim_f1: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_m_idle_anim_f1', size: 48, animated: true,  frameCount: 4 },
   wizzard_f_idle_anim_f0: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_idle_anim_f0', size: 48, animated: true,  frameCount: 4 },
   wizzard_f_idle_anim_f1: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_idle_anim_f1', size: 48, animated: true,  frameCount: 4 },
-  wizzard_f_idle_anim_f2: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_idle_anim_f2', size: 48, animated: true,  frameCount: 4 },
-  wizzard_f_idle_anim_f3: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_idle_anim_f3', size: 48, animated: true,  frameCount: 4 },
-  orc_shaman_idle_anim_f0:{ category: 'CHARACTER', source: '0x72', atlasKey: 'orc_shaman_idle_anim_f0',size: 48, animated: true,  frameCount: 4 },
-  orc_shaman_idle_anim_f1:{ category: 'CHARACTER', source: '0x72', atlasKey: 'orc_shaman_idle_anim_f1',size: 48, animated: true,  frameCount: 4 },
+  // wizzard_f_idle_anim_f2/f3: 存在于atlas但未被任何角色使用（cleric仅用f0/f1），不注册
+  // orc_shaman_idle_anim_f0/f1: ⚠️ 已废弃，代码无引用，不注册
 
   // Kenney fallback CHARACTER
   warrior_kenney: { category: 'CHARACTER', source: 'kenney', atlasKey: 0,   size: 16, animated: false, frameCount: 1 },
@@ -89,12 +87,15 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
   health_kenney: { category: 'ITEM', source: 'kenney', atlasKey: 29, size: 16, animated: false, frameCount: 1 },
   energy_kenney: { category: 'ITEM', source: 'kenney', atlasKey: 30, size: 16, animated: false, frameCount: 1 },
   coin_kenney:   { category: 'ITEM', source: 'kenney', atlasKey: 31, size: 16, animated: false, frameCount: 1 },
+  // bullet_kenney: 无 0x72 对应贴图，固定使用 Kenney roguelikeDungeon index=35
+  bullet_kenney:  { category: 'ITEM', source: 'kenney', atlasKey: 35, size: 16, animated: false, frameCount: 1 },
 
   // ── SCENE ────────────────────────────────────────────────────────────────
   wall_left:        { category: 'SCENE', source: '0x72', atlasKey: 'wall_left',        size: 32, animated: false, frameCount: 1 },
   wall_mid:         { category: 'SCENE', source: '0x72', atlasKey: 'wall_mid',         size: 32, animated: false, frameCount: 1 },
   wall_right:       { category: 'SCENE', source: '0x72', atlasKey: 'wall_right',       size: 32, animated: false, frameCount: 1 },
-  floor_stairs:     { category: 'SCENE', source: '0x72', atlasKey: 'floor_stairs',     size: 32, animated: false, frameCount: 1 },
+  // floor_stairs: 来自 Kenney roguelikeDungeon index=23，非 0x72（atlas无此出口）
+  floor_stairs:     { category: 'SCENE', source: 'kenney', atlasKey: 23,               size: 32, animated: false, frameCount: 1 },
   doors_leaf_closed: { category: 'SCENE', source: '0x72', atlasKey: 'doors_leaf_closed', size: 64, animated: false, frameCount: 1 },
 
   // ── UI ──────────────────────────────────────────────────────────────────

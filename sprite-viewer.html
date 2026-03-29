@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sprite Inventory — 0x72 + Kenney CC0</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #1a1a2e; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; padding: 24px; }
+  h1 { color: #fff; margin-bottom: 8px; }
+  h2 { color: #aaa; margin: 24px 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: 2px; border-bottom: 1px solid #333; padding-bottom: 8px; }
+  .meta { color: #888; font-size: 13px; margin-bottom: 20px; }
+
+  /* ── Tabs ── */
+  .tabs { display: flex; gap: 4px; margin-bottom: 8px; flex-wrap: wrap; }
+  .tab {
+    padding: 7px 14px; background: #2a2a4a; border: 1px solid #3a3a5a; border-radius: 6px;
+    cursor: pointer; font-size: 13px; color: #aaa; transition: all 0.15s;
+  }
+  .tab:hover { background: #3a3a5a; color: #fff; }
+  .tab.active { color: #fff; }
+  .tab .count { background: #444; color: #bbb; font-size: 10px; padding: 1px 5px; border-radius: 8px; margin-left: 4px; }
+  .tab.active .count { background: #555; }
+
+  /* Source tabs — 0x72 vs Kenney */
+  .src-tabs { margin-bottom: 4px; }
+  .src-tab { border-color: #3a3a5a; }
+  .src-tab.active0x72 { background: #1a3a5a; border-color: #4a7aaa; }
+  .src-tab.activeKenney { background: #3a2a1a; border-color: #8a6a2a; }
+  .src-tab .badge { font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-left: 4px; }
+  .badge-0x72 { background: #1a3a5a; color: #6a9fd4; }
+  .badge-Kenney { background: #3a2a1a; color: #d4a855; }
+
+  /* Cat tabs — sub-filter */
+  .cat-tabs { margin-bottom: 16px; }
+  .cat-tab.activeChar { background: #2a4a2a; border-color: #5a8a5a; }
+  .cat-tab.activeMon { background: #4a2a2a; border-color: #8a5a5a; }
+  .cat-tab.activeWeap { background: #4a4a1a; border-color: #8a8a3a; }
+  .cat-tab.activeItem { background: #2a3a4a; border-color: #5a7a8a; }
+  .cat-tab.activeScene { background: #3a3a3a; border-color: #6a6a6a; }
+  .cat-tab.activeUI { background: #4a2a4a; border-color: #8a5a8a; }
+
+  /* Grid */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+  .card {
+    background: #232338; border: 1px solid #2a2a4a; border-radius: 8px; padding: 8px;
+    display: flex; flex-direction: column; align-items: center; gap: 5px; transition: border-color 0.15s;
+  }
+  .card:hover { border-color: #5a5a9a; }
+  .card.used { border-color: #2a5a2a; }
+  .card.unused { border-color: #2a2a2a; }
+
+  .sprite-wrap {
+    width: 72px; height: 72px; display: flex; align-items: center; justify-content: center;
+    background: repeating-conic-gradient(#2a2a3a 0% 25%, #232333 0% 50%) 50% / 10px 10px;
+    border-radius: 4px; overflow: hidden;
+  }
+  .sprite-wrap img, .sprite-wrap canvas { max-width: 72px; max-height: 72px; image-rendering: pixelated; }
+  .sprite-wrap canvas { display: block; }
+
+  .name { font-size: 10px; color: #ccc; text-align: center; word-break: break-all; line-height: 1.3; max-width: 120px; }
+  .coords { font-size: 9px; color: #555; }
+  .size { font-size: 9px; color: #555; }
+  .badge { font-size: 9px; padding: 1px 6px; border-radius: 8px; font-weight: 600; }
+  .badge.used { background: #1a4a1a; color: #6ac96a; }
+  .badge.unused { background: #333; color: #777; }
+  .ref { font-size: 9px; color: #7a8a9a; font-family: monospace; margin-top: 2px; word-break: break-all; }
+  .badge-src { font-size: 9px; padding: 1px 5px; border-radius: 6px; font-weight: 600; }
+  .badge-src.s0x72 { background: #1a3a5a; color: #6a9fd4; }
+  .badge-src.sKenney { background: #3a2a1a; color: #d4a855; }
+  .usage { font-size: 9px; color: #666; margin-top: 2px; text-align: center; }
+
+  .section-title { font-size: 11px; color: #666; margin-bottom: 10px; }
+  body.show-used .unused { display: none; }
+</style>
+</head>
+<body>
+
+<h1>Sprite Inventory</h1>
+<p class="meta">
+  共 <span id="total-count">0</span> 个精灵 |
+  0x72: <code>src/assets/0x72/frames/</code> |
+  Kenney: <code>src/assets/kenney/Spritesheet/</code>
+</p>
+
+<!-- 来源 tabs -->
+<div class="tabs src-tabs">
+  <div class="tab src-tab active" id="tab-all" onclick="setSource('all', this)">全部<span class="count" id="cnt-all">0</span></div>
+  <div class="tab src-tab" id="tab-0x72" onclick="setSource('0x72', this)"><span class="badge badge-0x72">0x72</span><span class="count" id="cnt-0x72">0</span></div>
+  <div class="tab src-tab" id="tab-Kenney" onclick="setSource('Kenney', this)"><span class="badge badge-Kenney">Kenney</span><span class="count" id="cnt-Kenney">0</span></div>
+</div>
+
+<!-- 分类 tabs (filtered by source) -->
+<div class="tabs cat-tabs" id="cat-tabs">
+  <div class="tab cat-tab active" id="cat-all" onclick="setCategory('all', this)">全部分类<span class="count" id="ccnt-all">0</span></div>
+  <div class="tab cat-tab" id="cat-CHARACTER" onclick="setCategory('CHARACTER', this)">CHARACTER<span class="count" id="ccnt-CHARACTER">0</span></div>
+  <div class="tab cat-tab" id="cat-MONSTER" onclick="setCategory('MONSTER', this)">MONSTER<span class="count" id="ccnt-MONSTER">0</span></div>
+  <div class="tab cat-tab" id="cat-WEAPON" onclick="setCategory('WEAPON', this)">WEAPON<span class="count" id="ccnt-WEAPON">0</span></div>
+  <div class="tab cat-tab" id="cat-ITEM" onclick="setCategory('ITEM', this)">ITEM<span class="count" id="ccnt-ITEM">0</span></div>
+  <div class="tab cat-tab" id="cat-SCENE" onclick="setCategory('SCENE', this)">SCENE<span class="count" id="ccnt-SCENE">0</span></div>
+  <div class="tab cat-tab" id="cat-UI" onclick="setCategory('UI', this)">UI<span class="count" id="ccnt-UI">0</span></div>
+</div>
+
+<!-- Used filter -->
+<div class="tabs" style="margin-bottom:16px;">
+  <div class="tab" onclick="toggleUsed(this)" id="btn-used">显示全部</div>
+</div>
+
+<div id="content"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════
+// 精灵数据
+// 0x72: [名称, 分类, x, y, w, h, 已使用, 用途]
+// Kenney: [名称, 分类, atlas索引, w, h, sheetW, 已使用, 用途]
+// ══════════════════════════════════════════════════════════════════
+const SPRITES = [
+  // ── 0x72 CHARACTER (18) ───────────────────────────────────
+  { n:'knight_m_idle_anim_f0',c:'CHARACTER',x:128,y:100,w:16,h:28,u:true,  g:'战士 warrior 正面',       s:'0x72', ref:'src/config/characters.ts:35' },
+  { n:'knight_m_idle_anim_f1',c:'CHARACTER',x:144,y:100,w:16,h:28,u:true,  g:'战士 warrior 背面',       s:'0x72', ref:'src/config/characters.ts:35' },
+  { n:'knight_m_idle_anim_f2',c:'CHARACTER',x:160,y:100,w:16,h:28,u:false, g:'',                        s:'0x72' },
+  { n:'knight_m_idle_anim_f3',c:'CHARACTER',x:176,y:100,w:16,h:28,u:false, g:'',                        s:'0x72' },
+  { n:'knight_f_idle_anim_f0',c:'CHARACTER',x:128,y:68, w:16,h:28,u:false, g:'',                        s:'0x72' },
+  { n:'elf_m_idle_anim_f0',  c:'CHARACTER',x:128,y:36, w:16,h:28,u:true,  g:'游侠 ranger 正面',        s:'0x72', ref:'src/config/characters.ts:49' },
+  { n:'elf_m_idle_anim_f1',  c:'CHARACTER',x:144,y:36, w:16,h:28,u:true,  g:'游侠 ranger 背面',        s:'0x72', ref:'src/config/characters.ts:49' },
+  { n:'elf_m_idle_anim_f2', c:'CHARACTER',x:160,y:36, w:16,h:28,u:false, g:'',                        s:'0x72' },
+  { n:'elf_m_idle_anim_f3', c:'CHARACTER',x:176,y:36, w:16,h:28,u:false, g:'',                        s:'0x72' },
+  { n:'elf_f_idle_anim_f0',  c:'CHARACTER',x:128,y:4,  w:16,h:28,u:false, g:'',                        s:'0x72' },
+  { n:'wizzard_m_idle_anim_f0',c:'CHARACTER',x:128,y:164,w:16,h:28,u:true,g:'法师 mage 正面',          s:'0x72', ref:'src/config/characters.ts:63' },
+  { n:'wizzard_m_idle_anim_f1',c:'CHARACTER',x:144,y:164,w:16,h:28,u:true,g:'法师 mage 背面',          s:'0x72', ref:'src/config/characters.ts:63' },
+  { n:'wizzard_f_idle_anim_f0',c:'CHARACTER',x:128,y:132,w:16,h:28,u:true,g:'牧师 cleric 正面',         s:'0x72', ref:'src/config/characters.ts:77' },
+  { n:'wizzard_f_idle_anim_f1',c:'CHARACTER',x:144,y:132,w:16,h:28,u:true,g:'牧师 cleric 背面',         s:'0x72', ref:'src/config/characters.ts:77' },
+  { n:'dwarf_m_idle_anim_f0',c:'CHARACTER',x:128,y:292,w:16,h:28,u:false, g:'',                        s:'0x72' },
+  { n:'dwarf_f_idle_anim_f0',c:'CHARACTER',x:128,y:260,w:16,h:28,u:false, g:'',                        s:'0x72' },
+  { n:'lizard_m_idle_anim_f0',c:'CHARACTER',x:128,y:228,w:16,h:28,u:false, g:'',                        s:'0x72' },
+  { n:'lizard_f_idle_anim_f0',c:'CHARACTER',x:128,y:196,w:16,h:28,u:false, g:'',                        s:'0x72' },
+
+  // ── 0x72 MONSTER (22) ─────────────────────────────────────
+  { n:'goblin_idle_anim_f0',     c:'MONSTER',x:368,y:40, w:16,h:16,u:true, g:'basic/fast 敌人',         s:'0x72', ref:'src/config/enemies.ts:28' },
+  { n:'skelet_idle_anim_f0',    c:'MONSTER',x:368,y:88, w:16,h:16,u:true, g:'tank 敌人',               s:'0x72', ref:'src/config/enemies.ts:58' },
+  { n:'big_demon_idle_anim_f0',  c:'MONSTER',x:16, y:428,w:32,h:36,u:true, g:'boss 敌人',               s:'0x72', ref:'src/config/enemies.ts:74' },
+  { n:'angel_idle_anim_f0',      c:'MONSTER',x:368,y:304,w:16,h:16,u:false,g:'',                        s:'0x72' },
+  { n:'chort_idle_anim_f0',      c:'MONSTER',x:368,y:273,w:16,h:23,u:false,g:'',                        s:'0x72' },
+  { n:'necromancer_anim_f0',     c:'MONSTER',x:368,y:225,w:16,h:23,u:false,g:'',                        s:'0x72' },
+  { n:'masked_orc_idle_anim_f0',c:'MONSTER',x:368,y:153,w:16,h:23,u:false,g:'',                        s:'0x72' },
+  { n:'orc_warrior_idle_anim_f0',c:'MONSTER',x:368,y:177,w:16,h:23,u:false,g:'',                        s:'0x72' },
+  { n:'orc_shaman_idle_anim_f0', c:'MONSTER',x:368,y:201,w:16,h:23,u:false,g:'⚠️ 已废弃',             s:'0x72' },
+  { n:'wogol_idle_anim_f0',      c:'MONSTER',x:368,y:249,w:16,h:23,u:false,g:'',                        s:'0x72' },
+  { n:'imp_idle_anim_f0',        c:'MONSTER',x:368,y:64, w:16,h:16,u:false,g:'',                        s:'0x72' },
+  { n:'tiny_zombie_idle_anim_f0',c:'MONSTER',x:368,y:16, w:16,h:16,u:false,g:'',                        s:'0x72' },
+  { n:'pumpkin_dude_idle_anim_f0',c:'MONSTER',x:368,y:321,w:16,h:23,u:false,g:'',                        s:'0x72' },
+  { n:'swampy_anim_f0',         c:'MONSTER',x:432,y:112,w:16,h:16,u:false,g:'',                        s:'0x72' },
+  { n:'muddy_anim_f0',           c:'MONSTER',x:368,y:112,w:16,h:16,u:false,g:'',                        s:'0x72' },
+  { n:'slug_anim_f0',            c:'MONSTER',x:368,y:369,w:16,h:23,u:false,g:'',                        s:'0x72' },
+  { n:'tiny_slug_anim_f0',        c:'MONSTER',x:432,y:376,w:16,h:16,u:false,g:'',                        s:'0x72' },
+  { n:'ice_zombie_anim_f0',       c:'MONSTER',x:432,y:136,w:16,h:16,u:false,g:'',                        s:'0x72' },
+  { n:'zombie_anim_f10',         c:'MONSTER',x:368,y:136,w:16,h:16,u:false,g:'',                        s:'0x72' },
+  { n:'big_zombie_idle_anim_f0',  c:'MONSTER',x:16, y:332,w:32,h:36,u:false,g:'',                        s:'0x72' },
+  { n:'ogre_idle_anim_f0',        c:'MONSTER',x:16, y:380,w:32,h:36,u:false,g:'',                        s:'0x72' },
+  { n:'doc_idle_anim_f0',         c:'MONSTER',x:368,y:345,w:16,h:23,u:false,g:'',                        s:'0x72' },
+
+  // ── 0x72 WEAPON (25) ──────────────────────────────────────
+  { n:'weapon_knight_sword',     c:'WEAPON',x:339,y:98, w:10,h:29,u:true, g:'战士武器',                s:'0x72', ref:'src/pages/GamePage.tsx:548' },
+  { n:'weapon_arrow',            c:'WEAPON',x:324,y:202,w:7, h:21,u:true, g:'子弹(bullet视觉)',        s:'0x72', ref:'src/config/sprites.ts:463' },
+  { n:'weapon_red_magic_staff',  c:'WEAPON',x:324,y:129,w:8, h:30,u:true, g:'法师/牧师武器',          s:'0x72', ref:'src/pages/GamePage.tsx:550' },
+  { n:'weapon_bow',              c:'WEAPON',x:289,y:195,w:14,h:26,u:true, g:'游侠武器',               s:'0x72', ref:'src/pages/GamePage.tsx:549' },
+  { n:'weapon_axe',              c:'WEAPON',x:341,y:74, w:9, h:21,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_katana',           c:'WEAPON',x:293,y:66, w:6, h:29,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_spear',            c:'WEAPON',x:309,y:161,w:6, h:30,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_mace',             c:'WEAPON',x:339,y:39, w:10,h:24,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_hammer',           c:'WEAPON',x:307,y:39, w:10,h:24,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_big_hammer',       c:'WEAPON',x:291,y:26, w:10,h:37,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_anime_sword',      c:'WEAPON',x:322,y:65, w:12,h:30,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_duel_sword',       c:'WEAPON',x:325,y:97, w:9, h:30,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_golden_sword',     c:'WEAPON',x:291,y:137,w:10,h:22,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_lavish_sword',     c:'WEAPON',x:307,y:129,w:10,h:30,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_red_gem_sword',    c:'WEAPON',x:339,y:10, w:10,h:21,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_regular_sword',    c:'WEAPON',x:323,y:10, w:10,h:21,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_rusty_sword',      c:'WEAPON',x:307,y:10, w:10,h:21,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_saw_sword',        c:'WEAPON',x:307,y:70, w:10,h:25,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_cleaver',           c:'WEAPON',x:310,y:108,w:9, h:19,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_machete',          c:'WEAPON',x:294,y:105,w:5, h:22,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_double_axe',       c:'WEAPON',x:288,y:167,w:16,h:24,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_waraxe',           c:'WEAPON',x:324,y:168,w:12,h:23,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_throwing_axe',     c:'WEAPON',x:340,y:161,w:10,h:14,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_baton_with_spikes',c:'WEAPON',x:323,y:41, w:10,h:22,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_green_magic_staff',c:'WEAPON',x:340,y:129,w:8, h:30,u:false,g:'',                        s:'0x72' },
+
+  // ── 0x72 ITEM (13) ────────────────────────────────────────
+  { n:'flask_big_red',           c:'ITEM',x:288,y:336,w:16,h:16,u:true, g:'医疗包 health',             s:'0x72', ref:'src/config/items.ts:28' },
+  { n:'flask_big_blue',          c:'ITEM',x:304,y:336,w:16,h:16,u:true, g:'能量包 energy',             s:'0x72', ref:'src/config/items.ts:91' },
+  { n:'flask_big_green',         c:'ITEM',x:320,y:336,w:16,h:16,u:false,g:'',                          s:'0x72' },
+  { n:'flask_big_yellow',        c:'ITEM',x:336,y:336,w:16,h:16,u:false,g:'',                          s:'0x72' },
+  { n:'flask_blue',              c:'ITEM',x:304,y:352,w:16,h:16,u:true, g:'药水 potion',               s:'0x72', ref:'src/config/items.ts:60' },
+  { n:'flask_red',               c:'ITEM',x:288,y:352,w:16,h:16,u:false,g:'',                          s:'0x72' },
+  { n:'flask_green',             c:'ITEM',x:320,y:352,w:16,h:16,u:false,g:'',                          s:'0x72' },
+  { n:'flask_yellow',            c:'ITEM',x:336,y:352,w:16,h:16,u:false,g:'',                          s:'0x72' },
+  { n:'coin_anim_f0',            c:'ITEM',x:289,y:385,w:6, h:7, u:true, g:'金币 coin',                 s:'0x72', ref:'src/config/items.ts:39' },
+  { n:'skull',                  c:'ITEM',x:288,y:432,w:16,h:16,u:true, g:'钥匙 key',                   s:'0x72', ref:'src/config/items.ts:49' },
+  { n:'crate',                  c:'ITEM',x:288,y:408,w:16,h:24,u:true, g:'护盾 shield',                s:'0x72', ref:'src/config/items.ts:71' },
+  { n:'chest_full_open_anim_f0',c:'ITEM',x:304,y:416,w:16,h:16,u:true, g:'宝箱 chest',                s:'0x72', ref:'src/config/items.ts:101' },
+  { n:'bomb_f0',                c:'ITEM',x:288,y:320,w:16,h:16,u:false,g:'',                           s:'0x72' },
+
+  // ── 0x72 SCENE (16) ────────────────────────────────────────
+  { n:'wall_left',              c:'SCENE',x:16, y:16, w:16,h:16,u:false,g:'碰撞墙(fillRect绘制)',       s:'0x72' },
+  { n:'wall_mid',              c:'SCENE',x:32, y:16, w:16,h:16,u:false,g:'',                           s:'0x72' },
+  { n:'wall_right',            c:'SCENE',x:48, y:16, w:16,h:16,u:false,g:'',                           s:'0x72' },
+  { n:'floor_1',               c:'SCENE',x:16, y:64, w:16,h:16,u:false,g:'',                           s:'0x72' },
+  { n:'floor_2',               c:'SCENE',x:32, y:64, w:16,h:16,u:false,g:'',                           s:'0x72' },
+  { n:'floor_3',               c:'SCENE',x:48, y:64, w:16,h:16,u:false,g:'',                           s:'0x72' },
+  { n:'doors_leaf_closed',     c:'SCENE',x:32, y:240,w:32,h:32,u:false,g:'',                           s:'0x72' },
+  { n:'column',                c:'SCENE',x:80, y:80, w:16,h:48,u:false,g:'',                            s:'0x72' },
+  { n:'column_wall',           c:'SCENE',x:96, y:80, w:16,h:48,u:false,g:'',                           s:'0x72' },
+  { n:'hole',                  c:'SCENE',x:96, y:144,w:16,h:16,u:false,g:'',                           s:'0x72' },
+  { n:'floor_spikes_anim_f0',  c:'SCENE',x:16, y:192,w:16,h:16,u:false,g:'',                          s:'0x72' },
+  { n:'button_red_up',         c:'SCENE',x:16, y:208,w:16,h:16,u:false,g:'',                           s:'0x72' },
+  { n:'button_blue_up',        c:'SCENE',x:48, y:208,w:16,h:16,u:false,g:'',                           s:'0x72' },
+  { n:'lever_left',            c:'SCENE',x:80, y:208,w:16,h:16,u:false,g:'',                          s:'0x72' },
+  { n:'lever_right',           c:'SCENE',x:96, y:208,w:16,h:16,u:false,g:'',                          s:'0x72' },
+
+  // ── 0x72 UI (3) ────────────────────────────────────────────
+  { n:'ui_heart_full',         c:'UI',x:289,y:370,w:13,h:12,u:false,g:'代码绘制血条',                 s:'0x72' },
+  { n:'ui_heart_empty',        c:'UI',x:321,y:370,w:13,h:12,u:false,g:'',                             s:'0x72' },
+  { n:'ui_heart_half',         c:'UI',x:305,y:370,w:13,h:12,u:false,g:'',                             s:'0x72' },
+
+  // ── Kenney CHARACTER (4) — roguelikeChar, 918宽, perRow=54 ──
+  { n:'warrior_kenney', c:'CHARACTER',idx:0,   w:16,h:16,sw:918,u:true, g:'战士 Kenney fallback', s:'Kenney', ref:'src/config/characters.ts:33' },
+  { n:'mage_kenney',   c:'CHARACTER',idx:108,  w:16,h:16,sw:918,u:true, g:'法师 Kenney fallback',  s:'Kenney', ref:'src/config/characters.ts:61' },
+  { n:'ranger_kenney', c:'CHARACTER',idx:162,  w:16,h:16,sw:918,u:true, g:'游侠 Kenney fallback',  s:'Kenney', ref:'src/config/characters.ts:47' },
+  { n:'cleric_kenney', c:'CHARACTER',idx:378,  w:16,h:16,sw:918,u:true, g:'牧师 Kenney fallback',  s:'Kenney', ref:'src/config/characters.ts:75' },
+
+  // ── Kenney MONSTER (3) — roguelikeSheet, 968宽, perRow=56 ──
+  { n:'slime_kenney', c:'MONSTER',idx:1671,w:16,h:16,sw:968,u:true,g:'史莱姆 basic fallback', s:'Kenney', ref:'src/config/enemies.ts:26' },
+  { n:'bat_kenney',   c:'MONSTER',idx:1665,w:16,h:16,sw:968,u:true,g:'蝙蝠 fast fallback',   s:'Kenney', ref:'src/config/enemies.ts:41' },
+  { n:'boss_kenney',  c:'MONSTER',idx:1668,w:16,h:16,sw:968,u:true,g:'恶魔 boss fallback',   s:'Kenney', ref:'src/config/enemies.ts:72' },
+
+  // ── Kenney MONSTER (1) — pumpkin_dude.png, 48宽, perRow=1 ──
+  { n:'pumpkin_dude_kenney', c:'MONSTER',idx:0,w:32,h:32,sw:48,u:true,g:'南瓜怪 (4帧动画)', s:'Kenney', ref:'src/pages/GamePage.tsx:503' },
+
+  // ── Kenney ITEM (4+1) — roguelikeDungeon, 492宽, perRow=28 ──
+  // 注意：items.ts 中 health/energy/coin/key/potion/shield 优先使用 0x72（flask_big_red 等），
+  //       0x72 加载失败时才 fallback 到这些 Kenney 精灵。chest 用 0x72 渲染（chest_full_open_anim_f0）。
+  //       bullet 只有 Kenney 版本（无 0x72 对应贴图）。
+  { n:'health_kenney', c:'ITEM',idx:29,w:16,h:16,sw:492,u:true, g:'医疗包 Kenney fallback(0x72优先)', s:'Kenney', ref:'src/config/items.ts:26' },
+  { n:'energy_kenney', c:'ITEM',idx:30,w:16,h:16,sw:492,u:true, g:'能量包 Kenney fallback(0x72优先)', s:'Kenney', ref:'src/config/items.ts:89' },
+  { n:'coin_kenney',   c:'ITEM',idx:31,w:16,h:16,sw:492,u:true, g:'金币 Kenney fallback(0x72优先)',   s:'Kenney', ref:'src/config/items.ts:37' },
+  { n:'bullet_kenney', c:'ITEM',idx:35,w:16,h:16,sw:492,u:true, g:'能量弹(无0x72对应)',             s:'Kenney', ref:'src/config/items.ts:80' },
+  // dungeon exit stairs — drawn via Kenney roguelikeDungeon index 23 (0x72 atlas 无此出口)
+  { n:'floor_stairs',  c:'SCENE',idx:23,w:16,h:16,sw:492,u:true, g:'楼梯出口',                   s:'Kenney', ref:'src/pages/GamePage.tsx:420' },
+];
+
+// ══════════════════════════════════════════════════════════════════
+// Kenney spritesheet 预加载
+// ══════════════════════════════════════════════════════════════════
+const SHEETS = {
+  kenney_char:    { el: new Image(), src: '../src/assets/kenney/Spritesheet/roguelikeChar_transparent.png' },
+  kenney_dungeon: { el: new Image(), src: '../src/assets/kenney/Spritesheet/roguelikeDungeon_transparent.png' },
+  kenney_sheet:   { el: new Image(), src: '../src/assets/kenney/Spritesheet/roguelikeSheet_transparent.png' },
+  kenney_pumpkin: { el: new Image(), src: '../src/assets/kenney/Spritesheet/pumpkin_dude.png' },
+};
+let sheetsReady = false;
+
+function getPos(idx, sw, ts = 16, mg = 1) {
+  const perRow = Math.floor(sw / (ts + mg));
+  return { x: (idx % perRow) * (ts + mg), y: Math.floor(idx / perRow) * (ts + mg) };
+}
+
+function preload(cb) {
+  if (sheetsReady) { cb(); return; }
+  let done = 0;
+  const total = Object.keys(SHEETS).length;
+  Object.values(SHEETS).forEach(s => {
+    s.el.src = s.src;
+    s.el.onload = () => { if (++done >= total) { sheetsReady = true; cb(); } };
+    s.el.onerror = () => { if (++done >= total) { sheetsReady = true; cb(); } };
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 状态
+// ══════════════════════════════════════════════════════════════════
+let curSource = 'all';   // 'all' | '0x72' | 'Kenney'
+let curCat    = 'all';   // 'all' | 'CHARACTER' | ...
+let showUsed  = false;
+
+const CATS = ['CHARACTER','MONSTER','WEAPON','ITEM','SCENE','UI'];
+
+// ══════════════════════════════════════════════════════════════════
+// 计数
+// ══════════════════════════════════════════════════════════════════
+function buildCounts() {
+  const src = { all: SPRITES.length, '0x72': 0, Kenney: 0 };
+  const cat = { all: SPRITES.length };
+  CATS.forEach(c => cat[c] = 0);
+  // source×category 交叉计数
+  const cross = {};
+  SPRITES.forEach(sp => {
+    src[sp.s]++;
+    cat[sp.c]++;
+    const key = sp.s + ':' + sp.c;
+    cross[key] = (cross[key] || 0) + 1;
+  });
+  return { src, cat, cross };
+}
+
+function updateCounts() {
+  const { src } = buildCounts();
+
+  // 根据当前 source 过滤后的数量
+  const srcFiltered = SPRITES.filter(sp => curSource === 'all' || sp.s === curSource);
+  const catFiltered = {};
+  CATS.forEach(c => catFiltered[c] = 0);
+  srcFiltered.forEach(sp => catFiltered[sp.c]++);
+
+  document.getElementById('total-count').textContent = SPRITES.length;
+  document.getElementById('cnt-all').textContent    = src.all;
+  document.getElementById('cnt-0x72').textContent   = src['0x72'];
+  document.getElementById('cnt-Kenney').textContent = src.Kenney;
+
+  // 分类 tab 数量：ccnt-all 为 source 过滤后的总数，各分类为 filtered 总数
+  const ccntAllEl = document.getElementById('ccnt-all');
+  if (ccntAllEl) ccntAllEl.textContent = srcFiltered.length;
+  CATS.forEach(c => {
+    const el = document.getElementById('ccnt-' + c);
+    if (el) el.textContent = catFiltered[c];
+  });
+}
+
+function updateCatTabsHighlight() {
+  document.querySelectorAll('.cat-tab').forEach(t => {
+    const id = t.id.replace('cat-', '');
+    t.className = 'tab cat-tab' + (curCat === id ? ' active' : '');
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 渲染卡片
+// ══════════════════════════════════════════════════════════════════
+const BASE = '../src/assets/0x72/frames';
+
+function getDir(cat) { return cat; }
+
+function renderCard(sp) {
+  const usedCls = sp.u ? 'card used' : 'card unused';
+  const badgeU   = sp.u ? '已使用' : '未使用';
+  const srcCls  = sp.s === 'Kenney' ? 'badge-src sKenney' : 'badge-src s0x72';
+  const srcLbl  = sp.s === 'Kenney' ? 'Kenney' : '0x72';
+  const usage   = sp.g ? `<div class="usage">${sp.g}</div>` : '';
+
+  let spriteHtml = '';
+  if (sp.s === '0x72') {
+    spriteHtml = `<img src="${BASE}/${sp.c}/${sp.n}.png" alt="${sp.n}" onerror="this.style.display='none';this.parentElement.style.background='#333'">`;
+  } else {
+    const sheetKey = sp.n === 'pumpkin_dude_kenney' ? 'kenney_pumpkin'
+                  : sp.n === 'floor_stairs' ? 'kenney_dungeon'  // floor_stairs 来自 dungeon sheet
+                  : sp.c === 'CHARACTER' ? 'kenney_char'
+                  : sp.c === 'ITEM' ? 'kenney_dungeon'
+                  : 'kenney_sheet';
+    spriteHtml = `<canvas width="72" height="72" data-sheet="${sheetKey}" data-idx="${sp.idx}" data-w="${sp.w}" data-h="${sp.h}" data-sw="${sp.sw}" style="image-rendering:pixelated;"></canvas>`;
+  }
+
+  const coordsStr = sp.s === '0x72' ? `@${sp.x},${sp.y}` : `idx=${sp.idx} sw=${sp.sw}`;
+  const refStr   = sp.ref ? `<div class="ref">→ ${sp.ref}</div>` : '';
+  return `<div class="${usedCls}">
+    <div class="sprite-wrap">${spriteHtml}</div>
+    <div class="name">${sp.n}</div>
+    <div class="coords">${coordsStr}</div>
+    <div class="size">${sp.s==='0x72'?sp.w:sp.w}×${sp.s==='0x72'?sp.h:sp.h}</div>
+    <span class="badge ${sp.u?'used':'unused'}">${badgeU}</span>
+    <span class="${srcCls}">${srcLbl}</span>
+    ${usage}${refStr}
+  </div>`;
+}
+
+function render() {
+  updateCounts();
+  const filtered = SPRITES.filter(sp => {
+    const srcOk = curSource === 'all' || sp.s === curSource;
+    const catOk = curCat === 'all' || sp.c === curCat;
+    return srcOk && catOk;
+  });
+  const usedCount = filtered.filter(sp => sp.u).length;
+
+  const srcLabel = curSource === 'all' ? '全部' : curSource;
+  const catLabel = curCat === 'all' ? '全部分类' : curCat;
+  const title = `${srcLabel} › ${catLabel} — ${filtered.length} 个精灵（${usedCount} 已使用）`;
+
+  let html = `<h2 class="section-title">${title}</h2><div class="grid">`;
+  filtered.forEach(sp => { html += renderCard(sp); });
+  html += '</div>';
+  document.getElementById('content').innerHTML = html;
+
+  preload(renderCanvases);
+}
+
+function renderCanvases() {
+  document.querySelectorAll('.sprite-wrap canvas').forEach(cv => {
+    const sk = cv.dataset.sheet;
+    const idx = parseInt(cv.dataset.idx);
+    const w   = parseInt(cv.dataset.w);
+    const h   = parseInt(cv.dataset.h);
+    const sw  = parseInt(cv.dataset.sw);
+    const sh  = SHEETS[sk];
+    if (!sh) return;
+    const pos = getPos(idx, sw, 16, 1);
+    const scale = Math.min(72 / w, 72 / h);
+    cv.width = w * scale; cv.height = h * scale;
+    const ctx = cv.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(sh.el, pos.x, pos.y, w, h, 0, 0, cv.width, cv.height);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════
+// 交互
+// ══════════════════════════════════════════════════════════════════
+function setSource(src, el) {
+  curSource = src;
+  document.querySelectorAll('.src-tab').forEach(t => {
+    const isActive = t === el;
+    t.className = 'tab src-tab' + (isActive ? ' active' : '');
+    // 清除旧的 active 颜色 class
+    t.classList.remove('active0x72', 'activeKenney');
+    if (isActive) {
+      if (src === '0x72') t.classList.add('active0x72');
+      if (src === 'Kenney') t.classList.add('activeKenney');
+    }
+  });
+  // 切换 source 时重置 category 为"全部"
+  const catAllEl = document.getElementById('cat-all');
+  if (catAllEl) { setCategory('all', catAllEl); return; }
+  // 只有在没有找到 cat-all 时才走到这里（正常不会发生）
+  updateCounts();
+  render();
+}
+
+function setCategory(cat, el) {
+  curCat = cat;
+  document.querySelectorAll('.cat-tab').forEach(t => {
+    t.className = 'tab cat-tab' + (t === el ? ' active' : '');
+  });
+  render();
+}
+
+function toggleUsed(el) {
+  showUsed = !showUsed;
+  document.body.classList.toggle('show-used', showUsed);
+  el.textContent = showUsed ? '仅显示已使用' : '显示全部';
+  el.classList.toggle('active', showUsed);
+}
+
+// 初始化
+updateCounts();
+render();
+</script>
+</body>
+</html>

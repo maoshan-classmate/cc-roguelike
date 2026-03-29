@@ -1,5 +1,10 @@
 # 精灵/资源使用指南
 
+> **贴图资产清单（唯一数据源）**：
+> - `sprite-viewer.html` — 交互式精灵预览，含所有已使用贴图的代码引用
+> - `docs/sprite-inventory.md` — 静态清单，与上方 HTML 1:1 对应
+> ⚠️ 本文档为历史参考，**精灵使用情况以 sprite-inventory.md 为准**
+
 ## Kenney.nl（主要资源）
 - **许可**：Creative Commons CC0（可免费商用）
 - **网址**：https://kenney.nl/assets

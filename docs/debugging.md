@@ -27,6 +27,7 @@
 - 出生/出口点必须强制清除周围 3x3 tile 区域
 
 ### 2. 精灵尺寸规范（800x600 Canvas）
+> 贴图规格详见 [`sprite-viewer.html`](sprite-viewer.html) 和 [`sprite-inventory.md`](sprite-inventory.md)
 - 玩家：48px，敌人 basic=48 / fast=44 / tank=56 / boss=64
 - 道具：28px，子弹：16px
 - HP条/名称标签偏移量随精灵 size 调整
