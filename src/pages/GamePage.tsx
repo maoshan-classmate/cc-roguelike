@@ -111,21 +111,20 @@ export default function GamePage() {
   const animInterval = 150 // ms per frame
   const lastAnimTime = useRef(performance.now())
   function getAnimSprite(spriteName: string, elapsedMs: number): string {
-    // spriteName 格式有两种：
-    // 1. 完整帧名（如 'knight_m_idle_anim_f0'）-> 去掉后缀再拼接新帧
-    // 2. 基础名（如 'flask_big_red'）-> 直接拼接 _idle_anim_fX
     const frame = Math.floor(elapsedMs / animInterval) % 4
-    if (/_idle_anim_f\d+$/.test(spriteName)) {
-      // 完整帧名：去掉旧帧号，拼接新帧号
-      const base = spriteName.replace(/_f\d+$/, '')
-      return `${base}_f${frame}`
-    } else if (/_run_anim_f\d+$/.test(spriteName)) {
-      const base = spriteName.replace(/_f\d+$/, '')
-      return `${base}_f${frame}`
-    } else {
-      // 基础名：直接拼接帧号（假设 idle 动画）
-      return `${spriteName}_idle_anim_f${frame}`
+
+    // 情况1: 有 _anim_fX 后缀 → 替换帧号 (knight_m_idle_anim_f0, coin_anim_f0)
+    if (/_anim_f\d+$/.test(spriteName)) {
+      return spriteName.replace(/_f\d+$/, `_f${frame}`)
     }
+
+    // 情况2: 有 _fX 但无 _anim（如 bomb_f0）→ 替换帧号，bomb 只有 3 帧
+    if (/_f\d+$/.test(spriteName)) {
+      return spriteName.replace(/_f\d+$/, `_f${frame % 3}`)
+    }
+
+    // 情况3: 静态项（flask_big_blue, skull, weapon_* 等）→ 不追加帧号
+    return spriteName
   }
 
   // Set local player ID
