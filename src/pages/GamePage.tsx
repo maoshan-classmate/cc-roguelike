@@ -111,10 +111,21 @@ export default function GamePage() {
   const animInterval = 150 // ms per frame
   const lastAnimTime = useRef(performance.now())
   function getAnimSprite(spriteName: string, elapsedMs: number): string {
-    // 从 'knight_m_idle_anim_f0' 提取 base 'knight_m_idle_anim'
-    const base = spriteName.replace(/_f\d+$/, '')
+    // spriteName 格式有两种：
+    // 1. 完整帧名（如 'knight_m_idle_anim_f0'）-> 去掉后缀再拼接新帧
+    // 2. 基础名（如 'flask_big_red'）-> 直接拼接 _idle_anim_fX
     const frame = Math.floor(elapsedMs / animInterval) % 4
-    return `${base}_f${frame}`
+    if (/_idle_anim_f\d+$/.test(spriteName)) {
+      // 完整帧名：去掉旧帧号，拼接新帧号
+      const base = spriteName.replace(/_f\d+$/, '')
+      return `${base}_f${frame}`
+    } else if (/_run_anim_f\d+$/.test(spriteName)) {
+      const base = spriteName.replace(/_f\d+$/, '')
+      return `${base}_f${frame}`
+    } else {
+      // 基础名：直接拼接帧号（假设 idle 动画）
+      return `${spriteName}_idle_anim_f${frame}`
+    }
   }
 
   // Set local player ID
