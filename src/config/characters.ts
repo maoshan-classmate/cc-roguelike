@@ -57,8 +57,8 @@ export const CHARACTERS: Record<string, CharacterConfig> = {
     speed: 1,
     description: '魔法攻击，伤害高但防御弱'
   },
-  healer: {
-    id: 'healer',
+  cleric: {
+    id: 'cleric',
     name: '牧师',
     // 索引 378,379 = 行7 列0,1 (肤色重装角色 正面+背面)
     spriteIndex: { front: 378, back: 379 },

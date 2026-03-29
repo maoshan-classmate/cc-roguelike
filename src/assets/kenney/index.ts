@@ -9,7 +9,7 @@
  * - Fonts: 像素字体
  */
 
-// 精灵图路径（使用ES6 import，Vite默认支持PNG导入）
+// 精灵图路径
 import roguelikeCharSheetPath from './Spritesheet/roguelikeChar_transparent.png';
 import roguelikeDungeonSheetPath from './Spritesheet/roguelikeDungeon_transparent.png';
 import roguelikeSheetPath from './Spritesheet/roguelikeSheet_transparent.png';

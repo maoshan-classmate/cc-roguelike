@@ -279,9 +279,16 @@ export class SocketServer {
 
   private handleSelectClass(socket: Socket, data: { characterType: string }): void {
     this.requireAuth(socket, async (session) => {
-      const validTypes = ['warrior', 'ranger', 'mage', 'healer'];
-      if (!validTypes.includes(data.characterType)) return;
-      await this.authManager.updateCharacterType(session.accountId, data.characterType);
+      // 客户端用 'healer'，服务端 CLASS_CONFIG 用 'cleric'，统一映射
+      const validTypes: Record<string, string> = {
+        warrior: 'warrior',
+        ranger: 'ranger',
+        mage: 'mage',
+        healer: 'cleric'
+      };
+      const serverType = validTypes[data.characterType];
+      if (!serverType) return;
+      await this.authManager.updateCharacterType(session.accountId, serverType);
     });
   }
 
