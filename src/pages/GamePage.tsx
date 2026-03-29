@@ -23,7 +23,9 @@ import {
   drawHPBar,
   drawBossCrown,
   drawDirectionArrow,
-  drawNameTag
+  drawNameTag,
+  getSpriteEntry,
+  is0x72Sprite,
 } from '../config/sprites'
 import {
   PixelCastle,
@@ -428,11 +430,12 @@ export default function GamePage() {
     for (const item of items) {
       const itemConfig = ITEMS[item.type] || ITEMS.health
       // 优先使用0x72精灵，否则使用Kenney
-      if (spritesLoaded && tileset2Atlas.complete && itemConfig.spriteName) {
+      const itemSize = getSpriteEntry(itemConfig.spriteName)?.size ?? 28
+      if (spritesLoaded && tileset2Atlas.complete && is0x72Sprite(itemConfig.spriteName)) {
         const animSprite = getAnimSprite(itemConfig.spriteName, performance.now() - lastAnimTime.current)
-        draw0x72Sprite(ctx, tileset2Atlas, animSprite, item.x, item.y, 28)
+        draw0x72Sprite(ctx, tileset2Atlas, animSprite, item.x, item.y, itemSize)
       } else if (spritesLoaded && dungeonSpriteSheet.complete) {
-        drawDungeonSprite(ctx, dungeonSpriteSheet, itemConfig.spriteIndex, item.x, item.y, 28)
+        drawDungeonSprite(ctx, dungeonSpriteSheet, itemConfig.spriteIndex, item.x, item.y, itemSize)
       } else {
         // 备用：纯色
         ctx.fillStyle = itemConfig.color
@@ -453,7 +456,7 @@ export default function GamePage() {
 
       if (spritesLoaded) {
         // 优先使用0x72精灵，否则回退到Kenney
-        if (tileset2Atlas.complete && enemyConfig.spriteName) {
+        if (tileset2Atlas.complete && is0x72Sprite(enemyConfig.spriteName)) {
           const animSprite = getAnimSprite(enemyConfig.spriteName, performance.now() - lastAnimTime.current)
           draw0x72Sprite(ctx, tileset2Atlas, animSprite, epos.x, epos.y, size)
         } else if (enemyConfig.sheet === 'sheet' && sheetSpriteSheet.complete) {
@@ -525,14 +528,14 @@ export default function GamePage() {
     for (const player of players) {
       const isLocal = player.id === user?.id
       const charConfig = CHARACTERS[player.characterType] || CHARACTERS.warrior
-      const size = 48
       const ppos = getRenderPos(player.id, player.x, player.y)
+      const size = getSpriteEntry(charConfig.spriteName?.front ?? '')?.size ?? 48
 
       if (!player.alive) {
         // 死亡角色：灰色半透明精灵 + 坟墓标记
         ctx.globalAlpha = 0.4
         // 优先使用0x72精灵，否则使用Kenney
-        if (spritesLoaded && tileset2Atlas.complete && charConfig.spriteName) {
+        if (spritesLoaded && tileset2Atlas.complete && is0x72Sprite(charConfig.spriteName?.front ?? '')) {
           draw0x72Sprite(ctx, tileset2Atlas, charConfig.spriteName.front, ppos.x, ppos.y, size)
         } else if (spritesLoaded && charSpriteSheet.complete) {
           drawCharacterSprite(ctx, charSpriteSheet, charConfig.spriteIndex.front, ppos.x, ppos.y, size)
@@ -578,7 +581,7 @@ export default function GamePage() {
       }
 
       // 优先使用0x72精灵，否则使用Kenney
-      if (spritesLoaded && tileset2Atlas.complete && spriteName) {
+      if (spritesLoaded && tileset2Atlas.complete && is0x72Sprite(spriteName ?? '')) {
         const animSprite = getAnimSprite(spriteName, performance.now() - lastAnimTime.current)
         if (flipH) {
           ctx.save()
