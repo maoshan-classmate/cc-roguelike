@@ -101,7 +101,8 @@ export const WEAPON_TEMPLATES: Record<string, {
   shotgun: { name: '霰弹枪', type: 'gun', damage: 8, cooldown: 800, energyCost: 15, bulletCount: 5, spread: 30 },
   rifle: { name: '步枪', type: 'gun', damage: 20, cooldown: 500, energyCost: 10 },
   sword: { name: '剑', type: 'melee', damage: 30, cooldown: 400, energyCost: 10, range: 50, arc: Math.PI / 2 },
-  axe: { name: '斧', type: 'melee', damage: 45, cooldown: 600, energyCost: 15, range: 55, arc: Math.PI / 2 }
+  axe: { name: '斧', type: 'melee', damage: 45, cooldown: 600, energyCost: 15, range: 55, arc: Math.PI / 2 },
+  staff: { name: '法杖', type: 'gun', damage: 18, cooldown: 500, energyCost: 12, bulletCount: 1, spread: 0 }
 };
 
 // 技能模板

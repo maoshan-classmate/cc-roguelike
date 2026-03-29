@@ -131,7 +131,12 @@ export class GameRoom {
       speedBuffTimer: 0,
       weapon: charData.weapon || 'pistol',
       characterType: charData.character_type || 'warrior',
-      skills: JSON.parse(charData.skills || '["dash","shield"]'),
+      skills: (() => {
+        const parsed: string[] = JSON.parse(charData.skills || '["dash","shield"]');
+        // 旧角色只有2技能，补齐为4技能
+        if (parsed.length < 4) return ['dash', 'shield', 'heal', 'speed_boost'];
+        return parsed;
+      })(),
       alive: true,
       invincible: 0,
       angle: 0,
@@ -353,6 +358,21 @@ export class GameRoom {
 
     // Check floor completion
     this.checkFloorCompletion();
+
+    // Check for game over (all players dead)
+    let alivePlayers = 0;
+    for (const p of this.players.values()) {
+      if (p.alive) alivePlayers++;
+    }
+    if (alivePlayers === 0 && this.running) {
+      this.running = false;
+      if (this.tickInterval) {
+        clearInterval(this.tickInterval);
+        this.tickInterval = null;
+      }
+      this._gameOver = true;
+      this._victory = false;
+    }
   }
 
   private updateEnemy(enemy: EnemyState, dt: number): void {

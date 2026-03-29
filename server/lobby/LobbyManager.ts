@@ -5,7 +5,7 @@ export interface RoomInfo {
   name: string;
   hostId: string;
   hostName: string;
-  players: { id: string; name: string; ready: boolean }[];
+  players: { id: string; name: string; ready: boolean; characterType?: string }[];
   maxPlayers: number;
   status: 'waiting' | 'playing' | 'ended';
 }
@@ -89,6 +89,15 @@ export class LobbyManager {
       player.ready = ready;
     }
     return room;
+  }
+
+  setPlayerCharacterType(roomId: string, playerId: string, characterType: string): void {
+    const room = this.rooms.get(roomId);
+    if (!room) return;
+    const player = room.players.find(p => p.id === playerId);
+    if (player) {
+      player.characterType = characterType;
+    }
   }
 
   startGame(roomId: string): RoomInfo | null {

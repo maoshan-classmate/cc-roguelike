@@ -36,14 +36,14 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
 
   // ── CHARACTER ────────────────────────────────────────────────────────────────
   // key = spriteName 值（与 config 保持一致），atlasKey = 0x72 atlas 键
-  knight_m_idle_anim_f0:  { category: 'CHARACTER', source: '0x72', atlasKey: 'knight_m_idle_anim_f0',  size: 32, animated: true,  frameCount: 4 },
-  knight_m_idle_anim_f1:  { category: 'CHARACTER', source: '0x72', atlasKey: 'knight_m_idle_anim_f1',  size: 32, animated: true,  frameCount: 4 },
-  elf_m_idle_anim_f0:     { category: 'CHARACTER', source: '0x72', atlasKey: 'elf_m_idle_anim_f0',      size: 32, animated: true,  frameCount: 4 },
-  elf_m_idle_anim_f1:     { category: 'CHARACTER', source: '0x72', atlasKey: 'elf_m_idle_anim_f1',      size: 32, animated: true,  frameCount: 4 },
-  wizzard_m_idle_anim_f0: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_m_idle_anim_f0', size: 32, animated: true,  frameCount: 4 },
-  wizzard_m_idle_anim_f1: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_m_idle_anim_f1', size: 32, animated: true,  frameCount: 4 },
-  orc_shaman_idle_anim_f0:{ category: 'CHARACTER', source: '0x72', atlasKey: 'orc_shaman_idle_anim_f0',size: 32, animated: true,  frameCount: 4 },
-  orc_shaman_idle_anim_f1:{ category: 'CHARACTER', source: '0x72', atlasKey: 'orc_shaman_idle_anim_f1',size: 32, animated: true,  frameCount: 4 },
+  knight_m_idle_anim_f0:  { category: 'CHARACTER', source: '0x72', atlasKey: 'knight_m_idle_anim_f0',  size: 48, animated: true,  frameCount: 4 },
+  knight_m_idle_anim_f1:  { category: 'CHARACTER', source: '0x72', atlasKey: 'knight_m_idle_anim_f1',  size: 48, animated: true,  frameCount: 4 },
+  elf_m_idle_anim_f0:     { category: 'CHARACTER', source: '0x72', atlasKey: 'elf_m_idle_anim_f0',      size: 48, animated: true,  frameCount: 4 },
+  elf_m_idle_anim_f1:     { category: 'CHARACTER', source: '0x72', atlasKey: 'elf_m_idle_anim_f1',      size: 48, animated: true,  frameCount: 4 },
+  wizzard_m_idle_anim_f0: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_m_idle_anim_f0', size: 48, animated: true,  frameCount: 4 },
+  wizzard_m_idle_anim_f1: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_m_idle_anim_f1', size: 48, animated: true,  frameCount: 4 },
+  orc_shaman_idle_anim_f0:{ category: 'CHARACTER', source: '0x72', atlasKey: 'orc_shaman_idle_anim_f0',size: 48, animated: true,  frameCount: 4 },
+  orc_shaman_idle_anim_f1:{ category: 'CHARACTER', source: '0x72', atlasKey: 'orc_shaman_idle_anim_f1',size: 48, animated: true,  frameCount: 4 },
 
   // Kenney fallback CHARACTER
   warrior_kenney: { category: 'CHARACTER', source: 'kenney', atlasKey: 0,   size: 16, animated: false, frameCount: 1 },

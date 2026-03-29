@@ -254,6 +254,16 @@ export class SocketServer {
       for (const player of room.players) {
         const character = await this.authManager.getCharacter(player.id);
         if (character) {
+          // 优先用内存中的 characterType（lobby）覆盖 DB 值，解决 selectClass 异步竞态
+          if (player.characterType) {
+            character.character_type = player.characterType;
+            // 同时更新 weapon 为该职业的默认武器
+            const config = AuthManager.CLASS_CONFIG[player.characterType];
+            if (config) {
+              character.weapon = config.weapon;
+              character.skills = JSON.stringify(config.skills);
+            }
+          }
           gameRoom.addPlayer(player.id, player.name, character);
         }
       }
@@ -288,6 +298,10 @@ export class SocketServer {
       };
       const serverType = validTypes[data.characterType];
       if (!serverType) return;
+      // 同时更新内存（lobby）和数据库，handleRoomStart 优先读内存避免竞态
+      if (session.currentRoom) {
+        this.lobbyManager.setPlayerCharacterType(session.currentRoom, session.accountId, serverType);
+      }
       await this.authManager.updateCharacterType(session.accountId, serverType);
     });
   }

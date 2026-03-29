@@ -55,7 +55,7 @@ export class Database {
         y FLOAT DEFAULT 0,
         weapon VARCHAR(255) DEFAULT 'pistol',
         character_type VARCHAR(20) DEFAULT 'warrior',
-        skills VARCHAR(1000) DEFAULT '["dash","shield"]',
+        skills VARCHAR(1000) DEFAULT '["dash","shield","heal","speed_boost"]',
         inventory VARCHAR(2000) DEFAULT '[]',
         highest_floor INT DEFAULT 0,
         total_kills INT DEFAULT 0,

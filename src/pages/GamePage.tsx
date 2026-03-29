@@ -22,7 +22,6 @@ import {
   draw0x72Sprite,
   drawHPBar,
   drawBossCrown,
-  drawDirectionArrow,
   drawNameTag,
   getSpriteEntry,
   is0x72Sprite,
@@ -608,10 +607,7 @@ export default function GamePage() {
         ctx.strokeRect(ppos.x - size/2, ppos.y - size/2, size, size)
       }
 
-      // 本地玩家方向指示器
-      if (isLocal && player.angle !== undefined) {
-        drawDirectionArrow(ctx, ppos.x, ppos.y, player.angle, 12)
-      }
+      // 本地玩家方向指示器（已移除：白色小箭头被误认为"白色棍子"）
 
       // HP条
       drawHPBar(ctx, ppos.x - 24, ppos.y - 34, 48, 6, player.hp, player.hpMax, charConfig.color)
