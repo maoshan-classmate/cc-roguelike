@@ -138,6 +138,24 @@ y = row * (tileSize + margin)
 - **禁止**用 roguelikeDungeon 作为怪物来源（无怪物精灵）
 - **禁止**用精灵渲染地板/墙壁（会产生边框接缝）
 
+### 0x72 TilesetII（已集成 ✅）
+
+**许可**：Pay What You Want（商业可用）
+**来源**：`assets/inbox/0x72_DungeonTilesetII_v1.7/` → `src/assets/0x72/`
+
+| 分类 | 精灵 key | 说明 |
+|------|---------|------|
+| 角色 | `knight_m_idle_anim_f0` 等 | 4帧 idle 动画 |
+| 怪物 | `goblin_idle_anim_f0` | ⚠️ slime 不在 atlas |
+| 怪物 | `skelet_idle_anim_f0` | 骷髅 |
+| 怪物 | `big_demon_idle_anim_f0` | BOSS |
+| 武器 | `weapon_knight_sword` 等 | 静态 |
+| 道具 | `flask_big_red` 等 | 静态/3帧动画 |
+| 场景 | `wall_left/mid/right` 等 | 静态 |
+| UI | `ui_heart_full/empty/half` | 心形血条 |
+
+**统一 Sprite Registry**：`src/config/sprites.ts` — `SPRITE_REGISTRY` key = spriteName，详见 CLAUDE.md
+
 ### 相关文件
 - 资源索引：`src/assets/kenney/index.ts`
 - 绘制函数：`src/config/sprites.ts`

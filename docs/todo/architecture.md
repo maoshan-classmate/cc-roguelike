@@ -12,3 +12,4 @@
 - [x] 敌人生成随机偏移可能落到墙外 — 2026-03-29 增加 32px padding 确保在房间内部
 - [x] PLAYER_BASE.moveSpeed=200 是死代码 — 2026-03-29 已清理无用注释
 - [x] 当前客户端与服务端完全糅合 — 已分离（server/ vs src/，package.json 分离脚本），socket.ts 支持 VITE_SERVER_URL 环境变量
+- [x] Sprite 资源没有统一管理（Kenney/0x72 各一套，config 分散）— 2026-03-29 建立统一 Sprite Registry，src/config/sprites.ts 为单一数据源，所有渲染路径接入
