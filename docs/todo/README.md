@@ -2,10 +2,10 @@
 
 ## 按领域分类
 
-- [UI 优化](todo/ui-optimization.md)
-- [游戏逻辑](todo/game-logic.md)
-- [功能待办](todo/features.md)
-- [装备系统](todo/equipment.md)
+- [UI 优化](ui-optimization.md)
+- [游戏逻辑](game-logic.md)
+- [功能待办](features.md)
+- [装备系统](equipment.md)
 
 ## 记录规范
 
