@@ -13,10 +13,10 @@ export const GAME_CONFIG = {
 
   // 地牢配置
   FLOOR_COUNT: 5,
-  DUNGEON_WIDTH: 800,
-  DUNGEON_HEIGHT: 600,
+  DUNGEON_WIDTH: 1024,
+  DUNGEON_HEIGHT: 768,
   ROOM_MIN_SIZE: 96,    // 最小房间尺寸(像素) = 3 tiles
-  ROOM_MAX_SIZE: 280,   // 最大房间尺寸(像素) = ~9 tiles
+  ROOM_MAX_SIZE: 350,   // 最大房间尺寸(像素) = ~11 tiles
 
   // 玩家属性
   PLAYER_BASE: {

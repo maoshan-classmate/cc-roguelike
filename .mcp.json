@@ -2,7 +2,7 @@
   "mcpServers": {
     "penpot": {
       "type": "http",
-      "url": "http://192.168.2.9:4401/mcp"
+      "url": "http://localhost:4401/mcp"
     }
   }
 }

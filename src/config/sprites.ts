@@ -8,6 +8,7 @@ import { TILE_SIZE, TILE_MARGIN } from '../assets/kenney'
 // 精灵图规格
 const CHAR_SPRITESHEET_WIDTH = 918  // roguelikeChar: 918x203
 const DUNGEON_SPRITESHEET_WIDTH = 492 // roguelikeDungeon: 492x305
+const SHEET_SPRITESHEET_WIDTH = 968  // roguelikeSheet: 968x526 (怪物资源)
 
 /**
  * 计算精灵在spritesheet中的坐标
@@ -59,6 +60,26 @@ export function drawDungeonSprite(
   size: number = TILE_SIZE
 ): void {
   const pos = getSpritePosition(index, DUNGEON_SPRITESHEET_WIDTH)
+  const halfSize = size / 2
+  ctx.drawImage(
+    img,
+    pos.x, pos.y, TILE_SIZE, TILE_SIZE,
+    x - halfSize, y - halfSize, size, size
+  )
+}
+
+/**
+ * 绘制综合表精灵（roguelikeSheet — 怪物等）
+ */
+export function drawSheetSprite(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  index: number,
+  x: number,
+  y: number,
+  size: number = TILE_SIZE
+): void {
+  const pos = getSpritePosition(index, SHEET_SPRITESHEET_WIDTH)
   const halfSize = size / 2
   ctx.drawImage(
     img,

@@ -2,7 +2,7 @@
 
 > Agent 团队工作手册入口文件。按 topic 引用子文档，保持主文件精简。
 
-## Agent Team PUA 配置
+# Agent Team PUA 配置
 所有 teammate 开工前必须加载 pua skill。
 teammate 失败 2 次以上时向 Leader 发送 [PUA-REPORT] 格式汇报。
 Leader 负责全局压力等级管理和跨 teammate 失败传递。
@@ -55,9 +55,23 @@ npx tsc --noEmit                                # TypeScript 编译检查
 
 **收到需求** → 先写 `docs/requirements.md`，再拆解到 `docs/todo/` 或 `docs/bugs/`
 **收到任务** → 先写 `docs/todo/` 对应子文件，再开发
-**完成一项** → 立即打钩 `- [x]` + 日期（不要批量标记）
+**完成一项** → 验证闭环后打钩 `- [x]` + 日期（tsc → build → E2E → 才标记，不要先标后验）
 **发现 bug** → 先写 `docs/bugs/` 对应子文件，再修复
 
 ## Windows Bash
 
 - 路径格式：`/d/cc-roguelike/`（不是 `D:\cc-roguelike`）
+
+## Edit 工具注意
+
+- `old_string` 必须与文件内容**精确匹配**（含标点/空格/换行），读文件后直接复制原文
+- Edit 失败时先 re-Read 文件再重试，不要凭记忆写 old_string
+
+## 游戏系统关键常量
+
+- **职业速度** `CLASS_SPEED`: warrior=180, ranger=220, mage=180, cleric=190 (px/s)
+- **职业武器** class→weapon: warrior=sword(近战), ranger/mage/cleric=pistol(远程)
+- **4 技能槽**: dash/shield/heal/speed_boost 按职业不同排列
+- **碰撞半径**: `isWalkableRadius(x,y,r)` 检查中心+4角共5点
+- **客户端插值**: lerp(prev, target, t) 平滑服务端 10Hz 同步
+- **地牢尺寸**: 1024×768 (32×24 tiles, tile=32px)

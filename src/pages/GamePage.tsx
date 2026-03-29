@@ -9,6 +9,7 @@ import {
   CHAR_SPRITESHEET_WIDTH,
   roguelikeCharSheetPath,
   roguelikeDungeonSheetPath,
+  roguelikeSheetPath,
 } from '../assets/kenney'
 import { CHARACTERS } from '../config/characters'
 import { ENEMIES } from '../config/enemies'
@@ -16,6 +17,7 @@ import { ITEMS } from '../config/items'
 import {
   drawCharacterSprite,
   drawDungeonSprite,
+  drawSheetSprite,
   drawHPBar,
   drawBossCrown,
   drawDirectionArrow,
@@ -39,6 +41,8 @@ const charSpriteSheet = new Image()
 charSpriteSheet.src = roguelikeCharSheetPath
 const dungeonSpriteSheet = new Image()
 dungeonSpriteSheet.src = roguelikeDungeonSheetPath
+const sheetSpriteSheet = new Image()
+sheetSpriteSheet.src = roguelikeSheetPath
 
 // 技能图标SVG组件数据
 const SKILL_ICONS = [
@@ -89,6 +93,15 @@ export default function GamePage() {
     dungeon: null as any
   })
 
+  // 插值渲染：保存上一帧和目标位置
+  const prevPositions = useRef<Map<string, { x: number; y: number }>>(new Map())
+  const targetPositions = useRef<Map<string, { x: number; y: number }>>(new Map())
+  const lastStateTime = useRef(performance.now())
+
+  function lerp(a: number, b: number, t: number): number {
+    return a + (b - a) * t
+  }
+
   // Set local player ID
   useEffect(() => {
     if (user) {
@@ -98,24 +111,41 @@ export default function GamePage() {
 
   // 预加载精灵图
   useEffect(() => {
-    const loadChar = new Promise<void>((resolve) => {
+    const loadChar = new Promise<void>((resolve, reject) => {
       if (charSpriteSheet.complete && charSpriteSheet.naturalWidth > 0) {
         resolve()
       } else {
-        charSpriteSheet.onload = () => resolve()
-        charSpriteSheet.onerror = () => resolve()
+        charSpriteSheet.onload = () => {
+          if (charSpriteSheet.naturalWidth > 0) resolve()
+          else reject(new Error('Char sheet loaded but naturalWidth=0'))
+        }
+        charSpriteSheet.onerror = () => reject(new Error('Failed to load char spritesheet'))
       }
     })
-    const loadDungeon = new Promise<void>((resolve) => {
+    const loadDungeon = new Promise<void>((resolve, reject) => {
       if (dungeonSpriteSheet.complete && dungeonSpriteSheet.naturalWidth > 0) {
         resolve()
       } else {
-        dungeonSpriteSheet.onload = () => resolve()
-        dungeonSpriteSheet.onerror = () => resolve()
+        dungeonSpriteSheet.onload = () => {
+          if (dungeonSpriteSheet.naturalWidth > 0) resolve()
+          else reject(new Error('Dungeon sheet loaded but naturalWidth=0'))
+        }
+        dungeonSpriteSheet.onerror = () => reject(new Error('Failed to load dungeon spritesheet'))
+      }
+    })
+    const loadSheet = new Promise<void>((resolve, reject) => {
+      if (sheetSpriteSheet.complete && sheetSpriteSheet.naturalWidth > 0) {
+        resolve()
+      } else {
+        sheetSpriteSheet.onload = () => {
+          if (sheetSpriteSheet.naturalWidth > 0) resolve()
+          else reject(new Error('Sheet loaded but naturalWidth=0'))
+        }
+        sheetSpriteSheet.onerror = () => reject(new Error('Failed to load roguelikeSheet'))
       }
     })
 
-    Promise.all([loadChar, loadDungeon]).then(() => {
+    Promise.all([loadChar, loadDungeon, loadSheet]).then(() => {
       setSpritesLoaded(true)
     })
   }, [])
@@ -126,6 +156,22 @@ export default function GamePage() {
       if (state.floorCompleted) {
         setFloor(state.floor + 1)
       }
+      // 插值：保存旧目标作为上一帧，记录新目标
+      const prev = prevPositions.current
+      const target = targetPositions.current
+      const entities = [...(state.players || []), ...(state.enemies || [])]
+      for (const e of entities) {
+        const key = e.id
+        const oldTarget = target.get(key)
+        if (oldTarget) {
+          prev.set(key, { x: oldTarget.x, y: oldTarget.y })
+        } else {
+          prev.set(key, { x: e.x, y: e.y })
+        }
+        target.set(key, { x: e.x, y: e.y })
+      }
+      lastStateTime.current = performance.now()
+
       gameStateRef.current = {
         players: state.players || [],
         enemies: state.enemies || [],
@@ -216,29 +262,100 @@ export default function GamePage() {
 
     const { players, enemies, bullets, items, dungeon } = gameStateRef.current
 
-    // 清除背景
-    ctx.fillStyle = '#2D1B2E'
+    // 计算插值 t (0~1)
+    const stateInterval = 100 // 10Hz = 100ms
+    const elapsed = performance.now() - lastStateTime.current
+    const t = Math.min(elapsed / stateInterval, 1)
+
+    // 获取插值位置
+    function getRenderPos(id: string, targetX: number, targetY: number) {
+      const prev = prevPositions.current.get(id)
+      if (!prev) return { x: targetX, y: targetY }
+      return {
+        x: lerp(prev.x, targetX, t),
+        y: lerp(prev.y, targetY, t)
+      }
+    }
+
+    // 清除背景（与地牢暗区颜色一致）
+    ctx.fillStyle = '#1A1210'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    // 绘制地牢瓦片（使用 fillRect 像素风格，消除精灵边框接缝）
-    if (dungeon && dungeon.rooms && spritesLoaded && dungeonSpriteSheet.complete) {
+    // 绘制地牢（基于碰撞网格 tile-by-tile 渲染，视觉=物理）
+    if (dungeon && dungeon.collisionGrid && spritesLoaded && dungeonSpriteSheet.complete) {
       const tileSize = 32
-      // 像素地牢颜色（匹配 Kenney 精灵图风格）
-      const FLOOR_COLOR = '#3D2845'    // 深紫色地板
-      const FLOOR_HIGHLIGHT = '#4A3455' // 地板高光
-      const WALL_COLOR = '#6B4423'      // 深棕色墙壁
-      const WALL_TOP = '#8B5A2B'        // 墙上边缘高光
-      const WALL_BOTTOM = '#4A2E15'     // 墙下边缘阴影
-      const WALL_LEFT = '#7A4E20'       // 墙左边缘
-      const WALL_RIGHT = '#5A3515'     // 墙右边缘
+      const grid = dungeon.collisionGrid
+      const rows = grid.length
+      const cols = grid[0]?.length || 0
+
+      // 颜色方案（暗色石质地牢）
+      const FLOOR_BASE = '#3A2E2C'     // 暗石褐色地板
+      const FLOOR_GRID = '#504440'      // 地板网格线（与底色有明显对比）
+      const WALL_FACE = '#5C4A3A'       // 墙面（与地板相邻的墙）
+      const WALL_EDGE = '#7A6652'       // 墙边缘高光
+      const WALL_DARK = '#2A1E16'       // 墙暗面
+      const BG_COLOR = '#1A1210'        // 背景（非可见墙区域）
+
+      // 先用背景色清空
+      ctx.fillStyle = BG_COLOR
+      ctx.fillRect(0, 0, canvas.width, canvas.height)
+
+      // 逐 tile 渲染
+      for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+          const x = col * tileSize
+          const y = row * tileSize
+
+          if (grid[row][col]) {
+            // === 可行走 tile = 地板 ===
+            ctx.fillStyle = FLOOR_BASE
+            ctx.fillRect(x, y, tileSize, tileSize)
+            // 网格线（明显可见）
+            ctx.strokeStyle = FLOOR_GRID
+            ctx.lineWidth = 1
+            ctx.strokeRect(x + 0.5, y + 0.5, tileSize - 1, tileSize - 1)
+          } else {
+            // === 墙 tile ===
+            // 检查是否与地板相邻（可见墙面）
+            const adjFloor =
+              (row > 0 && grid[row - 1][col]) ||
+              (row < rows - 1 && grid[row + 1][col]) ||
+              (col > 0 && grid[row][col - 1]) ||
+              (col < cols - 1 && grid[row][col + 1])
+
+            if (adjFloor) {
+              // 可见墙面（与地板直接相邻）
+              ctx.fillStyle = WALL_FACE
+              ctx.fillRect(x, y, tileSize, tileSize)
+              // 立体感：顶部高光 + 底部暗影
+              ctx.fillStyle = WALL_EDGE
+              ctx.fillRect(x, y, tileSize, 2)
+              ctx.fillStyle = WALL_DARK
+              ctx.fillRect(x, y + tileSize - 2, tileSize, 2)
+              ctx.fillStyle = WALL_DARK
+              ctx.fillRect(x + tileSize - 2, y, 2, tileSize)
+              ctx.fillStyle = WALL_EDGE
+              ctx.fillRect(x, y, 2, tileSize)
+            }
+            // 非 adjacentFloor 的墙 = 背景暗区，不绘制（节省性能）
+          }
+        }
+      }
+
+      // 出口楼梯
+      if (dungeon.exitPoint) {
+        drawDungeonSprite(ctx, dungeonSpriteSheet, 23, dungeon.exitPoint.x, dungeon.exitPoint.y, tileSize)
+      }
+    } else if (dungeon && dungeon.rooms) {
+      // Fallback：无碰撞网格时用房间矩形渲染
+      const tileSize = 32
+      const FLOOR_COLOR = '#3A2E2C'
+      const FLOOR_GRID = '#504440'
 
       for (const room of dungeon.rooms) {
-        // === 地板：像素矩形 ===
-        // 填充底色
         ctx.fillStyle = FLOOR_COLOR
         ctx.fillRect(room.x, room.y, room.width, room.height)
-        // 地板网格线（浅色高光形成像素风格）
-        ctx.strokeStyle = FLOOR_HIGHLIGHT
+        ctx.strokeStyle = FLOOR_GRID
         ctx.lineWidth = 1
         for (let x = room.x; x <= room.x + room.width; x += tileSize) {
           ctx.beginPath(); ctx.moveTo(x, room.y); ctx.lineTo(x, room.y + room.height); ctx.stroke()
@@ -246,111 +363,27 @@ export default function GamePage() {
         for (let y = room.y; y <= room.y + room.height; y += tileSize) {
           ctx.beginPath(); ctx.moveTo(room.x, y); ctx.lineTo(room.x + room.width, y); ctx.stroke()
         }
-
-        // === 墙壁：像素立体矩形 ===
-        const wallThickness = tileSize
-        // 上墙（room 顶部外侧 1 tile 厚）
-        const wallTopY = room.y - wallThickness
-        if (wallTopY >= 0) {
-          ctx.fillStyle = WALL_COLOR
-          ctx.fillRect(room.x, wallTopY, room.width, wallThickness)
-          // 高光/阴影
-          ctx.fillStyle = WALL_TOP
-          ctx.fillRect(room.x, wallTopY, room.width, 2)
-          ctx.fillStyle = WALL_LEFT
-          ctx.fillRect(room.x, wallTopY, 2, wallThickness)
-          ctx.fillStyle = WALL_BOTTOM
-          ctx.fillRect(room.x, wallTopY + wallThickness - 2, room.width, 2)
-          ctx.fillStyle = WALL_RIGHT
-          ctx.fillRect(room.x + room.width - 2, wallTopY, 2, wallThickness)
-        }
-        // 下墙
-        const wallBottomY = room.y + room.height
-        if (wallBottomY <= canvas.height) {
-          ctx.fillStyle = WALL_COLOR
-          ctx.fillRect(room.x, wallBottomY, room.width, wallThickness)
-          ctx.fillStyle = WALL_TOP
-          ctx.fillRect(room.x, wallBottomY, room.width, 2)
-          ctx.fillStyle = WALL_LEFT
-          ctx.fillRect(room.x, wallBottomY, 2, wallThickness)
-          ctx.fillStyle = WALL_BOTTOM
-          ctx.fillRect(room.x, wallBottomY + wallThickness - 2, room.width, 2)
-          ctx.fillStyle = WALL_RIGHT
-          ctx.fillRect(room.x + room.width - 2, wallBottomY, 2, wallThickness)
-        }
-        // 左墙
-        if (room.x >= 0) {
-          ctx.fillStyle = WALL_COLOR
-          ctx.fillRect(room.x - wallThickness, wallTopY > 0 ? wallTopY : 0, wallThickness, wallThickness)
-          ctx.fillStyle = WALL_LEFT
-          ctx.fillRect(room.x - wallThickness, wallTopY > 0 ? wallTopY : 0, 2, wallThickness)
-          ctx.fillStyle = WALL_RIGHT
-          ctx.fillRect(room.x - 2, wallTopY > 0 ? wallTopY : 0, 2, wallThickness)
-        }
-        // 右墙
-        if (room.x + room.width + wallThickness <= canvas.width) {
-          ctx.fillStyle = WALL_COLOR
-          ctx.fillRect(room.x + room.width, wallTopY > 0 ? wallTopY : 0, wallThickness, wallThickness)
-          ctx.fillStyle = WALL_LEFT
-          ctx.fillRect(room.x + room.width, wallTopY > 0 ? wallTopY : 0, 2, wallThickness)
-          ctx.fillStyle = WALL_RIGHT
-          ctx.fillRect(room.x + room.width + wallThickness - 2, wallTopY > 0 ? wallTopY : 0, 2, wallThickness)
-        }
-        // 角落填充（防止空白）
-        if (wallTopY >= 0 && room.x >= 0) {
-          ctx.fillStyle = WALL_COLOR
-          ctx.fillRect(room.x - wallThickness, wallTopY, wallThickness, wallThickness)
-          ctx.fillStyle = WALL_TOP; ctx.fillRect(room.x - wallThickness, wallTopY, wallThickness, 2)
-          ctx.fillStyle = WALL_LEFT; ctx.fillRect(room.x - wallThickness, wallTopY, 2, wallThickness)
-        }
-        if (wallTopY >= 0 && room.x + room.width + wallThickness <= canvas.width) {
-          ctx.fillStyle = WALL_COLOR
-          ctx.fillRect(room.x + room.width, wallTopY, wallThickness, wallThickness)
-          ctx.fillStyle = WALL_TOP; ctx.fillRect(room.x + room.width, wallTopY, wallThickness, 2)
-          ctx.fillStyle = WALL_RIGHT; ctx.fillRect(room.x + room.width + wallThickness - 2, wallTopY, 2, wallThickness)
-        }
       }
-      // 走廊地板
       if (dungeon.corridorTiles) {
         for (const tile of dungeon.corridorTiles) {
           ctx.fillStyle = FLOOR_COLOR
-          ctx.fillRect(tile.x - tileSize/2, tile.y - tileSize/2, tileSize, tileSize)
-          // 走廊也有网格线
-          ctx.strokeStyle = FLOOR_HIGHLIGHT
+          ctx.fillRect(tile.x - tileSize / 2, tile.y - tileSize / 2, tileSize, tileSize)
+          ctx.strokeStyle = FLOOR_GRID
           ctx.lineWidth = 1
-          ctx.strokeRect(tile.x - tileSize/2, tile.y - tileSize/2, tileSize, tileSize)
+          ctx.strokeRect(tile.x - tileSize / 2, tile.y - tileSize / 2, tileSize, tileSize)
         }
       }
-      // 出口楼梯（用精灵图渲染楼梯）
       if (dungeon.exitPoint) {
         drawDungeonSprite(ctx, dungeonSpriteSheet, 23, dungeon.exitPoint.x, dungeon.exitPoint.y, tileSize)
       }
     } else {
-      // 备用：简单网格
+      // 备用：简单网格（无地牢数据时）
       ctx.strokeStyle = '#3D2B3E'
       ctx.lineWidth = 1
       for (let x = 0; x < canvas.width; x += 32) {
-        ctx.beginPath()
-        ctx.moveTo(x, 0)
-        ctx.lineTo(x, canvas.height)
-        ctx.stroke()
-      }
-      for (let y = 0; y < canvas.height; y += 32) {
-        ctx.beginPath()
-        ctx.moveTo(0, y)
-        ctx.lineTo(canvas.width, y)
-        ctx.stroke()
-      }
-    }
-
-    // 开发模式：半透明网格覆盖层（辅助调试）
-    if (import.meta.env.DEV && dungeon && dungeon.rooms) {
-      ctx.strokeStyle = 'rgba(150, 80, 120, 0.2)'
-      ctx.lineWidth = 1
-      for (let x = 0; x <= canvas.width; x += 32) {
         ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke()
       }
-      for (let y = 0; y <= canvas.height; y += 32) {
+      for (let y = 0; y < canvas.height; y += 32) {
         ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke()
       }
     }
@@ -376,20 +409,33 @@ export default function GamePage() {
 
       const enemyConfig = ENEMIES[enemy.type] || ENEMIES.basic
       const size = enemyConfig.size
+      const epos = getRenderPos(enemy.id, enemy.x, enemy.y)
 
-      if (spritesLoaded && charSpriteSheet.complete) {
-        drawCharacterSprite(ctx, charSpriteSheet, enemyConfig.spriteIndex, enemy.x, enemy.y, size)
+      if (spritesLoaded) {
+        if (enemyConfig.sheet === 'sheet' && sheetSpriteSheet.complete) {
+          drawSheetSprite(ctx, sheetSpriteSheet, enemyConfig.spriteIndex, epos.x, epos.y, size)
+        } else if (enemyConfig.sheet === 'dungeon' && dungeonSpriteSheet.complete) {
+          drawDungeonSprite(ctx, dungeonSpriteSheet, enemyConfig.spriteIndex, epos.x, epos.y, size)
+        } else if (charSpriteSheet.complete) {
+          drawCharacterSprite(ctx, charSpriteSheet, enemyConfig.spriteIndex, epos.x, epos.y, size)
+        } else {
+          ctx.fillStyle = enemyConfig.color
+          ctx.fillRect(epos.x - size/2, epos.y - size/2, size, size)
+          ctx.strokeStyle = '#fff'
+          ctx.lineWidth = 1
+          ctx.strokeRect(epos.x - size/2, epos.y - size/2, size, size)
+        }
       } else {
         ctx.fillStyle = enemyConfig.color
-        ctx.fillRect(enemy.x - size/2, enemy.y - size/2, size, size)
+        ctx.fillRect(epos.x - size/2, epos.y - size/2, size, size)
         ctx.strokeStyle = '#fff'
         ctx.lineWidth = 1
-        ctx.strokeRect(enemy.x - size/2, enemy.y - size/2, size, size)
+        ctx.strokeRect(epos.x - size/2, epos.y - size/2, size, size)
       }
 
       // BOSS皇冠
       if (enemyConfig.isBoss) {
-        drawBossCrown(ctx, enemy.x, enemy.y - size/2 - 10, 16)
+        drawBossCrown(ctx, epos.x, epos.y - size/2 - 10, 16)
       }
 
       // HP条
@@ -397,8 +443,8 @@ export default function GamePage() {
       const hpBarHeight = enemyConfig.isBoss ? 8 : 6
       drawHPBar(
         ctx,
-        enemy.x - hpBarWidth/2,
-        enemy.y - size/2 - (enemyConfig.isBoss ? 20 : 14),
+        epos.x - hpBarWidth/2,
+        epos.y - size/2 - (enemyConfig.isBoss ? 20 : 14),
         hpBarWidth,
         hpBarHeight,
         enemy.hp,
@@ -408,61 +454,104 @@ export default function GamePage() {
     }
 
     // 绘制子弹
+    const BULLET_COLORS: Record<string, string> = {
+      warrior: '#FFD700',
+      ranger:  '#4A9EFF',
+      mage:    '#9B59B6',
+      cleric:  '#32CD32'
+    }
     for (const bullet of bullets) {
-      const spriteIndex = 35 // bullet sprite
-      if (spritesLoaded && dungeonSpriteSheet.complete) {
-        drawDungeonSprite(ctx, dungeonSpriteSheet, spriteIndex, bullet.x, bullet.y, 16)
-      } else {
-        ctx.fillStyle = bullet.friendly ? '#4A9EFF' : '#FF6B6B'
-        ctx.beginPath()
-        ctx.arc(bullet.x, bullet.y, bullet.radius || 4, 0, Math.PI * 2)
-        ctx.fill()
-      }
+      const color = bullet.friendly
+        ? (BULLET_COLORS[bullet.ownerType] || '#4A9EFF')
+        : '#FF6B6B'
+      ctx.fillStyle = color
+      ctx.beginPath()
+      ctx.arc(bullet.x, bullet.y, bullet.radius || 4, 0, Math.PI * 2)
+      ctx.fill()
+      // 发光效果
+      ctx.shadowColor = color
+      ctx.shadowBlur = 6
+      ctx.beginPath()
+      ctx.arc(bullet.x, bullet.y, (bullet.radius || 4) * 0.6, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.shadowBlur = 0
     }
 
     // 绘制玩家
     for (const player of players) {
-      if (!player.alive) continue
-
       const isLocal = player.id === user?.id
       const charConfig = CHARACTERS[player.characterType] || CHARACTERS.warrior
       const size = 48
+      const ppos = getRenderPos(player.id, player.x, player.y)
 
-      // 根据朝向选择精灵
+      if (!player.alive) {
+        // 死亡角色：灰色半透明精灵 + 坟墓标记
+        ctx.globalAlpha = 0.4
+        if (spritesLoaded && charSpriteSheet.complete) {
+          drawCharacterSprite(ctx, charSpriteSheet, charConfig.spriteIndex.front, ppos.x, ppos.y, size)
+        } else {
+          ctx.fillStyle = '#666'
+          ctx.fillRect(ppos.x - size/2, ppos.y - size/2, size, size)
+        }
+        ctx.globalAlpha = 1.0
+
+        // "已阵亡" 标记
+        ctx.fillStyle = '#FF4444'
+        ctx.font = 'bold 11px "Courier New", monospace'
+        ctx.textAlign = 'center'
+        ctx.fillText('☠ 已阵亡', ppos.x, ppos.y - 30)
+        drawNameTag(ctx, ppos.x, ppos.y - 44, player.name, '#888')
+        continue
+      }
+
+      // 根据朝向选择精灵（角色只有正面+背面，左右通过翻转实现）
       let spriteIndex = charConfig.spriteIndex.front
+      let flipH = false
       if (player.angle !== undefined) {
         const angle = player.angle
-        if (angle > -Math.PI/4 && angle <= Math.PI/4) {
-          spriteIndex = charConfig.spriteIndex.right
-        } else if (angle > Math.PI/4 && angle <= 3*Math.PI/4) {
+        if (angle > Math.PI/4 && angle <= 3*Math.PI/4) {
+          // 朝上 → 背面
           spriteIndex = charConfig.spriteIndex.back
+        } else if (angle > -Math.PI/4 && angle <= Math.PI/4) {
+          // 朝右 → 正面 + 翻转
+          spriteIndex = charConfig.spriteIndex.front
+          flipH = true
         } else if (angle > 3*Math.PI/4 || angle <= -3*Math.PI/4) {
-          spriteIndex = charConfig.spriteIndex.left
+          // 朝左 → 正面
+          spriteIndex = charConfig.spriteIndex.front
         } else {
+          // 朝下 → 正面
           spriteIndex = charConfig.spriteIndex.front
         }
       }
 
       if (spritesLoaded && charSpriteSheet.complete) {
-        drawCharacterSprite(ctx, charSpriteSheet, spriteIndex, player.x, player.y, size)
+        if (flipH) {
+          ctx.save()
+          ctx.scale(-1, 1)
+          drawCharacterSprite(ctx, charSpriteSheet, spriteIndex, -ppos.x, ppos.y, size)
+          ctx.restore()
+        } else {
+          drawCharacterSprite(ctx, charSpriteSheet, spriteIndex, ppos.x, ppos.y, size)
+        }
       } else {
         ctx.fillStyle = charConfig.color
-        ctx.fillRect(player.x - size/2, player.y - size/2, size, size)
+        ctx.fillRect(ppos.x - size/2, ppos.y - size/2, size, size)
         ctx.strokeStyle = '#fff'
         ctx.lineWidth = 1
-        ctx.strokeRect(player.x - size/2, player.y - size/2, size, size)
+        ctx.strokeRect(ppos.x - size/2, ppos.y - size/2, size, size)
       }
 
       // 本地玩家方向指示器
       if (isLocal && player.angle !== undefined) {
-        drawDirectionArrow(ctx, player.x, player.y, player.angle, 12)
+        drawDirectionArrow(ctx, ppos.x, ppos.y, player.angle, 12)
       }
 
       // HP条
-      drawHPBar(ctx, player.x - 24, player.y - 34, 48, 6, player.hp, player.hpMax, charConfig.color)
+      drawHPBar(ctx, ppos.x - 24, ppos.y - 34, 48, 6, player.hp, player.hpMax, charConfig.color)
 
       // 名称
-      drawNameTag(ctx, player.x, player.y - 40, player.name, charConfig.color)
+      drawNameTag(ctx, ppos.x, ppos.y - 40, player.name, charConfig.color)
     }
   }, [user, spritesLoaded])
 
@@ -623,8 +712,8 @@ export default function GamePage() {
       {/* Game Canvas */}
       <canvas
         ref={canvasRef}
-        width={800}
-        height={600}
+        width={1024}
+        height={768}
         style={{
           position: 'absolute',
           top: '50%',

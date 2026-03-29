@@ -78,7 +78,7 @@ export class AuthManager {
 
       // Create default character
       const characterId = uuidv4();
-      const defaultSkills = JSON.stringify(['dash', 'shield']);
+      const defaultSkills = JSON.stringify(['dash', 'shield', 'heal', 'speed_boost']);
 
       await this.db.execute(
         `INSERT INTO characters (id, account_id, name, weapon, character_type, skills)
@@ -218,15 +218,24 @@ export class AuthManager {
     }
   }
 
+  // 职业→武器/技能映射
+  private static readonly CLASS_CONFIG: Record<string, { weapon: string; skills: string[] }> = {
+    warrior: { weapon: 'sword',   skills: ['dash', 'shield', 'heal', 'speed_boost'] },
+    ranger:  { weapon: 'pistol',  skills: ['dash', 'speed_boost', 'heal', 'shield'] },
+    mage:    { weapon: 'pistol',  skills: ['dash', 'shield', 'speed_boost', 'heal'] },
+    cleric:  { weapon: 'pistol',  skills: ['dash', 'heal', 'shield', 'speed_boost'] }
+  };
+
   async updateCharacterType(accountId: string, characterType: string): Promise<void> {
+    const config = AuthManager.CLASS_CONFIG[characterType] || AuthManager.CLASS_CONFIG.warrior;
     const characters = await this.db.query<Character[]>(
       'SELECT id FROM characters WHERE account_id = ?',
       [accountId]
     );
     if (characters.length > 0) {
       await this.db.execute(
-        'UPDATE characters SET character_type = ? WHERE account_id = ?',
-        [characterType, accountId]
+        'UPDATE characters SET character_type = ?, weapon = ?, skills = ? WHERE account_id = ?',
+        [characterType, config.weapon, JSON.stringify(config.skills), accountId]
       );
     }
   }

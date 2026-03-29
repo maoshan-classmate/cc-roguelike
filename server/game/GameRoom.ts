@@ -58,6 +58,7 @@ export interface BulletState {
   vx: number;
   vy: number;
   ownerId: string;
+  ownerType: string;
   damage: number;
   friendly: boolean;
   piercing: number;
@@ -124,7 +125,7 @@ export class GameRoom {
       energyMax: charData.energy_max || 50,
       attack: charData.attack || 10,
       defense: charData.defense || 5,
-      speed: charData.speed || 5.0,
+      speed: charData.speed || 5.0,  // DB值，仅用于参考
       speedBuff: 1.0,
       speedBuffTimer: 0,
       weapon: charData.weapon || 'pistol',
@@ -240,9 +241,9 @@ export class GameRoom {
     const player = this.players.get(playerId);
     if (!player || !player.alive) return;
 
-    player.dx = input.dx;
-    player.dy = input.dy;
-    player.angle = input.angle;
+    if (input.dx !== undefined) player.dx = input.dx;
+    if (input.dy !== undefined) player.dy = input.dy;
+    if (input.angle !== undefined) player.angle = input.angle;
 
     if (input.attack) {
       this.combat.playerAttack(player);
@@ -256,13 +257,19 @@ export class GameRoom {
   update(dt: number): void {
     if (!this.running) return;
 
+    // 职业移动速度（px/s）
+    const CLASS_SPEED: Record<string, number> = {
+      warrior: 180, ranger: 220, mage: 180, cleric: 190
+    };
+
     // Update players
     for (const player of this.players.values()) {
       if (!player.alive) continue;
 
-      // Movement
+      // Movement — 使用职业速度而非 DB 的 5.0
       const speedMultiplier = player.speedBuff || 1.0;
-      const speed = player.speed * speedMultiplier * GAME_CONFIG.PLAYER_BASE.moveSpeed * dt;
+      const baseSpeed = CLASS_SPEED[player.characterType] || 180;
+      const speed = baseSpeed * speedMultiplier * dt;
       const newX = player.x + player.dx * speed;
       const newY = player.y + player.dy * speed;
 
@@ -279,8 +286,10 @@ export class GameRoom {
       }
 
       // Clamp to dungeon bounds
-      player.x = Math.max(20, Math.min(780, player.x));
-      player.y = Math.max(20, Math.min(580, player.y));
+      const W = GAME_CONFIG.DUNGEON_WIDTH;
+      const H = GAME_CONFIG.DUNGEON_HEIGHT;
+      player.x = Math.max(20, Math.min(W - 20, player.x));
+      player.y = Math.max(20, Math.min(H - 20, player.y));
 
       // Energy regen
       if (player.energy < player.energyMax) {
@@ -314,7 +323,7 @@ export class GameRoom {
       bullet.y += bullet.vy * dt;
 
       // Remove if out of bounds
-      if (bullet.x < 0 || bullet.x > 800 || bullet.y < 0 || bullet.y > 600) {
+      if (bullet.x < 0 || bullet.x > GAME_CONFIG.DUNGEON_WIDTH || bullet.y < 0 || bullet.y > GAME_CONFIG.DUNGEON_HEIGHT) {
         this.bullets.delete(id);
         continue;
       }
@@ -346,30 +355,49 @@ export class GameRoom {
 
     if (!nearestPlayer) return;
 
-    // Simple AI: move toward player
     const dx = nearestPlayer.x - enemy.x;
     const dy = nearestPlayer.y - enemy.y;
     const dist = Math.hypot(dx, dy);
 
     if (dist > 30) {
-      const speed = 60 * dt;
-      const newEX = enemy.x + (dx / dist) * speed;
-      const newEY = enemy.y + (dy / dist) * speed;
+      const ENEMY_SPEED: Record<string, number> = {
+        basic: 60, fast: 100, tank: 40, boss: 50
+      };
+      const speed = (ENEMY_SPEED[enemy.type] || 60) * dt;
+      const dirX = dx / dist;
+      const dirY = dy / dist;
 
-      // Enemy collision check
-      if (this.isWalkable(newEX, newEY)) {
+      const ENEMY_RADIUS: Record<string, number> = {
+        basic: 16, fast: 14, tank: 20, boss: 28
+      };
+      const radius = ENEMY_RADIUS[enemy.type] || 16;
+      const newEX = enemy.x + dirX * speed;
+      const newEY = enemy.y + dirY * speed;
+
+      if (this.isWalkableRadius(newEX, newEY, radius)) {
         enemy.x = newEX;
         enemy.y = newEY;
-      } else if (this.isWalkable(newEX, enemy.y)) {
+      } else if (this.isWalkableRadius(newEX, enemy.y, radius)) {
+        // Slide along X
         enemy.x = newEX;
-      } else if (this.isWalkable(enemy.x, newEY)) {
+      } else if (this.isWalkableRadius(enemy.x, newEY, radius)) {
+        // Slide along Y
         enemy.y = newEY;
+      } else {
+        // Stuck: try perpendicular directions with random bias
+        const offsetAngle = (Math.random() > 0.5 ? 1 : -1) * Math.PI / 2;
+        const altX = enemy.x + Math.cos(Math.atan2(dirY, dirX) + offsetAngle) * speed;
+        const altY = enemy.y + Math.sin(Math.atan2(dirY, dirX) + offsetAngle) * speed;
+        if (this.isWalkableRadius(altX, enemy.y, radius)) {
+          enemy.x = altX;
+        } else if (this.isWalkableRadius(enemy.x, altY, radius)) {
+          enemy.y = altY;
+        }
       }
 
       enemy.state = 'chase';
     } else {
       enemy.state = 'attack';
-      // Attack player
       if (nearestPlayer.invincible <= 0) {
         nearestPlayer.hp -= (enemy.attack || 10);
         nearestPlayer.invincible = 0.5;
@@ -453,6 +481,17 @@ export class GameRoom {
     return this.collisionGrid[row][col];
   }
 
+  /**
+   * 检查实体半径内所有角点是否可行走
+   */
+  isWalkableRadius(x: number, y: number, radius: number): boolean {
+    return this.isWalkable(x, y)
+      && this.isWalkable(x - radius, y - radius)
+      && this.isWalkable(x + radius, y - radius)
+      && this.isWalkable(x - radius, y + radius)
+      && this.isWalkable(x + radius, y + radius);
+  }
+
   getState(): GameState {
     return {
       tick: this.tick,
@@ -466,12 +505,13 @@ export class GameRoom {
         rooms: this.currentDungeon.rooms,
         corridorTiles: this.currentDungeon.corridorTiles,
         spawnPoint: this.currentDungeon.spawnPoint,
-        exitPoint: this.currentDungeon.exitPoint
+        exitPoint: this.currentDungeon.exitPoint,
+        collisionGrid: this.currentDungeon.collisionGrid
       } : undefined
     };
   }
 
-  spawnBullet(ownerId: string, x: number, y: number, angle: number, damage: number, friendly: boolean): void {
+  spawnBullet(ownerId: string, x: number, y: number, angle: number, damage: number, friendly: boolean, ownerType: string = 'warrior'): void {
     const speed = GAME_CONFIG.BULLET_SPEED;
     const id = `bullet_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
@@ -482,6 +522,7 @@ export class GameRoom {
       vx: Math.cos(angle) * speed,
       vy: Math.sin(angle) * speed,
       ownerId,
+      ownerType,
       damage,
       friendly,
       piercing: 1,

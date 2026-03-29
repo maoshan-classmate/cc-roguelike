@@ -40,7 +40,8 @@ export class Combat {
         player.y + Math.sin(angle) * 20,
         angle,
         weapon.damage,
-        true
+        true,
+        player.characterType
       );
     }
   }

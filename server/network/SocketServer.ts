@@ -191,9 +191,9 @@ export class SocketServer {
       // Get character data
       const character = await this.authManager.getCharacter(session.accountId);
 
-      // Notify others
+      // Notify others — 发送完整 room 对象（客户端统一读 data.room）
       socket.to(`room:${room.id}`).emit(RoomMessages.JOIN_PUSH, {
-        player: { id: session.accountId, name: session.username, ready: false }
+        room
       });
 
       // Send room data to joiner

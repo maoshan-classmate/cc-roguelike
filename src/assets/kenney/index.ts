@@ -12,8 +12,9 @@
 // 精灵图路径（使用ES6 import，Vite默认支持PNG导入）
 import roguelikeCharSheetPath from './Spritesheet/roguelikeChar_transparent.png';
 import roguelikeDungeonSheetPath from './Spritesheet/roguelikeDungeon_transparent.png';
+import roguelikeSheetPath from './Spritesheet/roguelikeSheet_transparent.png';
 
-export { roguelikeCharSheetPath, roguelikeDungeonSheetPath };
+export { roguelikeCharSheetPath, roguelikeDungeonSheetPath, roguelikeSheetPath };
 
 // 瓦片规格
 export const TILE_SIZE = 16;
@@ -22,6 +23,7 @@ export const TILE_MARGIN = 1;
 // Spritesheet宽度（用于计算精灵位置）
 export const CHAR_SPRITESHEET_WIDTH = 918;   // roguelikeChar: 918x203
 export const DUNGEON_SPRITESHEET_WIDTH = 492; // roguelikeDungeon: 492x305
+export const SHEET_SPRITESHEET_WIDTH = 968;   // roguelikeSheet: 968x526
 
 /**
  * 从spritesheet提取单个精灵的坐标
