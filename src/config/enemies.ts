@@ -25,7 +25,7 @@ export const ENEMIES: Record<string, EnemyConfig> = {
     name: '史莱姆',
     spriteIndex: 1671,     // Kenney roguelikeSheet fallback
     sheet: 'sheet',
-    spriteName: 'slime_idle_anim_f0',  // 0x72 TilesetII
+    spriteName: 'goblin_idle_anim_f0',  // 0x72 TilesetII (⚠️ slime不在atlas，用goblin代替)
     size: 40,
     hp: 30,
     attack: 5,

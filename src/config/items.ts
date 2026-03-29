@@ -46,6 +46,7 @@ export const ITEMS: Record<string, ItemConfig> = {
     name: '钥匙',
     spriteIndex: 32,
     sheet: 'dungeon',
+    spriteName: 'skull',  // 0x72 TilesetII
     size: 16,
     color: '#FFD700',
     description: '用于开启宝箱或门',
@@ -67,6 +68,7 @@ export const ITEMS: Record<string, ItemConfig> = {
     name: '护盾',
     spriteIndex: 34,
     sheet: 'dungeon',
+    spriteName: 'crate',  // 0x72 TilesetII
     size: 16,
     color: '#4A9EFF',
     description: '临时增加防御力',
