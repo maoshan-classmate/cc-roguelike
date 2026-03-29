@@ -13,8 +13,9 @@
 import roguelikeCharSheetPath from './Spritesheet/roguelikeChar_transparent.png';
 import roguelikeDungeonSheetPath from './Spritesheet/roguelikeDungeon_transparent.png';
 import roguelikeSheetPath from './Spritesheet/roguelikeSheet_transparent.png';
+import pumpkinDudePath from './Spritesheet/pumpkin_dude.png';
 
-export { roguelikeCharSheetPath, roguelikeDungeonSheetPath, roguelikeSheetPath };
+export { roguelikeCharSheetPath, roguelikeDungeonSheetPath, roguelikeSheetPath, pumpkinDudePath };
 
 // 瓦片规格
 export const TILE_SIZE = 16;

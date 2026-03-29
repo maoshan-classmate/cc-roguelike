@@ -152,6 +152,25 @@ y = row * (tileSize + margin)
 | 武器 | `weapon_knight_sword` 等 | 静态 |
 | 道具 | `flask_big_red` 等 | 静态/3帧动画 |
 | 场景 | `wall_left/mid/right` 等 | 静态 |
+
+### Kenney 扩展（CC0）
+
+| 文件 | 尺寸 | 用途 |
+|------|------|------|
+| `pumpkin_dude.png` | 128×32，4帧×32px | Jack-o'-lantern 风格怪物（MONSTER），CC0 |
+
+**注册 key**：`pumpkin_dude_kenney`（MONSTER，4帧动画，32px）
+**绘制函数**：`drawPumpkinDudeSprite(ctx, img, frame, x, y, size)`
+
+| 分类 | 精灵 key | 说明 |
+|------|---------|------|
+| 角色 | `knight_m_idle_anim_f0` 等 | 4帧 idle 动画 |
+| 怪物 | `goblin_idle_anim_f0` | ⚠️ slime 不在 atlas |
+| 怪物 | `skelet_idle_anim_f0` | 骷髅 |
+| 怪物 | `big_demon_idle_anim_f0` | BOSS |
+| 武器 | `weapon_knight_sword` 等 | 静态 |
+| 道具 | `flask_big_red` 等 | 静态/3帧动画 |
+| 场景 | `wall_left/mid/right` 等 | 静态 |
 | UI | `ui_heart_full/empty/half` | 心形血条 |
 
 **统一 Sprite Registry**：`src/config/sprites.ts` — `SPRITE_REGISTRY` key = spriteName，详见 CLAUDE.md

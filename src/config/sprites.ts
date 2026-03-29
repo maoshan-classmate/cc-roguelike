@@ -61,6 +61,9 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
   bat_kenney:   { category: 'MONSTER', source: 'kenney', atlasKey: 1665, size: 16, animated: false, frameCount: 1 },
   boss_kenney:  { category: 'MONSTER', source: 'kenney', atlasKey: 1668, size: 16, animated: false, frameCount: 1 },
 
+  // Kenney pumpkin_dude — Jack-o'-lantern 风格怪物，4帧行走动画（CC0）
+  pumpkin_dude_kenney: { category: 'MONSTER', source: 'kenney', atlasKey: 0, size: 32, animated: true, frameCount: 4 },
+
   // ── WEAPON ────────────────────────────────────────────────────────────────
   weapon_knight_sword:    { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_knight_sword',   size: 32, animated: false, frameCount: 1 },
   weapon_arrow:          { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_arrow',          size: 32, animated: false, frameCount: 1 },
@@ -212,6 +215,22 @@ export function drawSheetSprite(
   const pos = getSpritePosition(index, SHEET_SPRITESHEET_WIDTH)
   const halfSize = size / 2
   ctx.drawImage(img, pos.x, pos.y, TILE_SIZE, TILE_SIZE, x - halfSize, y - halfSize, size, size)
+}
+
+/**
+ * 绘制 pumpkin_dude 精灵（Kenney CC0，128x32，4帧横排动画）
+ */
+export function drawPumpkinDudeSprite(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  frame: number,
+  x: number,
+  y: number,
+  size: number = 32
+): void {
+  const frameX = (frame % 4) * 32  // 4帧横排，每帧32px
+  const halfSize = size / 2
+  ctx.drawImage(img, frameX, 0, 32, 32, x - halfSize, y - halfSize, size, size)
 }
 
 /**

@@ -10,11 +10,12 @@
 ### 1.1 外部资源入口
 
 **你必须**：
-- 所有外源素材（精灵/音频/字体/模型）统一放入 `assets/inbox/`
+- `assets/inbox/` 是**人类放置资源的入口目录**，Agent 不得在此目录内做分析或引用
+- 素材集成后**必须**移动到 `src/assets/` 下对应分类路径（kenney/Spritesheet/、0x72/等）
 - 不得在 `assets/inbox/` 以外的裸路径引用外部 URL
 - 素材集成后立即更新对应 config 文件，不得遗留"裸索引"
 
-**流程**：`下载 → inbox → 分析 → 分类 → 更新 config/sprites.ts → 更新 docs/sprites.md → 编译验证`
+**流程**：`人类放资源到 inbox → Agent 移动到 src/assets/ → 分析 → 分类 → 更新 sprites.ts → 更新 docs/sprites.md → 编译验证`
 
 ### 1.2 Sprite Registry（强制）
 
@@ -25,9 +26,11 @@
 - 不得在渲染代码中硬编码 sprite key 字符串（除 config 初始定义）
 
 **Registry 扩展流程**：
-1. 在 `SPRITE_REGISTRY` 添加条目：`category` / `source` / `atlasKey` / `size` / `animated` / `frameCount`
-2. 更新 `docs/sprites/0x72-classification.md` 分类文档
-3. 编译验证
+1. 从 `assets/inbox/` 移动资源到 `src/assets/` 分类路径
+2. 在 `SPRITE_REGISTRY` 添加条目：`category` / `source` / `atlasKey` / `size` / `animated` / `frameCount`
+3. 独立 spritesheet 需新增专用绘制函数（如 `drawPumpkinDudeSprite`）
+4. 更新 `docs/sprites/0x72-classification.md` 或 `docs/sprites.md`
+5. 编译验证
 
 ### 1.3 配置分散原则
 
