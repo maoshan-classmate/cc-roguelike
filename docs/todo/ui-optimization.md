@@ -23,8 +23,8 @@
 - [x] 登录页：消除 `━━━` `◆` `⚠` `>>> <<<` 装饰
 - [x] 大厅页：消除 `⚔` emoji，替换 `alert()` 为内联错误通知
 - [x] 房间页：消除 `✓` `○` `◆` `⏳` Unicode 字符
-- [x] PixelSprites：消除所有 emoji，改用内联 SVG
-- [x] GameAssets：消除 `♥` `◆` `★` Unicode，改用 SVG 图标
+- [x] PixelSprites：消除所有 emoji，改用内联 SVG — 2026-03-29 实际：组件删除（死代码），目标达成
+- [x] GameAssets：消除 `♥` `◆` `★` Unicode，改用 SVG 图标 — 2026-03-29 实际：组件删除（死代码），目标达成
 - [x] 全局字体 Courier New → Kenney Mini Square Mono
 - [x] 补全 CSS 变量
 
