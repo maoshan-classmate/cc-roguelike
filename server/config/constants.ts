@@ -23,7 +23,6 @@ export const GAME_CONFIG = {
     maxHealth: 100,
     maxEnergy: 50,
     armor: 0,
-    moveSpeed: 200,
     pickupRange: 50,
     radius: 20
   },

@@ -15,8 +15,9 @@ class NetworkClient {
 
     if (this.socket?.connected) return
 
-    // Connect directly to backend server on port 3001
-    this.socket = io('http://localhost:3001', {
+    // Connect to backend server (configurable via env, default to localhost:3001)
+    const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'
+    this.socket = io(serverUrl, {
       auth: { token },
       transports: ['websocket', 'polling']
     })

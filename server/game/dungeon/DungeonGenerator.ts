@@ -49,8 +49,11 @@ export class DungeonGenerator {
     const height = GAME_CONFIG.DUNGEON_HEIGHT;
     const roomCount = 6 + floor * 2;
 
-    // Generate BSP tree (depth 3 = up to 8 rooms, realistically 5-7)
-    const root = this.splitBSP(0, 0, width, height, 3);
+    // BSP depth scales with floor: floor 1→depth 3 (5-7 rooms), floor 5→depth 4 (9-13 rooms)
+    const bspDepth = Math.min(2 + Math.ceil(floor / 2), 4);
+
+    // Generate BSP tree
+    const root = this.splitBSP(0, 0, width, height, bspDepth);
 
     // Generate rooms from BSP
     const rooms = this.generateRooms(root, roomCount);
@@ -187,33 +190,61 @@ export class DungeonGenerator {
       if (node.right) rooms.push(...this.generateRooms(node.right, targetCount));
     }
 
+    // If we have more rooms than target, randomly remove some
+    while (rooms.length > targetCount) {
+      const removeIdx = Math.floor(this.random() * rooms.length);
+      rooms.splice(removeIdx, 1);
+    }
+
     return rooms;
   }
 
   private connectRooms(rooms: Room[]): Corridor[] {
     const corridors: Corridor[] = [];
 
-    // Simple approach: connect each room to the next
+    // Linear chain: connect each room to the next
     for (let i = 0; i < rooms.length - 1; i++) {
-      const roomA = rooms[i];
-      const roomB = rooms[i + 1];
+      corridors.push(...this.makeLCorridor(rooms[i], rooms[i + 1]));
+    }
 
-      const ax = roomA.x + roomA.width / 2;
-      const ay = roomA.y + roomA.height / 2;
-      const bx = roomB.x + roomB.width / 2;
-      const by = roomB.y + roomB.height / 2;
-
-      // L-shaped corridor
-      if (this.random() > 0.5) {
-        corridors.push({ x1: ax, y1: ay, x2: bx, y2: ay });
-        corridors.push({ x1: bx, y1: ay, x2: bx, y2: by });
-      } else {
-        corridors.push({ x1: ax, y1: ay, x2: ax, y2: by });
-        corridors.push({ x1: ax, y1: by, x2: bx, y2: by });
+    // Add 1-2 random loop connections between non-adjacent rooms
+    if (rooms.length > 3) {
+      const loopCount = 1 + Math.floor(this.random() * 2); // 1 or 2 loops
+      for (let n = 0; n < loopCount; n++) {
+        const a = Math.floor(this.random() * rooms.length);
+        let b = Math.floor(this.random() * rooms.length);
+        // Ensure different and non-adjacent
+        let attempts = 0;
+        while ((b === a || b === a - 1 || b === a + 1) && attempts < 10) {
+          b = Math.floor(this.random() * rooms.length);
+          attempts++;
+        }
+        if (b !== a && b !== a - 1 && b !== a + 1) {
+          corridors.push(...this.makeLCorridor(rooms[a], rooms[b]));
+        }
       }
     }
 
     return corridors;
+  }
+
+  private makeLCorridor(roomA: Room, roomB: Room): Corridor[] {
+    const ax = roomA.x + roomA.width / 2;
+    const ay = roomA.y + roomA.height / 2;
+    const bx = roomB.x + roomB.width / 2;
+    const by = roomB.y + roomB.height / 2;
+
+    if (this.random() > 0.5) {
+      return [
+        { x1: ax, y1: ay, x2: bx, y2: ay },
+        { x1: bx, y1: ay, x2: bx, y2: by }
+      ];
+    } else {
+      return [
+        { x1: ax, y1: ay, x2: ax, y2: by },
+        { x1: ax, y1: by, x2: bx, y2: by }
+      ];
+    }
   }
 
   private spawnEnemies(rooms: Room[], floor: number): { type: string; x: number; y: number; count: number }[] {
@@ -226,9 +257,12 @@ export class DungeonGenerator {
       const count = Math.floor(config.enemyCount[0] + this.random() * (config.enemyCount[1] - config.enemyCount[0]));
       const type = config.enemyTypes[Math.floor(this.random() * config.enemyTypes.length)];
 
-      // Spawn in room center with some randomness
-      const x = room.x + room.width / 2 + (this.random() - 0.5) * room.width * 0.5;
-      const y = room.y + room.height / 2 + (this.random() - 0.5) * room.height * 0.5;
+      // Spawn in room center with some randomness, clamped to room interior
+      const padding = 32; // Keep away from walls
+      const maxOffsetX = Math.max(0, room.width / 2 - padding);
+      const maxOffsetY = Math.max(0, room.height / 2 - padding);
+      const x = room.x + room.width / 2 + (this.random() - 0.5) * maxOffsetX;
+      const y = room.y + room.height / 2 + (this.random() - 0.5) * maxOffsetY;
 
       enemies.push({ type, x, y, count });
     }

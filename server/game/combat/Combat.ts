@@ -110,8 +110,8 @@ export class Combat {
             player.y = halfY;
           }
         }
-        player.x = Math.max(20, Math.min(780, player.x));
-        player.y = Math.max(20, Math.min(580, player.y));
+        player.x = Math.max(20, Math.min(GAME_CONFIG.DUNGEON_WIDTH - 20, player.x));
+        player.y = Math.max(20, Math.min(GAME_CONFIG.DUNGEON_HEIGHT - 20, player.y));
         player.invincible = 0.3;
         break;
 

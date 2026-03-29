@@ -216,11 +216,20 @@ export class GameRoom {
       boss: 25
     };
 
+    // Random offset, then verify position is walkable
+    let spawnX = x + Math.random() * 40 - 20;
+    let spawnY = y + Math.random() * 40 - 20;
+    if (!this.isWalkable(spawnX, spawnY)) {
+      // Fallback to original position (room center)
+      spawnX = x;
+      spawnY = y;
+    }
+
     return {
       id,
       type,
-      x: x + Math.random() * 40 - 20,
-      y: y + Math.random() * 40 - 20,
+      x: spawnX,
+      y: spawnY,
       hp: baseHp,
       hpMax: baseHp,
       attack: ENEMY_BASE_ATTACK[type] || 10,
@@ -324,6 +333,12 @@ export class GameRoom {
 
       // Remove if out of bounds
       if (bullet.x < 0 || bullet.x > GAME_CONFIG.DUNGEON_WIDTH || bullet.y < 0 || bullet.y > GAME_CONFIG.DUNGEON_HEIGHT) {
+        this.bullets.delete(id);
+        continue;
+      }
+
+      // Remove if hit wall
+      if (!this.isWalkable(bullet.x, bullet.y)) {
         this.bullets.delete(id);
         continue;
       }
