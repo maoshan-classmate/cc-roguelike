@@ -70,10 +70,14 @@ npx tsc --noEmit                                # TypeScript 编译检查
 2. 告知 Agent 文件名
 3. Agent 执行：**分析格式** → **移动到 `src/assets/kenney/Spritesheet/`** → **更新 `characters.ts` / `enemies.ts` 索引** → **编译验证**
 
-**已有 CC0 资产**（Kenney，CC0）：
-- `roguelikeChar_transparent.png` — 角色 spritesheet
-- `roguelikeDungeon_transparent.png` — 地牢/道具 spritesheet
-- `roguelikeSheet_transparent.png` — 综合 spritesheet（含怪物）
+**已有资产**（Kenney，CC0）：
+- `src/assets/kenney/Spritesheet/roguelikeChar_transparent.png` — 角色 spritesheet
+- `src/assets/kenney/Spritesheet/roguelikeDungeon_transparent.png` — 地牢/道具 spritesheet
+- `src/assets/kenney/Spritesheet/roguelikeSheet_transparent.png` — 综合 spritesheet（含怪物）
+
+**待集成资产**（0x72，PWYW 商业许可）：
+- `assets/inbox/0x72_DungeonTilesetII_v1.7/` — 角色/怪物动画帧（370 帧），暗黑地牢风格
+- `assets/inbox/0x72_16x16DungeonTileset.v5/` — 地牢瓦片/道具
 
 **索引对应关系**（需随新资源更新）：
 - `src/config/characters.ts` — 4 个职业的 spriteIndex
