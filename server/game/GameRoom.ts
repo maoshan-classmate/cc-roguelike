@@ -79,6 +79,7 @@ export interface GameState {
     corridorTiles: { x: number; y: number }[];
     spawnPoint: { x: number; y: number };
     exitPoint: { x: number; y: number };
+    collisionGrid: boolean[][];
   };
 }
 

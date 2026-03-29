@@ -8,6 +8,8 @@ export interface ItemConfig {
   name: string
   spriteIndex: number
   sheet: 'char' | 'dungeon'
+  /** 0x72 精灵名 (TilesetII) - 优先使用 */
+  spriteName?: string
   size: number
   color: string
   description: string
@@ -23,6 +25,7 @@ export const ITEMS: Record<string, ItemConfig> = {
     name: '医疗包',
     spriteIndex: 29,
     sheet: 'dungeon',
+    spriteName: 'flask_big_red',  // 0x72 TilesetII
     size: 16,
     color: '#32CD32',
     description: '恢复30点生命值',
@@ -33,6 +36,7 @@ export const ITEMS: Record<string, ItemConfig> = {
     name: '金币',
     spriteIndex: 31,
     sheet: 'dungeon',
+    spriteName: 'coin_anim_f0',  // 0x72 TilesetII (动画首帧)
     size: 16,
     color: '#FFD700',
     description: '收集金币获得分数'
@@ -52,6 +56,7 @@ export const ITEMS: Record<string, ItemConfig> = {
     name: '药水',
     spriteIndex: 33,
     sheet: 'dungeon',
+    spriteName: 'flask_blue',  // 0x72 TilesetII
     size: 16,
     color: '#9B59B6',
     description: '恢复50点生命值',
@@ -81,6 +86,7 @@ export const ITEMS: Record<string, ItemConfig> = {
     name: '能量包',
     spriteIndex: 30,
     sheet: 'dungeon',
+    spriteName: 'flask_big_blue',  // 0x72 TilesetII
     size: 16,
     color: '#4A9EFF',
     description: '恢复30点魔法值'
@@ -90,6 +96,7 @@ export const ITEMS: Record<string, ItemConfig> = {
     name: '宝箱',
     spriteIndex: 21,
     sheet: 'dungeon',
+    spriteName: 'chest_full_open_anim_f0',  // 0x72 TilesetII
     size: 16,
     color: '#8B4513',
     description: '打开可获得随机道具'

@@ -4,6 +4,7 @@
  */
 
 import { TILE_SIZE, TILE_MARGIN } from '../assets/kenney'
+import { SPRITE_ATLAS, type SpriteEntry } from '../assets/0x72/spriteIndex'
 
 // 精灵图规格
 const CHAR_SPRITESHEET_WIDTH = 918  // roguelikeChar: 918x203
@@ -26,6 +27,47 @@ export function getSpritePosition(
     x: col * (tileSize + margin),
     y: row * (tileSize + margin)
   }
+}
+
+/**
+ * 绘制0x72 TilesetII精灵 (使用x,y,w,h坐标直接绘制)
+ * 用于角色、怪物、武器等所有TilesetII资源
+ *
+ * @param ctx Canvas渲染上下文
+ * @param img 0x72 atlas图片元素
+ * @param spriteName SPRITE_ATLAS中的键名
+ * @param x 目标x坐标(中心)
+ * @param y 目标y坐标(中心)
+ * @param size 目标显示尺寸(默认32px,16x28的精灵会保持比例)
+ */
+export function draw0x72Sprite(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  spriteName: string,
+  x: number,
+  y: number,
+  size: number = 32
+): void {
+  const entry: SpriteEntry | undefined = SPRITE_ATLAS[spriteName]
+  if (!entry) {
+    console.warn(`[0x72] Sprite not found: ${spriteName}`)
+    return
+  }
+
+  // 计算缩放比例 (保持原始宽高比)
+  const scale = size / Math.max(entry.w, entry.h)
+  const drawW = entry.w * scale
+  const drawH = entry.h * scale
+
+  // 居中绘制
+  const drawX = x - drawW / 2
+  const drawY = y - drawH / 2
+
+  ctx.drawImage(
+    img,
+    entry.x, entry.y, entry.w, entry.h,  // 源区域
+    drawX, drawY, drawW, drawH          // 目标区域
+  )
 }
 
 /**

@@ -11,6 +11,7 @@ import {
   roguelikeDungeonSheetPath,
   roguelikeSheetPath,
 } from '../assets/kenney'
+import { mainAtlasPath } from '../assets/0x72'
 import { CHARACTERS } from '../config/characters'
 import { ENEMIES } from '../config/enemies'
 import { ITEMS } from '../config/items'
@@ -18,6 +19,7 @@ import {
   drawCharacterSprite,
   drawDungeonSprite,
   drawSheetSprite,
+  draw0x72Sprite,
   drawHPBar,
   drawBossCrown,
   drawDirectionArrow,
@@ -43,6 +45,9 @@ const dungeonSpriteSheet = new Image()
 dungeonSpriteSheet.src = roguelikeDungeonSheetPath
 const sheetSpriteSheet = new Image()
 sheetSpriteSheet.src = roguelikeSheetPath
+// 0x72 TilesetII atlas
+const tileset2Atlas = new Image()
+tileset2Atlas.src = mainAtlasPath
 
 // 技能图标SVG组件数据
 const SKILL_ICONS = [
@@ -102,6 +107,16 @@ export default function GamePage() {
     return a + (b - a) * t
   }
 
+  // 动画帧辅助：每~150ms切换一帧 (0→1→2→3→0 循环)
+  const animInterval = 150 // ms per frame
+  const lastAnimTime = useRef(performance.now())
+  function getAnimSprite(spriteName: string, elapsedMs: number): string {
+    // 从 'knight_m_idle_anim_f0' 提取 base 'knight_m_idle_anim'
+    const base = spriteName.replace(/_f\d+$/, '')
+    const frame = Math.floor(elapsedMs / animInterval) % 4
+    return `${base}_f${frame}`
+  }
+
   // Set local player ID
   useEffect(() => {
     if (user) {
@@ -144,8 +159,19 @@ export default function GamePage() {
         sheetSpriteSheet.onerror = () => reject(new Error('Failed to load roguelikeSheet'))
       }
     })
+    const loadTileset2 = new Promise<void>((resolve, reject) => {
+      if (tileset2Atlas.complete && tileset2Atlas.naturalWidth > 0) {
+        resolve()
+      } else {
+        tileset2Atlas.onload = () => {
+          if (tileset2Atlas.naturalWidth > 0) resolve()
+          else reject(new Error('Tileset2 atlas loaded but naturalWidth=0'))
+        }
+        tileset2Atlas.onerror = () => reject(new Error('Failed to load 0x72 tileset2 atlas'))
+      }
+    })
 
-    Promise.all([loadChar, loadDungeon, loadSheet]).then(() => {
+    Promise.all([loadChar, loadDungeon, loadSheet, loadTileset2]).then(() => {
       setSpritesLoaded(true)
     })
   }, [])
@@ -391,7 +417,11 @@ export default function GamePage() {
     // 绘制道具
     for (const item of items) {
       const itemConfig = ITEMS[item.type] || ITEMS.health
-      if (spritesLoaded && dungeonSpriteSheet.complete) {
+      // 优先使用0x72精灵，否则使用Kenney
+      if (spritesLoaded && tileset2Atlas.complete && itemConfig.spriteName) {
+        const animSprite = getAnimSprite(itemConfig.spriteName, performance.now() - lastAnimTime.current)
+        draw0x72Sprite(ctx, tileset2Atlas, animSprite, item.x, item.y, 28)
+      } else if (spritesLoaded && dungeonSpriteSheet.complete) {
         drawDungeonSprite(ctx, dungeonSpriteSheet, itemConfig.spriteIndex, item.x, item.y, 28)
       } else {
         // 备用：纯色
@@ -412,7 +442,11 @@ export default function GamePage() {
       const epos = getRenderPos(enemy.id, enemy.x, enemy.y)
 
       if (spritesLoaded) {
-        if (enemyConfig.sheet === 'sheet' && sheetSpriteSheet.complete) {
+        // 优先使用0x72精灵，否则回退到Kenney
+        if (tileset2Atlas.complete && enemyConfig.spriteName) {
+          const animSprite = getAnimSprite(enemyConfig.spriteName, performance.now() - lastAnimTime.current)
+          draw0x72Sprite(ctx, tileset2Atlas, animSprite, epos.x, epos.y, size)
+        } else if (enemyConfig.sheet === 'sheet' && sheetSpriteSheet.complete) {
           drawSheetSprite(ctx, sheetSpriteSheet, enemyConfig.spriteIndex, epos.x, epos.y, size)
         } else if (enemyConfig.sheet === 'dungeon' && dungeonSpriteSheet.complete) {
           drawDungeonSprite(ctx, dungeonSpriteSheet, enemyConfig.spriteIndex, epos.x, epos.y, size)
@@ -487,7 +521,10 @@ export default function GamePage() {
       if (!player.alive) {
         // 死亡角色：灰色半透明精灵 + 坟墓标记
         ctx.globalAlpha = 0.4
-        if (spritesLoaded && charSpriteSheet.complete) {
+        // 优先使用0x72精灵，否则使用Kenney
+        if (spritesLoaded && tileset2Atlas.complete && charConfig.spriteName) {
+          draw0x72Sprite(ctx, tileset2Atlas, charConfig.spriteName.front, ppos.x, ppos.y, size)
+        } else if (spritesLoaded && charSpriteSheet.complete) {
           drawCharacterSprite(ctx, charSpriteSheet, charConfig.spriteIndex.front, ppos.x, ppos.y, size)
         } else {
           ctx.fillStyle = '#666'
@@ -506,26 +543,42 @@ export default function GamePage() {
 
       // 根据朝向选择精灵（角色只有正面+背面，左右通过翻转实现）
       let spriteIndex = charConfig.spriteIndex.front
+      let spriteName = charConfig.spriteName?.front
       let flipH = false
       if (player.angle !== undefined) {
         const angle = player.angle
         if (angle > Math.PI/4 && angle <= 3*Math.PI/4) {
           // 朝上 → 背面
           spriteIndex = charConfig.spriteIndex.back
+          spriteName = charConfig.spriteName?.back
         } else if (angle > -Math.PI/4 && angle <= Math.PI/4) {
           // 朝右 → 正面 + 翻转
           spriteIndex = charConfig.spriteIndex.front
+          spriteName = charConfig.spriteName?.front
           flipH = true
         } else if (angle > 3*Math.PI/4 || angle <= -3*Math.PI/4) {
           // 朝左 → 正面
           spriteIndex = charConfig.spriteIndex.front
+          spriteName = charConfig.spriteName?.front
         } else {
           // 朝下 → 正面
           spriteIndex = charConfig.spriteIndex.front
+          spriteName = charConfig.spriteName?.front
         }
       }
 
-      if (spritesLoaded && charSpriteSheet.complete) {
+      // 优先使用0x72精灵，否则使用Kenney
+      if (spritesLoaded && tileset2Atlas.complete && spriteName) {
+        const animSprite = getAnimSprite(spriteName, performance.now() - lastAnimTime.current)
+        if (flipH) {
+          ctx.save()
+          ctx.scale(-1, 1)
+          draw0x72Sprite(ctx, tileset2Atlas, animSprite, -ppos.x, ppos.y, size)
+          ctx.restore()
+        } else {
+          draw0x72Sprite(ctx, tileset2Atlas, animSprite, ppos.x, ppos.y, size)
+        }
+      } else if (spritesLoaded && charSpriteSheet.complete) {
         if (flipH) {
           ctx.save()
           ctx.scale(-1, 1)

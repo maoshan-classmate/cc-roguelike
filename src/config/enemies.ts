@@ -8,6 +8,8 @@ export interface EnemyConfig {
   name: string
   spriteIndex: number
   sheet: 'char' | 'dungeon' | 'sheet'
+  /** 0x72 精灵名 (TilesetII) - 优先使用 */
+  spriteName?: string
   size: number
   hp: number
   attack: number
@@ -21,8 +23,9 @@ export const ENEMIES: Record<string, EnemyConfig> = {
   basic: {
     id: 'basic',
     name: '史莱姆',
-    spriteIndex: 1671,     // roguelikeSheet: 青绿史莱姆 (74% fill, rgb(64,176,176))
+    spriteIndex: 1671,     // Kenney roguelikeSheet fallback
     sheet: 'sheet',
+    spriteName: 'slime_idle_anim_f0',  // 0x72 TilesetII
     size: 40,
     hp: 30,
     attack: 5,
@@ -35,8 +38,9 @@ export const ENEMIES: Record<string, EnemyConfig> = {
   fast: {
     id: 'fast',
     name: '蝙蝠',
-    spriteIndex: 1665,     // roguelikeSheet row29 col41: 绿色蝙蝠 (74.2%, rgb(128,192,64))
+    spriteIndex: 1665,     // Kenney roguelikeSheet fallback
     sheet: 'sheet',
+    spriteName: 'goblin_idle_anim_f0',  // 0x72 TilesetII - 哥布林(快速)
     size: 36,
     hp: 20,
     attack: 8,
@@ -49,8 +53,9 @@ export const ENEMIES: Record<string, EnemyConfig> = {
   tank: {
     id: 'tank',
     name: '骷髅兵',
-    spriteIndex: 1648,     // roguelikeSheet: 灰白骷髅 (74% fill, rgb(192,192,192))
+    spriteIndex: 1648,     // Kenney roguelikeSheet fallback
     sheet: 'sheet',
+    spriteName: 'skelet_idle_anim_f0',  // 0x72 TilesetII
     size: 48,
     hp: 80,
     attack: 10,
@@ -64,8 +69,9 @@ export const ENEMIES: Record<string, EnemyConfig> = {
   boss: {
     id: 'boss',
     name: '恶魔',
-    spriteIndex: 1668,     // roguelikeSheet row29 col44: 橙色恶魔 (74.2%, rgb(224,128,64))
+    spriteIndex: 1668,     // Kenney roguelikeSheet fallback
     sheet: 'sheet',
+    spriteName: 'big_demon_idle_anim_f0',  // 0x72 TilesetII
     size: 64,
     hp: 200,
     attack: 20,
