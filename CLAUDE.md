@@ -80,7 +80,7 @@ npx tsc --noEmit                                # TypeScript 编译检查
 
 - **编译检查**：`npx tsc --noEmit`（零 error 即通过，弃用警告可忽略）
 - **E2E 验证**：Playwright MCP 走完 登录→建房间→选职业→准备→开始冒险，确认零 `[0x72] Sprite not found` 警告
-- **截图存档**：E2E 通过后截图，验证后删除 `.playwright-mcp/` 下的截图文件
+- **截图存档**：E2E 通过后截图，验证后删除 `.playwright-mcp/` 下的截图文件；Playwright MCP `browser_take_screenshot` 保存截图到 `.playwright-mcp/` 目录
 
 ## TODO 管理规范
 
@@ -131,8 +131,20 @@ npx tsc --noEmit                                # TypeScript 编译检查
 - **怪物精灵**: roguelikeSheet perRow=56，最大索引 1679，超出即越界（如 1721/1725）
 - **地牢色系**: FLOOR=#3A2E2C, GRID=#504440, WALL=#5C4A3A, BG=#1A1210（网格线与底色色差须 >30 色阶才可见）
 - **职业速度** `CLASS_SPEED`: warrior=180, ranger=220, mage=180, cleric=190 (px/s)
-- **职业武器** class→weapon: warrior=sword(近战), ranger/mage/cleric=pistol(远程)
+- **职业武器** class→weapon: warrior=sword(近战), ranger/mage=pistol(远程), cleric=staff(魔法杖)
 - **4 技能槽**: dash/shield/heal/speed_boost 按职业不同排列
 - **碰撞半径**: `isWalkableRadius(x,y,r)` 检查中心+4角共5点
 - **客户端插值**: lerp(prev, target, t) 平滑服务端 10Hz 同步
 - **地牢尺寸**: 1024×768 (32×24 tiles, tile=32px)
+
+## Bug 修复教训（本 session 沉淀）
+
+**角色 sprite 大小**：atlas 原始 16px → 在 32px tile 世界需要 scale 2-3x 才能清晰可见 → 当前 CHARACTER size=48；改 size 前必须截图验证，不可靠直觉
+
+**白色棍子已知来源**：`drawDirectionArrow` 在本地玩家头顶绘制白色 12px 方向箭头，删除 GamePage.tsx 中调用即可，不要误删 PixelSprites
+
+**删除文件前必须全量 grep 引用**：确认零引用才能删；`ui-optimization.md` 可能引用 `PixelSprites.tsx`
+
+**Bug 修复验证**：改完代码必须 Playwright E2E + 截图确认，不能只看 `tsc --noEmit`；视觉类 bug 必须拿 screenshot 证据
+
+**异步竞态修复模式**：DB 写 + 内存写双保险，`handleRoomStart` 优先读内存；`handleSelectClass` 同时更新 `lobbyManager.setPlayerCharacterType()`

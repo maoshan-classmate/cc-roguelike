@@ -167,7 +167,17 @@
       "Bash(gh search:*)",
       "Bash(file:*)",
       "Bash(find D:/cc-roguelike -type f \\\\\\(-name LICENSE* -o -name license* -o -name README* \\\\\\))",
-      "Bash(git reset:*)"
+      "Bash(git reset:*)",
+      "Bash(ffmpeg -i 0x72_DungeonTilesetII_v1.7/0x72_dungeonTilesetII_v1.7.png)",
+      "Bash(ffmpeg -i pumpkin_dude.png)",
+      "Bash(ffmpeg -i /d/cc-roguelike/assets/inbox/0x72_DungeonTilesetII_v1.7/0x72_dungeonTilesetII_v1.7.png)",
+      "Bash(ffmpeg -i /d/cc-roguelike/assets/inbox/0x72_DungeonTilesetII_v1.7/atlas_floor-16x16.png)",
+      "Bash(ffmpeg -i /d/cc-roguelike/assets/inbox/0x72_DungeonTilesetII_v1.7/atlas_walls_low-16x16.png)",
+      "Bash(ffmpeg -i /d/cc-roguelike/assets/inbox/0x72_DungeonTilesetII_v1.7/atlas_walls_high-16x32.png)",
+      "Bash(ffmpeg -i /d/cc-roguelike/assets/inbox/0x72_DungeonTilesetII_v1.7/frames/knight_m_idle_anim_f0.png)",
+      "Read(//d/cc-roguelike/src/assets/0x72/{printf \"\"\"\"  %s: { x: %d, y: %d, w: %d, h: %d },/**)",
+      "Read(//tmp/**)",
+      "Skill(claude-md-management:revise-claude-md)"
     ]
   },
   "enableAllProjectMcpServers": true,
