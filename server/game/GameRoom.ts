@@ -75,6 +75,7 @@ export interface GameState {
   floorCompleted: boolean;
   dungeon?: {
     rooms: { x: number; y: number; width: number; height: number; type: string }[];
+    corridorTiles: { x: number; y: number }[];
     spawnPoint: { x: number; y: number };
     exitPoint: { x: number; y: number };
   };
@@ -438,7 +439,11 @@ export class GameRoom {
    * 检查坐标 (x, y) 是否可行走 (public，Combat.ts 也需要调用)
    */
   isWalkable(x: number, y: number): boolean {
-    if (this.collisionGrid.length === 0) return true;
+    // 空网格时禁止通行，防止敌人穿墙
+    if (!this.collisionGrid || this.collisionGrid.length === 0) {
+      console.warn('[CollisionGrid] Grid empty, blocking movement');
+      return false;
+    }
     const tileSize = 32;
     const col = Math.floor(x / tileSize);
     const row = Math.floor(y / tileSize);
@@ -459,6 +464,7 @@ export class GameRoom {
       floorCompleted: false,
       dungeon: this.currentDungeon ? {
         rooms: this.currentDungeon.rooms,
+        corridorTiles: this.currentDungeon.corridorTiles,
         spawnPoint: this.currentDungeon.spawnPoint,
         exitPoint: this.currentDungeon.exitPoint
       } : undefined

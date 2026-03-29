@@ -4,6 +4,7 @@ import { MathUtils } from '../../utils/MathUtils';
 interface DungeonData {
   rooms: Room[];
   corridors: Corridor[];
+  corridorTiles: { x: number; y: number }[];  // 走廊瓦片坐标（像素中心），用于客户端渲染走廊地板
   spawnPoint: { x: number; y: number };
   exitPoint: { x: number; y: number };
   enemies: { type: string; x: number; y: number; count: number }[];
@@ -80,6 +81,7 @@ export class DungeonGenerator {
     const items = this.spawnItems(rooms);
 
     const collisionGrid = this.generateCollisionGrid(rooms, corridors, width, height);
+    const corridorTiles = this.generateCorridorTiles(corridors, width, height);
 
     // Validate spawn and exit points are walkable, force-clear if needed
     const tileSize = 32;
@@ -108,9 +110,19 @@ export class DungeonGenerator {
       }
     }
 
+    // 验证碰撞网格
+    const walkableCount = collisionGrid.flat().filter(Boolean).length;
+    const totalCount = collisionGrid.length * (collisionGrid[0]?.length || 0);
+    if (walkableCount === 0) {
+      console.error('[DungeonGenerator] FATAL: Collision grid has 0 walkable tiles!');
+    } else {
+      console.log(`[DungeonGenerator] Grid: ${walkableCount}/${totalCount} tiles walkable (${((walkableCount/totalCount)*100).toFixed(1)}%)`);
+    }
+
     return {
       rooms,
       corridors,
+      corridorTiles,
       spawnPoint,
       exitPoint,
       enemies,
@@ -288,5 +300,38 @@ export class DungeonGenerator {
     }
 
     return grid;
+  }
+
+  /**
+   * 将走廊线段光栅化为瓦片坐标列表（用于客户端渲染）
+   * corridorPadding 与碰撞网格一致（1 tile 宽度扩展）
+   */
+  private generateCorridorTiles(corridors: Corridor[], mapW: number, mapH: number): { x: number; y: number }[] {
+    const tileSize = 32;
+    const cols = Math.ceil(mapW / tileSize);
+    const rows = Math.ceil(mapH / tileSize);
+    const corridorPadding = 1;
+    const tiles = new Set<string>();
+
+    for (const corridor of corridors) {
+      const minC = Math.floor(Math.min(corridor.x1, corridor.x2) / tileSize) - corridorPadding;
+      const maxC = Math.floor(Math.max(corridor.x1, corridor.x2) / tileSize) + corridorPadding;
+      const minR = Math.floor(Math.min(corridor.y1, corridor.y2) / tileSize) - corridorPadding;
+      const maxR = Math.floor(Math.max(corridor.y1, corridor.y2) / tileSize) + corridorPadding;
+
+      for (let r = minR; r <= maxR && r < rows; r++) {
+        for (let c = minC; c <= maxC && c < cols; c++) {
+          if (r >= 0 && c >= 0) {
+            // 瓦片像素中心坐标
+            tiles.add(`${c * tileSize + tileSize / 2},${r * tileSize + tileSize / 2}`);
+          }
+        }
+      }
+    }
+
+    return Array.from(tiles).map(s => {
+      const [x, y] = s.split(',').map(Number);
+      return { x, y };
+    });
   }
 }

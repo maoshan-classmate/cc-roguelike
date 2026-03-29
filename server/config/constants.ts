@@ -54,6 +54,7 @@ export const FLOOR_CONFIG: Record<number, {
 };
 
 // 敌人基础属性
+// @deprecated 未使用（游戏使用 GameRoom.ts 中的 basic/fast/tank/boss 类型）
 export const ENEMY_BASE: Record<string, {
   health: number;
   damage: number;

@@ -21,7 +21,7 @@ export const ENEMIES: Record<string, EnemyConfig> = {
   basic: {
     id: 'basic',
     name: '小怪',
-    spriteIndex: 25,
+    spriteIndex: 16,
     sheet: 'char',
     size: 48,
     hp: 30,
@@ -35,7 +35,7 @@ export const ENEMIES: Record<string, EnemyConfig> = {
   fast: {
     id: 'fast',
     name: '快兵',
-    spriteIndex: 26,
+    spriteIndex: 20,
     sheet: 'char',
     size: 44,
     hp: 20,
@@ -49,7 +49,7 @@ export const ENEMIES: Record<string, EnemyConfig> = {
   tank: {
     id: 'tank',
     name: '坦克',
-    spriteIndex: 27,
+    spriteIndex: 24,
     sheet: 'char',
     size: 56,
     hp: 80,
@@ -64,7 +64,7 @@ export const ENEMIES: Record<string, EnemyConfig> = {
   boss: {
     id: 'boss',
     name: 'BOSS',
-    spriteIndex: 28,
+    spriteIndex: 34,
     sheet: 'char',
     size: 64,
     hp: 200,

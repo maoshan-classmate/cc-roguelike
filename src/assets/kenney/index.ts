@@ -12,9 +12,8 @@
 // 精灵图路径（使用ES6 import，Vite默认支持PNG导入）
 import roguelikeCharSheetPath from './Spritesheet/roguelikeChar_transparent.png';
 import roguelikeDungeonSheetPath from './Spritesheet/roguelikeDungeon_transparent.png';
-import roguelikeSheetPath from './Spritesheet/roguelikeSheet_transparent.png';
 
-export { roguelikeCharSheetPath, roguelikeDungeonSheetPath, roguelikeSheetPath };
+export { roguelikeCharSheetPath, roguelikeDungeonSheetPath };
 
 // 瓦片规格
 export const TILE_SIZE = 16;
@@ -42,72 +41,7 @@ export function getSpritePosition(
   };
 }
 
-// 角色精灵索引 (roguelikeChar_transparent.png)
-export const CharacterSprites = {
-  WarriorFront: 0,
-  WarriorBack: 1,
-  WarriorLeft: 2,
-  WarriorRight: 3,
-  RangerFront: 4,
-  RangerBack: 5,
-  RangerLeft: 6,
-  RangerRight: 7,
-  MageFront: 8,
-  MageBack: 9,
-  MageLeft: 10,
-  MageRight: 11,
-  HealerFront: 12,
-  HealerBack: 13,
-  HealerLeft: 14,
-  HealerRight: 15,
-} as const;
-
 // 地牢精灵索引 (roguelikeDungeon_transparent.png)
-export const DungeonSprites = {
-  FloorTopLeft: 0,
-  FloorTop: 1,
-  FloorTopRight: 2,
-  FloorLeft: 3,
-  FloorCenter: 4,
-  FloorRight: 5,
-  FloorBottomLeft: 6,
-  FloorBottom: 7,
-  FloorBottomRight: 8,
-  WallTopLeft: 9,
-  WallTop: 10,
-  WallTopRight: 11,
-  WallSideLeft: 12,
-  WallSideRight: 13,
-  WallBottomLeft: 14,
-  WallBottom: 15,
-  WallBottomRight: 16,
-  DoorHorizontal: 17,
-  DoorVertical: 18,
-  DoorTop: 19,
-  DoorBottom: 20,
-  ChestClosed: 21,
-  ChestOpen: 22,
-  StairsDown: 23,
-  StairsUp: 24,
-} as const;
-
-// 敌人类型映射
-export const EnemySprites: Record<string, { index: number; sheet: 'char' | 'dungeon' }> = {
-  basic: { index: 25, sheet: 'char' },
-  fast: { index: 26, sheet: 'char' },
-  tank: { index: 27, sheet: 'char' },
-  boss: { index: 28, sheet: 'char' },
-};
-
-// 道具类型映射
-export const ItemSprites: Record<string, { index: number; sheet: 'dungeon' }> = {
-  health: { index: 29, sheet: 'dungeon' },
-  coin: { index: 31, sheet: 'dungeon' },
-  key: { index: 32, sheet: 'dungeon' },
-  potion: { index: 33, sheet: 'dungeon' },
-  shield: { index: 34, sheet: 'dungeon' },
-  bullet: { index: 35, sheet: 'dungeon' },
-};
-
-export type CharacterSpriteKey = keyof typeof CharacterSprites;
-export type DungeonSpriteKey = keyof typeof DungeonSprites;
+// 注意：这些常量已迁移到 src/config/ 下使用
+// 此处保留文档注释供参考
+// 地板: 0-8 | 墙壁: 9-16 | 门: 17-20 | 宝箱: 21-22 | 楼梯: 23-24 | 道具: 29-35

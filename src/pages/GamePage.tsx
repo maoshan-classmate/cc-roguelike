@@ -10,7 +10,7 @@ import {
   roguelikeCharSheetPath,
   roguelikeDungeonSheetPath,
 } from '../assets/kenney'
-import { CHARACTERS, getCharacterSpriteIndex } from '../config/characters'
+import { CHARACTERS } from '../config/characters'
 import { ENEMIES } from '../config/enemies'
 import { ITEMS } from '../config/items'
 import {
@@ -220,45 +220,108 @@ export default function GamePage() {
     ctx.fillStyle = '#2D1B2E'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    // 绘制地牢瓦片
+    // 绘制地牢瓦片（使用 fillRect 像素风格，消除精灵边框接缝）
     if (dungeon && dungeon.rooms && spritesLoaded && dungeonSpriteSheet.complete) {
       const tileSize = 32
+      // 像素地牢颜色（匹配 Kenney 精灵图风格）
+      const FLOOR_COLOR = '#3D2845'    // 深紫色地板
+      const FLOOR_HIGHLIGHT = '#4A3455' // 地板高光
+      const WALL_COLOR = '#6B4423'      // 深棕色墙壁
+      const WALL_TOP = '#8B5A2B'        // 墙上边缘高光
+      const WALL_BOTTOM = '#4A2E15'     // 墙下边缘阴影
+      const WALL_LEFT = '#7A4E20'       // 墙左边缘
+      const WALL_RIGHT = '#5A3515'     // 墙右边缘
+
       for (const room of dungeon.rooms) {
-        // 绘制房间内的地板
-        for (let x = room.x; x < room.x + room.width; x += tileSize) {
-          for (let y = room.y; y < room.y + room.height; y += tileSize) {
-            drawDungeonSprite(ctx, dungeonSpriteSheet, 4, x + tileSize/2, y + tileSize/2, tileSize)
-          }
+        // === 地板：像素矩形 ===
+        // 填充底色
+        ctx.fillStyle = FLOOR_COLOR
+        ctx.fillRect(room.x, room.y, room.width, room.height)
+        // 地板网格线（浅色高光形成像素风格）
+        ctx.strokeStyle = FLOOR_HIGHLIGHT
+        ctx.lineWidth = 1
+        for (let x = room.x; x <= room.x + room.width; x += tileSize) {
+          ctx.beginPath(); ctx.moveTo(x, room.y); ctx.lineTo(x, room.y + room.height); ctx.stroke()
         }
-        // 绘制房间墙壁（上边）
-        for (let x = room.x - tileSize; x < room.x + room.width + tileSize; x += tileSize) {
-          // 上墙
-          if (x >= 0 && x < canvas.width) {
-            drawDungeonSprite(ctx, dungeonSpriteSheet, 10, x + tileSize/2, room.y - tileSize/2, tileSize)
-          }
-          // 下墙
-          if (x >= 0 && x < canvas.width && room.y + room.height + tileSize <= canvas.height) {
-            drawDungeonSprite(ctx, dungeonSpriteSheet, 15, x + tileSize/2, room.y + room.height + tileSize/2, tileSize)
-          }
+        for (let y = room.y; y <= room.y + room.height; y += tileSize) {
+          ctx.beginPath(); ctx.moveTo(room.x, y); ctx.lineTo(room.x + room.width, y); ctx.stroke()
         }
-        // 绘制房间墙壁（左边和右边）
-        for (let y = room.y; y < room.y + room.height; y += tileSize) {
-          // 左墙
-          if (room.y >= 0 && room.y < canvas.height) {
-            drawDungeonSprite(ctx, dungeonSpriteSheet, 12, room.x - tileSize/2, y + tileSize/2, tileSize)
-          }
-          // 右墙
-          if (room.x + room.width + tileSize <= canvas.width) {
-            drawDungeonSprite(ctx, dungeonSpriteSheet, 13, room.x + room.width + tileSize/2, y + tileSize/2, tileSize)
-          }
+
+        // === 墙壁：像素立体矩形 ===
+        const wallThickness = tileSize
+        // 上墙（room 顶部外侧 1 tile 厚）
+        const wallTopY = room.y - wallThickness
+        if (wallTopY >= 0) {
+          ctx.fillStyle = WALL_COLOR
+          ctx.fillRect(room.x, wallTopY, room.width, wallThickness)
+          // 高光/阴影
+          ctx.fillStyle = WALL_TOP
+          ctx.fillRect(room.x, wallTopY, room.width, 2)
+          ctx.fillStyle = WALL_LEFT
+          ctx.fillRect(room.x, wallTopY, 2, wallThickness)
+          ctx.fillStyle = WALL_BOTTOM
+          ctx.fillRect(room.x, wallTopY + wallThickness - 2, room.width, 2)
+          ctx.fillStyle = WALL_RIGHT
+          ctx.fillRect(room.x + room.width - 2, wallTopY, 2, wallThickness)
         }
-        // 角落
-        drawDungeonSprite(ctx, dungeonSpriteSheet, 9, room.x - tileSize/2, room.y - tileSize/2, tileSize)
-        drawDungeonSprite(ctx, dungeonSpriteSheet, 11, room.x + room.width + tileSize/2, room.y - tileSize/2, tileSize)
-        drawDungeonSprite(ctx, dungeonSpriteSheet, 14, room.x - tileSize/2, room.y + room.height + tileSize/2, tileSize)
-        drawDungeonSprite(ctx, dungeonSpriteSheet, 16, room.x + room.width + tileSize/2, room.y + room.height + tileSize/2, tileSize)
+        // 下墙
+        const wallBottomY = room.y + room.height
+        if (wallBottomY <= canvas.height) {
+          ctx.fillStyle = WALL_COLOR
+          ctx.fillRect(room.x, wallBottomY, room.width, wallThickness)
+          ctx.fillStyle = WALL_TOP
+          ctx.fillRect(room.x, wallBottomY, room.width, 2)
+          ctx.fillStyle = WALL_LEFT
+          ctx.fillRect(room.x, wallBottomY, 2, wallThickness)
+          ctx.fillStyle = WALL_BOTTOM
+          ctx.fillRect(room.x, wallBottomY + wallThickness - 2, room.width, 2)
+          ctx.fillStyle = WALL_RIGHT
+          ctx.fillRect(room.x + room.width - 2, wallBottomY, 2, wallThickness)
+        }
+        // 左墙
+        if (room.x >= 0) {
+          ctx.fillStyle = WALL_COLOR
+          ctx.fillRect(room.x - wallThickness, wallTopY > 0 ? wallTopY : 0, wallThickness, wallThickness)
+          ctx.fillStyle = WALL_LEFT
+          ctx.fillRect(room.x - wallThickness, wallTopY > 0 ? wallTopY : 0, 2, wallThickness)
+          ctx.fillStyle = WALL_RIGHT
+          ctx.fillRect(room.x - 2, wallTopY > 0 ? wallTopY : 0, 2, wallThickness)
+        }
+        // 右墙
+        if (room.x + room.width + wallThickness <= canvas.width) {
+          ctx.fillStyle = WALL_COLOR
+          ctx.fillRect(room.x + room.width, wallTopY > 0 ? wallTopY : 0, wallThickness, wallThickness)
+          ctx.fillStyle = WALL_LEFT
+          ctx.fillRect(room.x + room.width, wallTopY > 0 ? wallTopY : 0, 2, wallThickness)
+          ctx.fillStyle = WALL_RIGHT
+          ctx.fillRect(room.x + room.width + wallThickness - 2, wallTopY > 0 ? wallTopY : 0, 2, wallThickness)
+        }
+        // 角落填充（防止空白）
+        if (wallTopY >= 0 && room.x >= 0) {
+          ctx.fillStyle = WALL_COLOR
+          ctx.fillRect(room.x - wallThickness, wallTopY, wallThickness, wallThickness)
+          ctx.fillStyle = WALL_TOP; ctx.fillRect(room.x - wallThickness, wallTopY, wallThickness, 2)
+          ctx.fillStyle = WALL_LEFT; ctx.fillRect(room.x - wallThickness, wallTopY, 2, wallThickness)
+        }
+        if (wallTopY >= 0 && room.x + room.width + wallThickness <= canvas.width) {
+          ctx.fillStyle = WALL_COLOR
+          ctx.fillRect(room.x + room.width, wallTopY, wallThickness, wallThickness)
+          ctx.fillStyle = WALL_TOP; ctx.fillRect(room.x + room.width, wallTopY, wallThickness, 2)
+          ctx.fillStyle = WALL_RIGHT; ctx.fillRect(room.x + room.width + wallThickness - 2, wallTopY, 2, wallThickness)
+        }
       }
-      // 绘制出口楼梯
+      // 走廊地板
+      if (dungeon.corridorTiles) {
+        for (const tile of dungeon.corridorTiles) {
+          ctx.fillStyle = FLOOR_COLOR
+          ctx.fillRect(tile.x - tileSize/2, tile.y - tileSize/2, tileSize, tileSize)
+          // 走廊也有网格线
+          ctx.strokeStyle = FLOOR_HIGHLIGHT
+          ctx.lineWidth = 1
+          ctx.strokeRect(tile.x - tileSize/2, tile.y - tileSize/2, tileSize, tileSize)
+        }
+      }
+      // 出口楼梯（用精灵图渲染楼梯）
       if (dungeon.exitPoint) {
         drawDungeonSprite(ctx, dungeonSpriteSheet, 23, dungeon.exitPoint.x, dungeon.exitPoint.y, tileSize)
       }
@@ -277,6 +340,18 @@ export default function GamePage() {
         ctx.moveTo(0, y)
         ctx.lineTo(canvas.width, y)
         ctx.stroke()
+      }
+    }
+
+    // 开发模式：半透明网格覆盖层（辅助调试）
+    if (import.meta.env.DEV && dungeon && dungeon.rooms) {
+      ctx.strokeStyle = 'rgba(150, 80, 120, 0.2)'
+      ctx.lineWidth = 1
+      for (let x = 0; x <= canvas.width; x += 32) {
+        ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, canvas.height); ctx.stroke()
+      }
+      for (let y = 0; y <= canvas.height; y += 32) {
+        ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke()
       }
     }
 

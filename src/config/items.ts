@@ -101,3 +101,32 @@ export const ITEM_LIST = Object.values(ITEMS)
 export function getItemById(id: string): ItemConfig | undefined {
   return ITEMS[id]
 }
+
+/**
+ * 角色装备槽位配置（预留）
+ * 后续装备系统使用 roguelikeDungeon 空闲槽位（36-120）存储装备图标
+ * TODO: 实际装备精灵需从资源包中提取并放置到对应槽位
+ *
+ * 装备槽位规划：
+ * - weapon:  武器图标槽位（索引 50）
+ * - armor:  护甲图标槽位（索引 51）
+ * - helmet: 头盔图标槽位（索引 52）
+ * - boots:  鞋子图标槽位（索引 53）
+ * - ring:   戒指图标槽位（索引 54）
+ * - amulet: 护符图标槽位（索引 55）
+ * - shield: 盾牌图标（已使用 dungeon 索引 34）
+ *
+ * 装备覆盖规则：
+ * - 装备图标叠加在角色精灵上方（通过 drawEquipmentOverlay 实现）
+ * - 不同装备槽位对应角色精灵不同偏移量
+ */
+export const EQUIPMENT_SLOTS = {
+  weapon:  { spriteIndex: 50, name: '武器',  slot: 'weapon'  },
+  armor:   { spriteIndex: 51, name: '护甲',  slot: 'armor'   },
+  helmet:  { spriteIndex: 52, name: '头盔',  slot: 'helmet'  },
+  boots:   { spriteIndex: 53, name: '鞋子',  slot: 'boots'   },
+  ring:    { spriteIndex: 54, name: '戒指',  slot: 'ring'    },
+  amulet:  { spriteIndex: 55, name: '护符',  slot: 'amulet'  },
+} as const
+
+export const EQUIPMENT_SHEET: 'dungeon' = 'dungeon'
