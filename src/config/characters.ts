@@ -73,8 +73,8 @@ export const CHARACTERS: Record<string, CharacterConfig> = {
     name: '牧师',
     // Kenney 索引 378,379
     spriteIndex: { front: 378, back: 379 },
-    // 0x72 TilesetII - 兽人族萨满
-    spriteName: { front: 'orc_shaman_idle_anim_f0', back: 'orc_shaman_idle_anim_f1' },
+    // 0x72 TilesetII - 女性法师（区别于男法师 wizzard_m，且不同于任何怪物）
+    spriteName: { front: 'wizzard_f_idle_anim_f0', back: 'wizzard_f_idle_anim_f1' },
     color: '#9B59B6',
     hp: 70,
     attack: 8,

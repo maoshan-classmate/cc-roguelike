@@ -42,6 +42,10 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
   elf_m_idle_anim_f1:     { category: 'CHARACTER', source: '0x72', atlasKey: 'elf_m_idle_anim_f1',      size: 48, animated: true,  frameCount: 4 },
   wizzard_m_idle_anim_f0: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_m_idle_anim_f0', size: 48, animated: true,  frameCount: 4 },
   wizzard_m_idle_anim_f1: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_m_idle_anim_f1', size: 48, animated: true,  frameCount: 4 },
+  wizzard_f_idle_anim_f0: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_idle_anim_f0', size: 48, animated: true,  frameCount: 4 },
+  wizzard_f_idle_anim_f1: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_idle_anim_f1', size: 48, animated: true,  frameCount: 4 },
+  wizzard_f_idle_anim_f2: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_idle_anim_f2', size: 48, animated: true,  frameCount: 4 },
+  wizzard_f_idle_anim_f3: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_idle_anim_f3', size: 48, animated: true,  frameCount: 4 },
   orc_shaman_idle_anim_f0:{ category: 'CHARACTER', source: '0x72', atlasKey: 'orc_shaman_idle_anim_f0',size: 48, animated: true,  frameCount: 4 },
   orc_shaman_idle_anim_f1:{ category: 'CHARACTER', source: '0x72', atlasKey: 'orc_shaman_idle_anim_f1',size: 48, animated: true,  frameCount: 4 },
 
@@ -344,4 +348,133 @@ export function drawNameTag(
   ctx.fillRect(x - textWidth / 2 - padding, y - fontSize - 1, textWidth + padding * 2, fontSize + 3)
   ctx.fillStyle = color
   ctx.fillText(name, x, y)
+}
+
+/**
+ * 绘制近战武器扇形攻击范围（视觉指示器）
+ * 在玩家朝向方向绘制一个扇形区域
+ */
+export function drawMeleeArc(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number,
+  angle: number,       // 玩家朝向角度
+  range: number,      // 武器范围 (px)
+  arc: number,        // 扇形弧度 (rad)
+  color: string,
+  alpha: number = 0.25
+): void {
+  ctx.save()
+  ctx.globalAlpha = alpha
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.moveTo(x, y)
+  ctx.arc(x, y, range, angle - arc / 2, angle + arc / 2)
+  ctx.closePath()
+  ctx.fill()
+
+  // 扇形边缘高亮
+  ctx.globalAlpha = alpha * 1.5
+  ctx.strokeStyle = color
+  ctx.lineWidth = 2
+  ctx.beginPath()
+  ctx.moveTo(x, y)
+  ctx.lineTo(x + Math.cos(angle - arc / 2) * range, y + Math.sin(angle - arc / 2) * range)
+  ctx.moveTo(x, y)
+  ctx.lineTo(x + Math.cos(angle + arc / 2) * range, y + Math.sin(angle + arc / 2) * range)
+  ctx.stroke()
+  ctx.restore()
+}
+
+/**
+ * 绘制远程武器指示器（手枪/法杖末端小矩形）
+ */
+export function drawRangedWeapon(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number,
+  angle: number,
+  weaponLength: number = 20,
+  weaponColor: string = '#C0C0C0'
+): void {
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.rotate(angle)
+  // 武器是一个小矩形，从角色中心向外延伸
+  ctx.fillStyle = weaponColor
+  ctx.fillRect(0, -3, weaponLength, 6)
+  // 武器顶端高光
+  ctx.fillStyle = 'rgba(255,255,255,0.4)'
+  ctx.fillRect(0, -3, weaponLength, 2)
+  ctx.restore()
+}
+
+/**
+ * 绘制武器精灵（0x72 atlas 真实贴图，旋转至鼠标方向）
+ * 武器从玩家中心向外延伸，限制最大宽高使贴图不变形
+ * @param flash 攻击闪光强度 0-1，攻击时为正，渲染更亮+武器前伸
+ */
+export function drawWeaponSprite(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  spriteName: string,
+  x: number, y: number,
+  angle: number,
+  maxSize: number = 28,  // 最大宽/高（px），防止细小sprite被过度放大
+  flash: number = 0      // 攻击闪光 0-1
+): void {
+  const entry = SPRITE_ATLAS[spriteName]
+  if (!entry) return
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.rotate(angle)
+
+  // 按宽度比例缩放，限制最大尺寸
+  const targetW = Math.min(entry.w, maxSize)
+  const scale = targetW / entry.w
+  const drawW = entry.w * scale
+  const drawH = entry.h * scale
+
+  // 攻击闪光：武器前伸 + 发光
+  const attackOffset = flash * 12  // 最多前移12px
+  const glowAlpha = flash * 0.6    // 发光透明度
+
+  // 发光层
+  if (flash > 0) {
+    ctx.shadowColor = '#FFD700'
+    ctx.shadowBlur = 20 * flash
+  }
+
+  // 武器从玩家中心向右（angle方向）延伸；y偏移使武器视觉上居中于玩家
+  ctx.drawImage(img, entry.x, entry.y, entry.w, entry.h, drawW * 0.2 + attackOffset, -drawH / 2, drawW, drawH)
+
+  ctx.shadowBlur = 0
+  ctx.restore()
+}
+
+/**
+ * 绘制子弹精灵（0x72 weapon_arrow，旋转至飞行方向）
+ */
+export function drawBulletSprite(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  x: number, y: number,
+  angle: number,
+  size: number = 12  // 子弹渲染大小
+): void {
+  const entry = SPRITE_ATLAS['weapon_arrow']
+  if (!entry) {
+    // Fallback: 纯色小圆
+    ctx.fillStyle = '#FFD700'
+    ctx.beginPath()
+    ctx.arc(x, y, size / 2, 0, Math.PI * 2)
+    ctx.fill()
+    return
+  }
+  ctx.save()
+  ctx.translate(x, y)
+  ctx.rotate(angle)
+  const scale = size / Math.max(entry.w, entry.h)
+  const drawW = entry.w * scale
+  const drawH = entry.h * scale
+  ctx.drawImage(img, entry.x, entry.y, entry.w, entry.h, -drawW / 2, -drawH / 2, drawW, drawH)
+  ctx.restore()
 }
