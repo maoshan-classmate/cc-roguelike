@@ -77,7 +77,6 @@ npx tsc --noEmit                                # TypeScript 编译检查
 
 **待集成资产**（0x72，PWYW 商业许可）：
 - `assets/inbox/0x72_DungeonTilesetII_v1.7/` — 角色/怪物动画帧（370 帧），暗黑地牢风格
-- `assets/inbox/0x72_16x16DungeonTileset.v5/` — 地牢瓦片/道具
 
 **索引对应关系**（需随新资源更新）：
 - `src/config/characters.ts` — 4 个职业的 spriteIndex
