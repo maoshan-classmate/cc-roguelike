@@ -1,9 +1,8 @@
 # CLAUDE.md
 
-
 > Agent 团队工作手册入口文件。按 topic 引用子文档，保持主文件精简。
 
-# Agent Team PUA 配置
+## Agent Team PUA 配置
 所有 teammate 开工前必须加载 pua skill。
 teammate 失败 2 次以上时向 Leader 发送 [PUA-REPORT] 格式汇报。
 Leader 负责全局压力等级管理和跨 teammate 失败传递。
@@ -27,7 +26,6 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 - [Bug 记录（按系统）](docs/bugs/)
 - [用户需求原始记录](docs/requirements.md)
 - [待办任务（按领域）](docs/todo/)
-- [Bug 修复清单](docs/todo/bugs.md)
 
 ## 关键命令
 
