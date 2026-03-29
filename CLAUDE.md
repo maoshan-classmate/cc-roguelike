@@ -28,6 +28,7 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 - [用户需求原始记录](docs/requirements.md)
 - [待办任务（按领域）](docs/todo/)
 - **[架构问题（最高优先级）](docs/todo/architecture.md)** — 全局设计债/体系不对齐
+- **[开发规范（强制）](docs/DEVELOPMENT_STANDARD.md)** — 所有 AI 开发必须遵守，含 AI 开发检查清单
 
 ## 关键命令
 
