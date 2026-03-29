@@ -216,6 +216,17 @@ export class SocketServer {
           playerId: session.accountId,
           newHostId: room.hostId
         });
+        // 如果房间正在游戏中，从 GameRoom 移除玩家并清理
+        if (room.status === 'playing') {
+          const gameRoom = this.gameManager.getRoom(session.currentRoom);
+          if (gameRoom) {
+            gameRoom.removePlayer(session.accountId);
+            // 如果 GameRoom 没有玩家了，彻底销毁它
+            if (gameRoom.getPlayerCount() === 0) {
+              this.gameManager.removeRoom(session.currentRoom);
+            }
+          }
+        }
       }
 
       session.currentRoom = undefined;
@@ -332,7 +343,17 @@ export class SocketServer {
   private handleDisconnect(socket: Socket): void {
     const session = this.sessions.get(socket.id);
     if (session && session.currentRoom) {
-      this.lobbyManager.leaveRoom(session.currentRoom, session.accountId);
+      const room = this.lobbyManager.leaveRoom(session.currentRoom, session.accountId);
+      // 如果房间正在游戏中，从 GameRoom 移除断线玩家
+      if (room && room.status === 'playing') {
+        const gameRoom = this.gameManager.getRoom(session.currentRoom);
+        if (gameRoom) {
+          gameRoom.removePlayer(session.accountId);
+          if (gameRoom.getPlayerCount() === 0) {
+            this.gameManager.removeRoom(session.currentRoom);
+          }
+        }
+      }
     }
     this.sessions.delete(socket.id);
     console.log(`🔌 Client disconnected: ${socket.id}`);
@@ -349,7 +370,10 @@ export class SocketServer {
           // Check for floor change
           if ((gameRoom as any)._floorChanged) {
             (gameRoom as any)._floorChanged = false;
-            this.io.to(`room:${roomId}`).emit('game:floor:start', { floor: state.floor });
+            this.io.to(`room:${roomId}`).emit('game:floor:start', {
+              floor: state.floor,
+              gameSession: (gameRoom as any).gameSession
+            });
           }
         } else if ((gameRoom as any)._gameOver) {
           // Game ended

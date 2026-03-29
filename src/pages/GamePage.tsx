@@ -23,6 +23,8 @@ import {
   drawHPBar,
   drawBossCrown,
   drawNameTag,
+  drawWeaponSprite,
+  drawBulletSprite,
   getSpriteEntry,
   is0x72Sprite,
 } from '../config/sprites'
@@ -111,6 +113,15 @@ export default function GamePage() {
   // 动画帧辅助：每~150ms切换一帧 (0→1→2→3→0 循环)
   const animInterval = 150 // ms per frame
   const lastAnimTime = useRef(performance.now())
+  const lastSentAngleRef = useRef<number | null>(null)
+  // 武器攻击闪光：点击时触发，逐渐衰减
+  const attackFlashRef = useRef(0)
+  const prevAttackRef = useRef(false)
+  // 当前 floor session，用于过滤跨 floor 的 stale state
+  const floorSessionRef = useRef<number>(0)
+  // 游戏 session 计数器：区分不同游戏实例，服务器递增，客户端过滤 stale session
+  const gameSessionRef = useRef<number>(0)
+
   function getAnimSprite(spriteName: string, elapsedMs: number): string {
     const frame = Math.floor(elapsedMs / animInterval) % 4
 
@@ -190,6 +201,11 @@ export default function GamePage() {
   // Game state listener
   useEffect(() => {
     networkClient.on('game:state', (state: any) => {
+      // 过滤 stale state：
+      // - gameSessionRef === 0 表示"尚未确立 session"（刚进入或刚退出），接受第一帧建立基准
+      // - gameSessionRef !== 0 时，只接受匹配 session 的状态，丢弃旧游戏实例的残留消息
+      if (gameSessionRef.current !== 0 && state.gameSession !== gameSessionRef.current) return
+
       if (state.floorCompleted) {
         setFloor(state.floor + 1)
       }
@@ -222,6 +238,23 @@ export default function GamePage() {
     })
 
     networkClient.on('game:floor:start', (data: any) => {
+      // 清除插值状态，防止残留导致下次进入游戏时瞬跳
+      prevPositions.current.clear()
+      targetPositions.current.clear()
+      // 清除 gameStateRef.current 防止旧游戏数据污染
+      gameStateRef.current = {
+        players: [],
+        enemies: [],
+        bullets: [],
+        items: [],
+        gold: 0,
+        keys: 0,
+        dungeon: null
+      }
+      // 更新 floor session 和 game session
+      floorSessionRef.current = data.floor
+      gameSessionRef.current = data.gameSession
+      lastStateTime.current = performance.now()
       setFloor(data.floor)
     })
 
@@ -233,6 +266,9 @@ export default function GamePage() {
       networkClient.off('game:state')
       networkClient.off('game:floor:start')
       networkClient.off('game:end')
+      // 重置 session 计数器，防止残留的旧游戏实例状态污染下次进入
+      floorSessionRef.current = 0
+      gameSessionRef.current = 0
     }
   }, [])
 
@@ -506,21 +542,35 @@ export default function GamePage() {
       mage:    '#9B59B6',
       cleric:  '#32CD32'
     }
+
+    // 职业武器配置（用于可视化）
+    const WEAPON_SPRITE: Record<string, string> = {
+      warrior: 'weapon_knight_sword',   // 骑士长剑
+      ranger:  'weapon_bow',            // 弓（修正：不用arrow）
+      mage:    'weapon_red_magic_staff', // 红色魔杖
+      cleric:  'weapon_knight_sword',  // 牧师用法杖（与战士同款，形状已区分）
+    }
+
     for (const bullet of bullets) {
+      // 发光效果（底色光晕）
       const color = bullet.friendly
         ? (BULLET_COLORS[bullet.ownerType] || '#4A9EFF')
         : '#FF6B6B'
+      ctx.save()
+      ctx.shadowColor = color
+      ctx.shadowBlur = 8
       ctx.fillStyle = color
       ctx.beginPath()
       ctx.arc(bullet.x, bullet.y, bullet.radius || 4, 0, Math.PI * 2)
       ctx.fill()
-      // 发光效果
-      ctx.shadowColor = color
-      ctx.shadowBlur = 6
-      ctx.beginPath()
-      ctx.arc(bullet.x, bullet.y, (bullet.radius || 4) * 0.6, 0, Math.PI * 2)
-      ctx.fill()
       ctx.shadowBlur = 0
+      ctx.restore()
+      // 子弹精灵（0x72 weapon_arrow 旋转至飞行方向）
+      if (tileset2Atlas.complete) {
+        const bulletAngle = Math.atan2(bullet.vy, bullet.vx)
+        const bulletSize = Math.max((bullet.radius || 4) * 3, 10)
+        drawBulletSprite(ctx, tileset2Atlas, bullet.x, bullet.y, bulletAngle, bulletSize)
+      }
     }
 
     // 绘制玩家
@@ -607,7 +657,12 @@ export default function GamePage() {
         ctx.strokeRect(ppos.x - size/2, ppos.y - size/2, size, size)
       }
 
-      // 本地玩家方向指示器（已移除：白色小箭头被误认为"白色棍子"）
+      // 武器可视化（0x72 真实贴图，旋转至鼠标方向，攻击时闪光+前伸）
+      const pAngle = player.angle ?? 0
+      const wSprite = WEAPON_SPRITE[player.characterType] || 'weapon_knight_sword'
+      if (tileset2Atlas.complete) {
+        drawWeaponSprite(ctx, tileset2Atlas, wSprite, ppos.x, ppos.y, pAngle, 48, isLocal ? attackFlashRef.current : 0)
+      }
 
       // HP条
       drawHPBar(ctx, ppos.x - 24, ppos.y - 34, 48, 6, player.hp, player.hpMax, charConfig.color)
@@ -645,13 +700,31 @@ export default function GamePage() {
         return
       }
 
-      const angle = Math.atan2(mouseRef.current.y - localPlayer.y, mouseRef.current.x - localPlayer.x)
+      // atan2(0,0) = 0，会导致角色固定朝右；始终使用 Math.atan2 不做回退
+      const rawDx = mouseRef.current.x - localPlayer.x
+      const rawDy = mouseRef.current.y - localPlayer.y
+      const angle = Math.atan2(rawDy, rawDx)
 
-      // 每帧都发送 input（包括 dx=0, dy=0 的静止状态），节流 ~30fps
+      // 每帧都发送 input，节流 ~30fps；angle 只在变化超过 5° 时更新（避免微小抖动）
       const now = performance.now()
       if (now - lastInputTime >= 33) {
+        const angleChanged = lastSentAngleRef.current === null || Math.abs(angle - lastSentAngleRef.current) > 0.087
+        if (angleChanged) lastSentAngleRef.current = angle
         lastInputTime = now
         networkClient.emit('game:input', { dx, dy, angle, attack: mouseRef.current.down })
+      }
+
+      // 攻击闪光：检测攻击按下（rising edge），激活闪光并逐渐衰减
+      const isAttacking = mouseRef.current.down
+      if (isAttacking && !prevAttackRef.current) {
+        attackFlashRef.current = 1.0  // 攻击瞬间设为满闪光
+      }
+      prevAttackRef.current = isAttacking
+      // 攻击持续期间保持一定闪光，松开后快速衰减
+      if (isAttacking) {
+        attackFlashRef.current = Math.max(attackFlashRef.current, 0.5)
+      } else {
+        attackFlashRef.current = Math.max(0, attackFlashRef.current - 0.08)
       }
 
       render()
@@ -672,6 +745,13 @@ export default function GamePage() {
   }, [render])
 
   const handleExit = () => {
+    // 通知服务器离开房间，停止旧游戏实例的 tick 广播
+    networkClient.emit('room:leave')
+    // 重置 session 计数器，确保下次进入游戏时第一帧建立新基准
+    floorSessionRef.current = 0
+    gameSessionRef.current = 0
+    prevPositions.current.clear()
+    targetPositions.current.clear()
     reset()
     navigate('/lobby')
   }

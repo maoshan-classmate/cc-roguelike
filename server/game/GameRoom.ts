@@ -68,6 +68,7 @@ export interface BulletState {
 export interface GameState {
   tick: number;
   floor: number;
+  gameSession: number;
   players: PlayerState[];
   enemies: EnemyState[];
   bullets: BulletState[];
@@ -99,6 +100,8 @@ export class GameRoom {
   private collisionGrid: boolean[][] = [];  // true = walkable
 
   private currentFloor: number = 1;
+  // Use timestamp for game session — guarantees uniqueness even across server restarts
+  private gameSession: number = Date.now();
   private tick: number = 0;
   private tickInterval: NodeJS.Timeout | null = null;
   private running: boolean = false;
@@ -532,6 +535,7 @@ export class GameRoom {
     return {
       tick: this.tick,
       floor: this.currentFloor,
+      gameSession: this.gameSession,
       players: Array.from(this.players.values()),
       enemies: Array.from(this.enemies.values()),
       bullets: Array.from(this.bullets.values()),

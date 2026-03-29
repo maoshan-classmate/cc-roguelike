@@ -34,6 +34,7 @@
 - [x] 角色技能只有1可用，234技能都不可用。且没有明显的交互反馈和冷却提示。 — 2026-03-29 DB DEFAULT 改为4技能，GameRoom skill fallback 补齐旧角色
 - [x] 角色死亡后没有弹窗。 — 2026-03-29 GameRoom update() 加全灭检测，设置 _gameOver 触发 game:end
 - [x] 角色图标过小，攻击范围与实际图标大小不符。 — 2026-03-29 SPRITE_REGISTRY CHARACTER size 32→48（atlas原始16px，scale=3x放大到48px使角色在768px canvas中清晰可见）；PLAYER_BASE.radius 保持 20；白色棍子 drawDirectionArrow 已移除
+- [x] 第二次进入游戏角色高速瞬移 — 2026-03-29 GameRoom tick 残留 + session 过滤失效，详见 docs/bugs/2026-03-29-second-entry-teleport.md；修复：handleRoomLeave/disconnect 清理 GameRoom，handleExit 重置 session refs，简化 game:state 过滤逻辑
 ### 未修复
 
 ## 中优先级

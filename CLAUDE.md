@@ -148,3 +148,15 @@ npx tsc --noEmit                                # TypeScript 编译检查
 **Bug 修复验证**：改完代码必须 Playwright E2E + 截图确认，不能只看 `tsc --noEmit`；视觉类 bug 必须拿 screenshot 证据
 
 **异步竞态修复模式**：DB 写 + 内存写双保险，`handleRoomStart` 优先读内存；`handleSelectClass` 同时更新 `lobbyManager.setPlayerCharacterType()`
+
+**GameRoom 生命周期（ multiplayer 关键）**：玩家退出游戏页面（navigate to lobby）时，服务器端 GameRoom.tick 不会自动停止；必须在 `handleRoomLeave` 和 `handleDisconnect` 中显式移除玩家 + `gameManager.removeRoom()` 销毁空房间；客户端 `handleExit` 必须发送 `room:leave` 并重置 session refs
+
+**Session refs 重置时机**：任何导致组件 unmount 的退出路径（handleExit / cleanup / navigate）都必须重置 `gameSessionRef` 为 0；否则下次进入时过滤逻辑失效，旧游戏状态污染新游戏
+
+**game:floor:start 不覆盖初始 floor**：服务器对 floor=1 不发送 `game:floor:start`（只在新 floor 才设置 `_floorChanged=true`）；客户端必须靠 `game:state` 第一帧建立基准
+
+**Playwright 截图调试**：视觉类 bug（瞬移、残影、重叠）用 `browser_take_screenshot` 存档，比 console log 更直观；GIF 能清晰展示运动轨迹异常
+
+**TypeScript 检查过滤**：`npx tsc --noEmit --skipLibCheck --ignoreDeprecations "6.0" | grep "GamePage\|SocketServer\|GameRoom"` 只看相关文件
+
+**Socket.io 连接复用**：同一 socket 连接在页面导航间复用，不会自动断开；navigate('/lobby') 不触发 socket disconnect，需靠 `room:leave` 事件通知服务器
