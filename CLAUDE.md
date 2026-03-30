@@ -87,6 +87,7 @@ grep "目标sprite名" sprite-viewer.html docs/sprite-inventory.md src/config/sp
 - [完整资源审计](docs/resource-audit.md) — 像素级精灵分析，索引→内容映射
 - [调试经验 + Bug 模式](docs/debugging.md)
 - [UI 设计规范](docs/ui-design.md)
+- **[Pencil UI 设计架构](pencil/docs/architecture.md)** — 三层架构（Tokens/Components/Pages），组件索引+目录结构
 - [精灵/资源使用](docs/sprites.md)
 - **[贴图资产清单（交互）](sprite-viewer.html)** — 109个精灵可视化，0x72+Kenney双源，代码引用可点击
 - **[贴图资产清单（文档）](docs/sprite-inventory.md)** — 与上方HTML 1:1 对应，静态检索
@@ -167,10 +168,14 @@ npx tsc --noEmit                                # TypeScript 编译检查
 
 **入口目录**: `assets/inbox/` — 所有手动下载的 CC0 资源统一放入这里，Agent 负责整合。
 
+**UI 设计入口**：`assets/inbox/ui-design/` — 用户提供的 UI 参考素材
+**图片资源入口**：`assets/inbox/art-assets/` — 游戏图片素材（角色/怪物/道具/瓦片等）
+
 **流程**：
-1. 下载 CC0 素材 → 丢进 `assets/inbox/`
-2. 告知 Agent 文件名
-3. Agent 执行：**分析格式** → **移动到 `src/assets/kenney/Spritesheet/`** → **更新 `characters.ts` / `enemies.ts` 索引** → **编译验证**
+1. 下载 CC0 素材 → 丢进 `assets/inbox/art-assets/`
+2. 用户提供 UI 参考 → 丢进 `assets/inbox/ui-design/`
+3. 告知 Agent 文件名
+4. Agent 执行：**分析格式** → **移动到 `src/assets/kenney/Spritesheet/`** → **更新 `characters.ts` / `enemies.ts` 索引** → **编译验证**
 
 **已有资产**（Kenney，CC0）：
 - `src/assets/kenney/Spritesheet/roguelikeChar_transparent.png` — 角色 spritesheet
@@ -178,7 +183,7 @@ npx tsc --noEmit                                # TypeScript 编译检查
 - `src/assets/kenney/Spritesheet/roguelikeSheet_transparent.png` — 综合 spritesheet（含怪物）
 
 **待集成资产**（0x72，PWYW 商业许可）：
-- `assets/inbox/0x72_DungeonTilesetII_v1.7/` — 角色/怪物动画帧（370 帧），暗黑地牢风格
+- `assets/inbox/art-assets/0x72/` — 地牢瓦片集 + 角色/怪物动画帧（370+ 帧），暗黑地牢风格
 
 **索引对应关系**（需随新资源更新）：
 - `src/config/characters.ts` — 4 个职业的 spriteIndex
