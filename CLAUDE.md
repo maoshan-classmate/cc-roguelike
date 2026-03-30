@@ -7,6 +7,40 @@
 teammate 失败 2 次以上时向 Leader 发送 [PUA-REPORT] 格式汇报。
 Leader 负责全局压力等级管理和跨 teammate 失败传递。
 
+## 自动化 Agent 调度规则（强制）
+
+> 当 Hook 输出 `🤖 AUTO-AGENT` 提醒时，Claude **必须立即调度** 对应 agent，不得忽略。
+
+| Hook 提醒关键词 | 必须调度的 Agent | 触发条件 |
+|----------------|-----------------|----------|
+| `AUTO-AGENT: 贴图资产修改检测` | `Agent(sprite-audit)` | 编辑 sprites.ts / sprite-viewer.html / sprite-inventory.md 任一文件 |
+| `AUTO-AGENT: 已连续编辑 5 个 TS/TSX` | `Agent(dev-standard-checker)` | 连续编辑 ≥5 个 .ts/.tsx 文件 |
+| `AUTO-AGENT: 当前有 N 个 TS/TSX 文件被修改` | `Agent(dev-standard-checker)` | 任务结束时 ≥3 个 .ts/.tsx 文件有未提交修改 |
+
+**规则**：
+- 收到 `🤖 AUTO-AGENT` 提醒后，**必须在下一轮回复中调度对应 agent**（使用 Agent 工具）
+- 调度后等待 agent 返回审查报告，根据报告决定是否修复
+- 不得以"任务已完成"为由跳过 agent 调度
+
+### 执行公告规范（强制）
+
+所有 Skill / Agent / Hook 被触发时**必须向用户输出可见公告**，让用户知道什么在执行、为什么执行、执行到哪一步了。
+
+**公告格式规范**：
+
+| 类型 | 前缀 | 示例 |
+|------|------|------|
+| Hook 触发 | `[HOOK]` | `╔══ [HOOK] 贴图资产铁律触发 ══╗` |
+| Skill 执行 | `[SKILL:名称]` | `╔══ [SKILL] code-hygiene 已触发 ══╗` |
+| Agent 调度 | `[AGENT:名称]` | `╔══ [AGENT] sprite-audit 已调度 ══╗` |
+
+**规则**：
+- Hook/Skill/Agent **必须在执行第一行操作前输出公告**，不得事后补
+- 公告必须包含：功能说明、当前阶段、状态
+- 每个阶段完成时输出进度更新
+- 最终必须输出总结行（成功/失败 + 统计数据）
+- 不得以任何理由跳过公告输出
+
 ## 项目概述
 
 **游戏**：局域网多人联机 Roguelike 闯关游戏
