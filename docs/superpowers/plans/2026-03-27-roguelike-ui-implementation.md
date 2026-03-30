@@ -6,7 +6,7 @@
 
 **Architecture:** 基于 React + Canvas 的前端项目，使用 CSS 变量管理设计系统，Canvas 绘制游戏画面。UI 组件翻新使用 CSS + 图片资源，游戏元素使用 Canvas 像素精灵图。
 
-**Tech Stack:** React 18, TypeScript, Canvas API, CSS Variables, Penpot MCP (设计工具)
+**Tech Stack:** React 18, TypeScript, Canvas API, CSS Variables, Pencil MCP (设计工具)
 
 ---
 
@@ -216,47 +216,35 @@ git commit -m "feat(ui): add pixel art CSS variables and styles"
 - Create: `src/assets/images/tiles/` (目录)
 - Create: `src/assets/images/skills/` (目录)
 
-- [ ] **Step 1: 使用 Penpot 创建设计稿**
+- [ ] **Step 1: 使用 Pencil MCP 创建设计稿**
 
-在 Penpot 中创建以下设计稿（每个资源一个 Board）：
+在 Pencil 中创建像素设计稿：
 
-1. **UI 资源 Board** (1600x400)
-   - logo-icon (32x32) - 剑与盾图标
+1. **UI 资源** (32x32)
+   - logo-icon - 剑与盾图标
    - crown-icon (16x16) - 皇冠图标
    - refresh-icon (16x16) - 刷新图标
    - plus-icon (16x16) - 加号图标
    - player-slot-bg (32x32) - 玩家槽位背景
 
-2. **角色 Board** (400x100)
-   - player-blue (32x32)
-   - player-green (32x32)
-   - player-orange (32x32)
-   - player-purple (32x32)
+2. **角色** (32x32)
+   - player-blue, player-green, player-orange, player-purple
 
-3. **敌人 Board** (400x200)
-   - enemy-basic (32x32)
-   - enemy-fast (32x32)
-   - enemy-tank (32x32)
-   - enemy-boss (48x48)
+3. **敌人** (32x32 / 48x48 boss)
+   - enemy-basic, enemy-fast, enemy-tank, enemy-boss
 
-4. **道具 Board** (200x100)
-   - health-pack (16x16)
-   - coin (16x16)
-   - bullet-friendly (8x8)
+4. **道具** (16x16 / 8x8)
+   - health-pack, coin, bullet-friendly
 
-5. **瓦片 Board** (200x100)
-   - floor (32x32)
-   - wall (32x32)
+5. **瓦片** (32x32)
+   - floor, wall
 
-6. **技能 Board** (200x100)
-   - skill-sword (16x16)
-   - skill-shield (16x16)
-   - skill-arrow (16x16)
-   - skill-potion (16x16)
+6. **技能** (16x16)
+   - skill-sword, skill-shield, skill-arrow, skill-potion
 
 - [ ] **Step 2: 导出 PNG 资源**
 
-使用 Penpot 的导出功能，将每个设计导出为 PNG：
+使用 Pencil 导出为 PNG：
 
 ```
 导出设置：

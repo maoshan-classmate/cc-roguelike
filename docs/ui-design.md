@@ -46,7 +46,3 @@
 - 按钮/卡片使用 `border: none`
 - SVG 组件必须显式导入
 - 禁止使用 `alert()`，替换为内联错误通知
-
-## Penpot MCP
-- `export_shape` 工具可能有 http error，可使用 `generateMarkup` 生成 SVG 代码代替
-- 创建图片资源后用 `generateMarkup` 提取坐标和颜色信息

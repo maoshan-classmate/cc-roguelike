@@ -5,7 +5,6 @@ dist/
 .DS_Store
 .vscode/
 .idea/
-.penpot-mcp/
 assets/inbox/
 
 # Claude Code 团队共享规则（.claude/ 整体 git 追踪）

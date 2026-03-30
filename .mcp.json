@@ -1,8 +1,10 @@
 {
   "mcpServers": {
-    "penpot": {
-      "type": "http",
-      "url": "http://localhost:4401/mcp"
+    "pencil": {
+      "type": "stdio",
+      "command": "D:\\pencil\\resources\\app.asar.unpacked\\out\\mcp-server-windows-x64.exe",
+      "args": ["--app", "desktop"],
+      "env": {}
     }
   }
 }

@@ -97,15 +97,6 @@ grep "目标sprite名" sprite-viewer.html docs/sprite-inventory.md src/config/sp
 - **[架构问题（最高优先级）](docs/todo/architecture.md)** — 全局设计债/体系不对齐
 - **[开发规范（强制）](docs/DEVELOPMENT_STANDARD.md)** — 所有 AI 开发必须遵守，含 AI 开发检查清单
 
-### 自定义像素精灵制作流程（PenPot MCP）
-1. `mcp__penpot__execute_code` 在 CustomSpritesheet 内用 `cs.insertChild()` 添加像素
-2. 坐标用**绝对坐标**（cs.x + localX, cs.y + localY），不用 setParentXY
-3. 像素名统一前缀如 `arpix_` 方便清理
-4. SVG 用**同一份 rows 数组**通过 Python 脚本生成（不用手动写 SVG）
-5. PNG 转换：`pip install cairosvg` 后 `cairosvg.svg2png()`
-6. PenPot `export_shape` API 对大文件/组导出不稳定，用 Playwright 截图或 Python 闭环
-7. SVG 写到 `assets/inbox/` 目录，PNG 转换后放到资源目录
-
 ## 关键命令
 
 ```bash

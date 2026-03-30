@@ -6,11 +6,11 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .claude/scripts/hook-sprite-sync.py"
+            "command": "python .claude/scripts/hook-sprite-sync.py"
           },
           {
             "type": "command",
-            "command": "python3 .claude/scripts/hook-ts-counter.py"
+            "command": "python .claude/scripts/hook-ts-counter.py"
           }
         ]
       }
@@ -21,7 +21,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .claude/scripts/hook-block-sensitive.py"
+            "command": "python .claude/scripts/hook-block-sensitive.py"
           }
         ]
       }
@@ -32,7 +32,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python3 .claude/scripts/hook-stop-check.py"
+            "command": "python .claude/scripts/hook-stop-check.py"
           }
         ]
       }

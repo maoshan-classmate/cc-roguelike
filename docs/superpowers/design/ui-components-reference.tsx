@@ -1,6 +1,6 @@
 /**
  * Roguelike Pixel Retro UI Components Reference
- * Based on Penpot Design System
+ * Based on Pencil Design System
  *
  * Page: D:\cc-roguelike\docs\superpowers\design\ui-design-kit.css
  *
