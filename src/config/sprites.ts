@@ -91,6 +91,7 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
   wall_right:       { category: 'SCENE', source: '0x72', atlasKey: 'wall_right',       size: 32, animated: false, frameCount: 1 },
   // floor_stairs: 游戏使用 Kenney roguelikeDungeon index=23（出口楼梯）
   // 注：0x72 atlas 也有 floor_stairs (x=80,y=192) 但与 Kenney idx=23 是不同 sprite，未被游戏使用
+  // 代码引用: useGameRenderer.ts:190,219
   floor_stairs:     { category: 'SCENE', source: 'kenney', atlasKey: 23,               size: 32, animated: false, frameCount: 1 },
   doors_leaf_closed: { category: 'SCENE', source: '0x72', atlasKey: 'doors_leaf_closed', size: 64, animated: false, frameCount: 1 },
 

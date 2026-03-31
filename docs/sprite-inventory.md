@@ -137,7 +137,7 @@ src/assets/
 | 贴图名称 | Atlas坐标 | 尺寸 | 游戏用途 | 状态 | 代码引用 |
 |---------|----------|------|---------|------|---------|
 | `weapon_knight_sword` | (339,98) | 10×29 | 战士武器 | ✅ | `GamePage.tsx:548` |
-| `weapon_arrow` | (324,202) | 7×21 | 子弹(bullet视觉) | ✅ | `sprites.ts:463` |
+| `weapon_arrow` | (324,202) | 7×21 | 子弹(bullet视觉) | ✅ | `sprites.ts:68` |
 | `weapon_red_magic_staff` | (324,129) | 8×30 | 法师/牧师武器 | ✅ | `GamePage.tsx:550` |
 | `weapon_bow` | (289,195) | 14×26 | 游侠武器 | ✅ | `GamePage.tsx:549` |
 | `weapon_axe` | (341,74) | 9×21 | — | ❌ |
@@ -202,7 +202,7 @@ src/assets/
 | `health_kenney` | idx=29, sheetW=492 | 16×16 | 医疗包 Kenney fallback(0x72优先) | ✅ | `items.ts:26` |
 | `energy_kenney` | idx=30, sheetW=492 | 16×16 | 能量包 Kenney fallback(0x72优先) | ✅ | `items.ts:89` |
 | `coin_kenney` | idx=31, sheetW=492 | 16×16 | 金币 Kenney fallback(0x72优先) | ✅ | `items.ts:37` |
-| `floor_stairs` | idx=23 → (414,0) | 16×16 | 楼梯出口(Kenney idx=23) | ✅ | `GamePage.tsx:420` |
+| `floor_stairs` | idx=23 → (391,0) | 16×16 | 楼梯出口(Kenney idx=23) | ✅ | `useGameRenderer.ts:190,219` |
 
 ---
 
