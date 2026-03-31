@@ -1,20 +1,5 @@
 {
   "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Edit|Write",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node .claude/scripts/hook-sprite-sync.js"
-          },
-          {
-            "type": "command",
-            "command": "node .claude/scripts/hook-ts-counter.js"
-          }
-        ]
-      }
-    ],
     "PreToolUse": [
       {
         "matcher": "Edit|Write",
@@ -22,17 +7,6 @@
           {
             "type": "command",
             "command": "python .claude/scripts/hook-block-sensitive.py"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node .claude/scripts/hook-stop-check.js"
           }
         ]
       }

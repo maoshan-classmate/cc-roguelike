@@ -7,20 +7,45 @@
 teammate 失败 2 次以上时向 Leader 发送 [PUA-REPORT] 格式汇报。
 Leader 负责全局压力等级管理和跨 teammate 失败传递。
 
-## 自动化 Agent 调度规则（强制）
+## 自动化 Agent / Skill 调度规则（强制）
 
-> 当 Hook 输出 `🤖 AUTO-AGENT` 提醒时，Claude **必须立即调度** 对应 agent，不得忽略。
+> 用户手动触发 或 CLAUDE.md 明确场景下调度，不得忽略。
 
-| Hook 提醒关键词 | 必须调度的 Agent | 触发条件 |
-|----------------|-----------------|----------|
-| `AUTO-AGENT: 贴图资产修改检测` | `Agent(sprite-audit)` | 编辑 sprites.ts / sprite-viewer.html / sprite-inventory.md 任一文件 |
-| `AUTO-AGENT: 已连续编辑 5 个 TS/TSX` | `Agent(dev-standard-checker)` | 连续编辑 ≥5 个 .ts/.tsx 文件 |
-| `AUTO-AGENT: 当前有 N 个 TS/TSX 文件被修改` | `Agent(dev-standard-checker)` | 任务结束时 ≥3 个 .ts/.tsx 文件有未提交修改 |
+### 贴图资产 — 双轨制
+
+| 场景 | 类型 | 调用方式 | 职责 |
+|------|------|---------|------|
+| 审查 | `Agent(sprite-audit)` | 用户调用 `/sprite-audit` | 只读审查，发现问题输出报告 |
+| 修复（AI 触发） | `Agent(sprite-fix)` | `🔴 [sprite-audit]` 报告后调度 | 执行三文件同步修复 |
+| 同步（用户手动） | `Skill(sync-sprite)` | 用户调用 `/sync-sprite` | 用户手动执行三文件同步 |
+
+**双轨逻辑**：
+- AI 发现问题 → agent 链路（sprite-audit → sprite-fix）
+- 用户主动同步 → skill 链路（`/sync-sprite`）
+
+### 其他调度
+
+| 触发场景 | 类型 | 说明 |
+|---------|------|------|
+| `🔴 [sprite-audit] 发现 {n} 项不同步` | `Agent(sprite-fix)` | AI 审查触发，用户选择是否修复 |
+| 手动调用 `/code-hygiene` | `Skill(code-hygiene)` | 项目代码整洁性全维度扫描 |
 
 **规则**：
-- 收到 `🤖 AUTO-AGENT` 提醒后，**必须在下一轮回复中调度对应 agent**（使用 Agent 工具）
-- 调度后等待 agent 返回审查报告，根据报告决定是否修复
-- 不得以"任务已完成"为由跳过 agent 调度
+- agent 只做审查/分析，不自行修改文件（sprite-fix 例外）
+- 收到 `🔴 [sprite-audit]` 不同步报告后，根据用户选择决定是否调度 `sprite-fix`
+- 不得以"任务已完成"为由跳过 agent/skill 调度
+
+### Commit 前 sprite-audit 强制规则
+
+**每次执行 git commit 前，必须先运行 sprite-audit 审查。**
+
+收到用户 `commit` 请求时：
+1. **立即调度** `Agent(sprite-audit)` 执行三文件同步审查
+2. 等待审查报告返回
+3. 若发现不同步 → 阻止 commit，调度 `sprite-fix` 修复后重新审查
+4. 若完全一致 → 方可执行 git commit
+
+> 铁律：sprite-audit 通过是 commit 的**前置条件**，不满足则拒绝提交。
 
 ### 执行公告规范（强制）
 
@@ -30,7 +55,7 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 
 | 类型 | 前缀 | 示例 |
 |------|------|------|
-| Hook 触发 | `[HOOK]` | `╔══ [HOOK] 贴图资产铁律触发 ══╗` |
+| Hook 触发 | `[HOOK]` | `╔══ [HOOK] 任务结束提醒 ══╗` |
 | Skill 执行 | `[SKILL:名称]` | `╔══ [SKILL] code-hygiene 已触发 ══╗` |
 | Agent 调度 | `[AGENT:名称]` | `╔══ [AGENT] sprite-audit 已调度 ══╗` |
 

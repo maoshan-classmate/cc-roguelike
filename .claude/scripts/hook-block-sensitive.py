@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """[HOOK] PreToolUse - 敏感文件拦截"""
-import sys, json, re, io
+import sys, json, re, io, os
 
 sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8', errors='replace')
 
@@ -15,21 +15,8 @@ fp = data.get("tool_input", {}).get("file_path", "")
 PATTERNS = [r"\.env$", r"\.env\.", r"credentials", r"secret"]
 
 if any(re.search(p, fp) for p in PATTERNS):
-    W = 54
-    print()
-    print("+" + "=" * W + "+")
-    print("| [HOOK] 敏感文件拦截 - BLOCKED" + " " * (W - 31) + "|")
-    print("+" + "-" * W + "+")
-    lines = [
-        f"BLOCKED: {fp}",
-        "规则: 禁止编辑 .env / credentials / secret",
-    ]
-    for line in lines:
-        display_len = sum(2 if ord(c) > 127 else 1 for c in line)
-        pad = max(W - display_len - 1, 1)
-        print("| " + line + " " * pad + "|")
-    print("+" + "=" * W + "+")
-    print()
-    sys.exit(1)
+    # exit 2 = 阻止操作；stderr 显示给用户
+    print("[HOOK] 敏感文件拦截 — 禁止编辑 .env / credentials / secret 文件", file=sys.stderr)
+    sys.exit(2)
 
 sys.exit(0)
