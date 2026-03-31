@@ -10,6 +10,7 @@
 ### Socket.io
 - 客户端直接连接后端端口：`io('http://localhost:3001', { transports: ['websocket', 'polling'] })`
 - 不要依赖 Vite proxy 转发 WebSocket（不稳定）
+- **连接复用**：同一 socket 在页面导航间复用，不会自动断开；navigate('/lobby') 不触发 disconnect，需显式发 `room:leave` 通知服务器
 
 ### Session 管理
 - 创建房间后用户自动加入房间（`session.currentRoom` 已设置）

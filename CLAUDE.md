@@ -165,12 +165,6 @@ npx tsc --noEmit                                # TypeScript 编译检查
 
 **新资产引入流程**：解析→语义分类(CHARACTER/MONSTER/WEAPON/ITEM/SCENE/UI)→持久化(TS+MD)→替换
 
-**贴图资产清单**（见上方铁律）：
-- `sprite-viewer.html` — 交互式精灵预览，含源码引用
-- `docs/sprite-inventory.md` — 静态清单，与上方 HTML 1:1 对应
-- `src/config/sprites.ts` — `SPRITE_REGISTRY` 运行时数据源
-- **三文件任一改动必须同步**，违反即为 3.25
-
 ## Playwright MCP 验证流程
 
 登录→创建房间→选择职业→准备→开始冒险（完整流程覆盖）
@@ -242,36 +236,15 @@ npx tsc --noEmit                                # TypeScript 编译检查
 - **客户端插值**: lerp(prev, target, t) 平滑服务端 10Hz 同步
 - **地牢尺寸**: 1024×768 (32×24 tiles, tile=32px)
 
-## Bug 修复教训（本 session 沉淀）
+## 常见 Bug 模式
 
-**角色 sprite 大小**：atlas 原始 16px → 在 32px tile 世界需要 scale 2-3x 才能清晰可见 → 当前 CHARACTER size=48；改 size 前必须截图验证，不可靠直觉
+- **白色箭头**：`drawDirectionArrow` 在本地玩家头顶绘制，删除 GamePage.tsx 中调用即可
+- **UI 状态 bug**：`setSource`/`setCategory` 类逻辑，先读源码确认 `t===el`，不要查 className
+- **弃用文件**：`src/assets/0x72/index.ts` 和 `spriteRegistry.ts` 为弃用，运行时代码只读 `src/config/sprites.ts`
+- **异步竞态**：DB 写 + 内存写双保险，`handleRoomStart` 优先读内存
+- **Session refs 重置**：组件 unmount 时必须重置 `gameSessionRef`，否则旧状态污染新游戏
 
-**白色棍子已知来源**：`drawDirectionArrow` 在本地玩家头顶绘制白色 12px 方向箭头，删除 GamePage.tsx 中调用即可，不要误删 PixelSprites
+## 删除废弃文件前先 grep 确认无引用
 
-**删除文件前必须全量 grep 引用**：确认零引用才能删；`ui-optimization.md` 可能引用 `PixelSprites.tsx`
+删除文件前：`grep -r "文件名" src/ --include="*.ts" --include="*.tsx"`；特别注意 `ui-optimization.md` 可能引用 `PixelSprites.tsx`
 
-**贴图资产三文件同步纪律**：见上方铁律区块（最高优先级）
-
-**验证贴图是否被使用**：grep "sprite名" src/pages/GamePage.tsx src/config/*.ts — 运行时实际引用才是金标准；静态 SPRITE_REGISTRY 条目不等于被使用
-
-**Edit 工具精确匹配**：`old_string` 须含原始缩进和注释，Edit 失败时 re-read 再试，不要凭记忆重写
-
-**UI 状态 bug 根因模式**：`setSource`/`setCategory` 类的条件逻辑，先读源码结构确认 t===el 判断，而非检查 className 是否包含
-
-**弃用文件判断**：`src/assets/0x72/index.ts` 和 `spriteRegistry.ts` 为弃用文件，运行时代码只读 `src/config/sprites.ts`
-
-**Bug 修复验证**：改完代码必须 Playwright E2E + 截图确认，不能只看 `tsc --noEmit`；视觉类 bug 必须拿 screenshot 证据
-
-**异步竞态修复模式**：DB 写 + 内存写双保险，`handleRoomStart` 优先读内存；`handleSelectClass` 同时更新 `lobbyManager.setPlayerCharacterType()`
-
-**GameRoom 生命周期（ multiplayer 关键）**：玩家退出游戏页面（navigate to lobby）时，服务器端 GameRoom.tick 不会自动停止；必须在 `handleRoomLeave` 和 `handleDisconnect` 中显式移除玩家 + `gameManager.removeRoom()` 销毁空房间；客户端 `handleExit` 必须发送 `room:leave` 并重置 session refs
-
-**Session refs 重置时机**：任何导致组件 unmount 的退出路径（handleExit / cleanup / navigate）都必须重置 `gameSessionRef` 为 0；否则下次进入时过滤逻辑失效，旧游戏状态污染新游戏
-
-**game:floor:start 不覆盖初始 floor**：服务器对 floor=1 不发送 `game:floor:start`（只在新 floor 才设置 `_floorChanged=true`）；客户端必须靠 `game:state` 第一帧建立基准
-
-**Playwright 截图调试**：视觉类 bug（瞬移、残影、重叠）用 `browser_take_screenshot` 存档，比 console log 更直观；GIF 能清晰展示运动轨迹异常
-
-**TypeScript 检查过滤**：`npx tsc --noEmit --skipLibCheck --ignoreDeprecations "6.0" | grep "GamePage\|SocketServer\|GameRoom"` 只看相关文件
-
-**Socket.io 连接复用**：同一 socket 连接在页面导航间复用，不会自动断开；navigate('/lobby') 不触发 socket disconnect，需靠 `room:leave` 事件通知服务器
