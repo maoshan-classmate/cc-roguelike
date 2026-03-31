@@ -121,6 +121,7 @@
       "Bash(pip install:*)",
       "Skill(update-config)",
       "Bash(jq:*)",
+<<<<<<< Updated upstream
       "Bash(identify D:/cc-roguelike/src/assets/kenney/Spritesheet/roguelikeChar_transparent.png D:/cc-roguelike/src/assets/kenney/Spritesheet/roguelikeDungeon_transparent.png D:/cc-roguelike/src/assets/kenney/Spritesheet/roguelikeSheet_transparent.png)",
       "Bash(identify src/assets/kenney/Spritesheet/roguelikeChar_transparent.png src/assets/kenney/Spritesheet/roguelikeDungeon_transparent.png src/assets/kenney/Spritesheet/roguelikeSheet_transparent.png)",
       "Skill(hookify:help)",
@@ -142,9 +143,15 @@
       "Bash(npm i:*)",
       "Bash(git pull:*)",
       "Bash(git stash:*)",
-      "Bash(npm list:*)"
+      "Bash(npm list:*)",
+      "Bash(taskkill:*)",
+      "Bash(taskkill //PID 28652 //F)",
+      "WebFetch(domain:reactbits.dev)",
+      "WebFetch(domain:raw.githubusercontent.com)"
     ]
   },
   "enableAllProjectMcpServers": true,
-  "enabledMcpjsonServers": []
+  "enabledMcpjsonServers": [
+    "pencil"
+  ]
 }
