@@ -166,7 +166,7 @@ npx tsc --noEmit                                # TypeScript 编译检查
 
 ## 资源管理流程（外源素材引入）
 
-**入口目录**: `assets/inbox/` — 所有手动下载的 CC0 资源统一放入这里，Agent 负责整合。
+**入口目录**: `assets/inbox/` — 外部资源手动下载后放入，Agent 负责分类和集成。
 
 **UI 设计入口**：`assets/inbox/ui-design/` — 用户提供的 UI 参考素材
 **图片资源入口**：`assets/inbox/art-assets/` — 游戏图片素材（角色/怪物/道具/瓦片等）
@@ -175,20 +175,22 @@ npx tsc --noEmit                                # TypeScript 编译检查
 1. 下载 CC0 素材 → 丢进 `assets/inbox/art-assets/`
 2. 用户提供 UI 参考 → 丢进 `assets/inbox/ui-design/`
 3. 告知 Agent 文件名
-4. Agent 执行：**分析格式** → **移动到 `src/assets/kenney/Spritesheet/`** → **更新 `characters.ts` / `enemies.ts` 索引** → **编译验证**
+4. Agent 执行：**分析格式** → **移动到 `src/assets/{source}/`** → **更新 `sprites.ts` 的 SPRITE_REGISTRY** → **同步更新 `docs/sprite-inventory.md` + `sprite-viewer.html`** → **编译验证**
 
 **已有资产**（Kenney，CC0）：
 - `src/assets/kenney/Spritesheet/roguelikeChar_transparent.png` — 角色 spritesheet
 - `src/assets/kenney/Spritesheet/roguelikeDungeon_transparent.png` — 地牢/道具 spritesheet
 - `src/assets/kenney/Spritesheet/roguelikeSheet_transparent.png` — 综合 spritesheet（含怪物）
 
-**待集成资产**（0x72，PWYW 商业许可）：
-- `assets/inbox/art-assets/0x72/` — 地牢瓦片集 + 角色/怪物动画帧（370+ 帧），暗黑地牢风格
+**已集成资产**（0x72，PWYW 商业许可）：
+- `src/assets/0x72/main_atlas.png` — 512×512 完整精灵图集
+- `src/assets/0x72/frames/` — 280+ 预提取单帧 PNG（CHARACTER/MONSTER/WEAPON/ITEM/SCENE/UI）
+- `src/assets/0x72/atlas_floor-16x16.png` — 地板瓦片
+- `src/assets/0x72/atlas_walls_high-16x32.png` / `atlas_walls_low-16x16.png` — 墙壁瓦片
 
-**索引对应关系**（需随新资源更新）：
-- `src/config/characters.ts` — 4 个职业的 spriteIndex
-- `src/config/enemies.ts` — 4 种怪物的 spriteIndex
-- `src/assets/kenney/index.ts` — spritesheet 路径和尺寸常量
+**⚠️ 废弃文件**（勿更新）：
+- `src/assets/0x72/index.ts` — 已废弃
+- `src/assets/kenney/index.ts` — 已废弃
 
 **Config → Registry 映射规则**：
 - `characters.ts` 的 `spriteName.front/back` = Registry key（例：`'knight_m_idle_anim_f0'`）
