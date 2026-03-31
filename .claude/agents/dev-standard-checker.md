@@ -15,7 +15,7 @@ model: inherit
 ║ [AGENT] dev-standard-checker 已调度               ║
 ╠══════════════════════════════════════════════════╣
 ║ 功能: 开发规范审查（DEVELOPMENT_STANDARD.md）     ║
-║ 范围: 7 大维度规范检查                            ║
+║ 范围: 6 大维度规范检查                            ║
 ║ 状态: 正在扫描代码变更...                         ║
 ╚══════════════════════════════════════════════════╝
 ```
@@ -52,10 +52,7 @@ model: inherit
 - 游戏状态通过 Zustand store（src/store/）
 - 服务端是真相之源
 
-### 6. 贴图三文件同步
-- sprites.ts / sprite-inventory.md / sprite-viewer.html 一致性
-
-### 7. 逻辑分层
+### 6. 逻辑分层
 - 表现层不直接含游戏逻辑
 - 服务端不跨层调用前端
 

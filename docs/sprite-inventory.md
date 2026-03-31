@@ -3,7 +3,6 @@
 > 项目所有贴图资产的完整分类目录
 > 资产策略：优先使用 0x72 Dungeon Tileset II (PWYW商业可用)，Kenney CC0 作为 fallback
 > 生成时间：2026-03-29
->
 > **交互预览（推荐）**：`sprite-viewer.html` — 107个精灵全部可视化，含 0x72 PNG 预览 + Kenney canvas 渲染
 > **静态文档**：`docs/sprite-inventory.md` — 本文档，快速检索用
 

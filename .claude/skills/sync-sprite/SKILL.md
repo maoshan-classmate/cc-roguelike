@@ -3,9 +3,11 @@ name: sync-sprite
 description: 新增/修改贴图资产时，自动同步三文件（sprites.ts + sprite-inventory.md + sprite-viewer.html）
 ---
 
-# Sync Sprite — 贴图资产三文件同步工具
+# Sync Sprite — 贴图资产三文件同步执行工具
 
 > 铁律：三个文件必须完全一致。违反即为 3.25。
+>
+> **职责定位**：sync-sprite 是**执行者**（修改文件），sprite-audit 是**审查者**（只读检查）。两者协同工作，审查发现 → 执行修复。
 
 ## ⚠️ 执行公告（强制，不可跳过）
 

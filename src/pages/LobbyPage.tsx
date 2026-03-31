@@ -136,7 +136,7 @@ function RoomCard({
 
 export default function LobbyPage() {
   const { user, logout } = useAuthStore()
-  const { rooms, setRooms, addRoom, updateRoom, removeRoom } = useLobbyStore()
+  const { rooms, setRooms } = useLobbyStore()
   const [showCreate, setShowCreate] = useState(false)
   const [roomName, setRoomName] = useState('')
   const [errorMsg, setErrorMsg] = useState('')

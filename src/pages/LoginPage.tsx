@@ -279,46 +279,31 @@ export default function LoginPage() {
             </div>
           )}
 
-          <GlareHover
-            width="100%"
-            height="auto"
-            background="transparent"
-            borderRadius="8px"
-            borderColor="var(--pixel-gold)"
-            glareColor="#FFD700"
-            glareOpacity={0.3}
-            glareAngle={-45}
-            glareSize={200}
-            transitionDuration={500}
-            className="pixel-glow-gold"
-            style={{ padding: 0 }}
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-pixel pixel-glow-gold"
+            style={{
+              width: '100%',
+              fontSize: 16,
+              padding: '14px 24px',
+              background: loading ? 'var(--pixel-brown)' : 'var(--pixel-gold)',
+              color: 'var(--pixel-bg)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+            }}
           >
-            <button
-              type="submit"
-              disabled={loading}
-              className="btn-pixel"
-              style={{
-                width: '100%',
-                fontSize: 16,
-                padding: '14px 24px',
-                background: loading ? 'var(--pixel-brown)' : 'var(--pixel-gold)',
-                color: 'var(--pixel-bg)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 8,
-              }}
-            >
-              {loading ? (
-                <>
-                  <PixelStar size={14} color="#2D1B2E" className="pixel-loading" />
-                  处理中...
-                </>
-              ) : (
-                isRegister ? '创建冒险者' : '进入冒险'
-              )}
-            </button>
-          </GlareHover>
+            {loading ? (
+              <>
+                <PixelStar size={14} color="#2D1B2E" style={{ opacity: 0.7 }} />
+                处理中...
+              </>
+            ) : (
+              isRegister ? '创建冒险者' : '进入冒险'
+            )}
+          </button>
         </form>
 
         <DecorativeLine />

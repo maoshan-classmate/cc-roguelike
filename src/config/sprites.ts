@@ -416,7 +416,6 @@ export function drawWeaponSprite(
 
   // 攻击闪光：武器前伸 + 发光
   const attackOffset = flash * 12  // 最多前移12px
-  const glowAlpha = flash * 0.6    // 发光透明度
 
   // 发光层
   if (flash > 0) {

@@ -8,6 +8,7 @@ import React from 'react'
 interface PixelIconProps {
   size?: number
   color?: string
+  className?: string
   style?: React.CSSProperties
 }
 

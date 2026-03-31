@@ -4,9 +4,6 @@ import { useAuthStore } from '../store/useAuthStore'
 import { useGameStore } from '../store/useGameStore'
 import { networkClient } from '../network/socket'
 import {
-  TILE_SIZE,
-  TILE_MARGIN,
-  CHAR_SPRITESHEET_WIDTH,
   roguelikeCharSheetPath,
   roguelikeDungeonSheetPath,
   roguelikeSheetPath,
@@ -30,8 +27,6 @@ import {
 } from '../config/sprites'
 import {
   PixelCastle,
-  PixelDragon,
-  PixelCrown,
   PixelGem,
   PixelKey,
   PixelSword,
@@ -85,7 +80,7 @@ export default function GamePage() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const keysRef = useRef<Set<string>>(new Set())
   const mouseRef = useRef({ x: 0, y: 0, down: false })
-  const animationRef = useRef<number>()
+  const animationRef = useRef<number | undefined>(undefined)
 
   // 精灵加载状态
   const [spritesLoaded, setSpritesLoaded] = useState(false)
@@ -660,9 +655,9 @@ export default function GamePage() {
     for (const item of items) {
       const itemConfig = ITEMS[item.type] || ITEMS.health
       // 优先使用0x72精灵，否则使用Kenney
-      const itemSize = getSpriteEntry(itemConfig.spriteName)?.size ?? 28
-      if (spritesLoaded && tileset2Atlas.complete && is0x72Sprite(itemConfig.spriteName)) {
-        const animSprite = getAnimSprite(itemConfig.spriteName, performance.now() - lastAnimTime.current)
+      const itemSize = getSpriteEntry(itemConfig.spriteName ?? '')?.size ?? 28
+      if (spritesLoaded && tileset2Atlas.complete && is0x72Sprite(itemConfig.spriteName ?? '')) {
+        const animSprite = getAnimSprite(itemConfig.spriteName ?? '', performance.now() - lastAnimTime.current)
         draw0x72Sprite(ctx, tileset2Atlas, animSprite, item.x, item.y, itemSize)
       } else if (spritesLoaded && dungeonSpriteSheet.complete) {
         drawDungeonSprite(ctx, dungeonSpriteSheet, itemConfig.spriteIndex, item.x, item.y, itemSize)
@@ -704,8 +699,8 @@ export default function GamePage() {
 
       if (spritesLoaded) {
         // 优先使用0x72精灵，否则回退到Kenney
-        if (tileset2Atlas.complete && is0x72Sprite(enemyConfig.spriteName)) {
-          const animSprite = getAnimSprite(enemyConfig.spriteName, performance.now() - lastAnimTime.current)
+        if (tileset2Atlas.complete && is0x72Sprite(enemyConfig.spriteName ?? '')) {
+          const animSprite = getAnimSprite(enemyConfig.spriteName ?? '', performance.now() - lastAnimTime.current)
           draw0x72Sprite(ctx, tileset2Atlas, animSprite, epos.x, epos.y, size)
         } else if (enemyConfig.sheet === 'sheet' && sheetSpriteSheet.complete) {
           drawSheetSprite(ctx, sheetSpriteSheet, enemyConfig.spriteIndex, epos.x, epos.y, size)
@@ -815,7 +810,7 @@ export default function GamePage() {
         ctx.globalAlpha = 0.4
         // 优先使用0x72精灵，否则使用Kenney
         if (spritesLoaded && tileset2Atlas.complete && is0x72Sprite(charConfig.spriteName?.front ?? '')) {
-          draw0x72Sprite(ctx, tileset2Atlas, charConfig.spriteName.front, ppos.x, ppos.y, size)
+          draw0x72Sprite(ctx, tileset2Atlas, charConfig.spriteName?.front ?? '', ppos.x, ppos.y, size)
         } else if (spritesLoaded && charSpriteSheet.complete) {
           drawCharacterSprite(ctx, charSpriteSheet, charConfig.spriteIndex.front, ppos.x, ppos.y, size)
         } else {
@@ -861,7 +856,7 @@ export default function GamePage() {
 
       // 优先使用0x72精灵，否则使用Kenney
       if (spritesLoaded && tileset2Atlas.complete && is0x72Sprite(spriteName ?? '')) {
-        const animSprite = getAnimSprite(spriteName, performance.now() - lastAnimTime.current)
+        const animSprite = getAnimSprite(spriteName ?? '', performance.now() - lastAnimTime.current)
         if (flipH) {
           ctx.save()
           ctx.scale(-1, 1)

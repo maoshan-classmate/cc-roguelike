@@ -23,7 +23,7 @@ interface RoomState {
   setReady: (ready: boolean) => void
 }
 
-export const useRoomStore = create<RoomState>((set, get) => ({
+export const useRoomStore = create<RoomState>((set) => ({
   roomId: null,
   roomName: '',
   hostId: '',
