@@ -15,9 +15,9 @@ class NetworkClient {
 
     if (this.socket?.connected) return
 
-    // Connect to backend server (configurable via env, default to localhost:3001)
-    const serverUrl = import.meta.env.VITE_SERVER_URL || 'http://localhost:3001'
-    this.socket = io(serverUrl, {
+    // Socket.io 走 Vite proxy（开发模式）
+    // 客户端访问 http://<服务端IP>:3000，proxy 转发到 localhost:3001
+    this.socket = io('/', {
       auth: { token },
       transports: ['websocket', 'polling']
     })
