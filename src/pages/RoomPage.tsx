@@ -295,6 +295,7 @@ export default function RoomPage() {
       padding: 20,
       background: 'var(--pixel-bg)',
       position: 'relative',
+      overflowY: 'auto',
     }}>
       {/* 背景装饰 */}
       <div style={{

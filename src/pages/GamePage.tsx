@@ -489,6 +489,14 @@ export default function GamePage() {
       const size = enemyConfig.size
       const epos = getRenderPos(enemy.id, enemy.x, enemy.y)
 
+      // 死亡动画：闪烁 + 淡出效果
+      const isDying = enemy.state === 'dying'
+      if (isDying) {
+        const deathProgress = 1 - (enemy.deathTimer || 0) / 500 // 0~1，1是完全透明
+        const flash = Math.sin(performance.now() / 50) * 0.3 + 0.7 // 闪烁效果
+        ctx.globalAlpha = Math.max(0, 1 - deathProgress) * flash
+      }
+
       if (spritesLoaded) {
         // 优先使用0x72精灵，否则回退到Kenney
         if (tileset2Atlas.complete && is0x72Sprite(enemyConfig.spriteName)) {
@@ -515,15 +523,25 @@ export default function GamePage() {
         ctx.strokeRect(epos.x - size/2, epos.y - size/2, size, size)
       }
 
+      // 死亡时红色滤镜
+      if (isDying) {
+        ctx.globalAlpha = 0.3
+        ctx.fillStyle = '#FF0000'
+        ctx.fillRect(epos.x - size/2, epos.y - size/2, size, size)
+      }
+
+      ctx.globalAlpha = 1
+
       // BOSS皇冠
       if (enemyConfig.isBoss) {
         drawBossCrown(ctx, epos.x, epos.y - size/2 - 10, 16)
       }
 
-      // HP条
-      const hpBarWidth = enemyConfig.isBoss ? 64 : size * 1.5
-      const hpBarHeight = enemyConfig.isBoss ? 8 : 6
-      drawHPBar(
+      // HP条（死亡状态不显示）
+      if (!isDying) {
+        const hpBarWidth = enemyConfig.isBoss ? 64 : size * 1.5
+        const hpBarHeight = enemyConfig.isBoss ? 8 : 6
+        drawHPBar(
         ctx,
         epos.x - hpBarWidth/2,
         epos.y - size/2 - (enemyConfig.isBoss ? 20 : 14),
@@ -533,6 +551,7 @@ export default function GamePage() {
         enemy.hpMax,
         enemyConfig.isBoss ? '#FFD700' : '#DC143C'
       )
+      }
     }
 
     // 绘制子弹

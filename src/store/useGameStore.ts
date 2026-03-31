@@ -21,6 +21,8 @@ interface EnemyState {
   hp: number
   hpMax: number
   alive: boolean
+  state?: string  // 'idle' | 'chase' | 'attack' | 'dying'
+  deathTimer?: number
 }
 
 interface BulletState {

@@ -257,14 +257,17 @@ export class DungeonGenerator {
       const count = Math.floor(config.enemyCount[0] + this.random() * (config.enemyCount[1] - config.enemyCount[0]));
       const type = config.enemyTypes[Math.floor(this.random() * config.enemyTypes.length)];
 
-      // Spawn in room center with some randomness, clamped to room interior
+      // Spawn positions spread across the room (not stacked at center)
       const padding = 32; // Keep away from walls
       const maxOffsetX = Math.max(0, room.width / 2 - padding);
       const maxOffsetY = Math.max(0, room.height / 2 - padding);
-      const x = room.x + room.width / 2 + (this.random() - 0.5) * maxOffsetX;
-      const y = room.y + room.height / 2 + (this.random() - 0.5) * maxOffsetY;
 
-      enemies.push({ type, x, y, count });
+      // Generate individual spawn point for each enemy to prevent stacking
+      for (let i = 0; i < count; i++) {
+        const x = room.x + room.width / 2 + (this.random() - 0.5) * maxOffsetX;
+        const y = room.y + room.height / 2 + (this.random() - 0.5) * maxOffsetY;
+        enemies.push({ type, x, y, count: 1 });
+      }
     }
 
     return enemies;

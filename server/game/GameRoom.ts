@@ -48,7 +48,8 @@ export interface EnemyState {
   hpMax: number;
   attack: number;
   alive: boolean;
-  state: string;
+  state: string;  // 'idle' | 'chase' | 'attack' | 'dying'
+  deathTimer?: number;  // ms remaining before fully dead (for death animation)
 }
 
 export interface BulletState {
@@ -332,8 +333,19 @@ export class GameRoom {
     // Update enemies
     for (const enemy of this.enemies.values()) {
       if (!enemy.alive) continue;
+      if (enemy.state === 'dying') {
+        // Death animation timer
+        enemy.deathTimer = (enemy.deathTimer || 0) - dt * 1000;
+        if (enemy.deathTimer <= 0) {
+          enemy.alive = false;
+        }
+        continue;
+      }
       this.updateEnemy(enemy, dt);
     }
+
+    // Separate overlapping enemies (enemy-enemy collision)
+    this.separateEnemies();
 
     // Update bullets
     for (const [id, bullet] of this.bullets) {
@@ -442,6 +454,61 @@ export class GameRoom {
         nearestPlayer.invincible = 0.5;
         if (nearestPlayer.hp <= 0) {
           nearestPlayer.alive = false;
+        }
+      }
+    }
+  }
+
+  /**
+   * 敌人-敌人碰撞分离
+   * 防止敌人重叠在一起，推动它们分开
+   */
+  private separateEnemies(): void {
+    const ENEMY_RADIUS: Record<string, number> = {
+      basic: 16, fast: 14, tank: 20, boss: 28
+    };
+
+    const enemies = Array.from(this.enemies.values()).filter(e => e.alive);
+    const separationForce = 0.5; // 分离力度系数
+
+    for (let i = 0; i < enemies.length; i++) {
+      for (let j = i + 1; j < enemies.length; j++) {
+        const e1 = enemies[i];
+        const e2 = enemies[j];
+
+        const r1 = ENEMY_RADIUS[e1.type] || 16;
+        const r2 = ENEMY_RADIUS[e2.type] || 16;
+        const minDist = r1 + r2; // 两个敌人碰撞半径之和
+
+        const dx = e2.x - e1.x;
+        const dy = e2.y - e1.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist < minDist && dist > 0) {
+          // 重叠了，需要分离
+          const overlap = minDist - dist;
+          const dirX = dx / dist;
+          const dirY = dy / dist;
+
+          // 按半径比例分配分离距离
+          const totalRadius = r1 + r2;
+          const push1 = overlap * (r2 / totalRadius) * separationForce;
+          const push2 = overlap * (r1 / totalRadius) * separationForce;
+
+          const newX1 = e1.x - dirX * push1;
+          const newY1 = e1.y - dirY * push1;
+          const newX2 = e2.x + dirX * push2;
+          const newY2 = e2.y + dirY * push2;
+
+          // 验证分离后位置可行走
+          if (this.isWalkableRadius(newX1, newY1, r1)) {
+            e1.x = newX1;
+            e1.y = newY1;
+          }
+          if (this.isWalkableRadius(newX2, newY2, r2)) {
+            e2.x = newX2;
+            e2.y = newY2;
+          }
         }
       }
     }
@@ -576,7 +643,9 @@ export class GameRoom {
 
     enemy.hp -= damage;
     if (enemy.hp <= 0) {
-      enemy.alive = false;
+      enemy.hp = 0;
+      enemy.state = 'dying';
+      enemy.deathTimer = 500; // 500ms death animation before removal
       // Drop item
       if (Math.random() < 0.3) {
         const dropTypes = ['health', 'coin', 'coin'];
