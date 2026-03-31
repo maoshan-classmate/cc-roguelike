@@ -101,6 +101,38 @@ export default function GamePage() {
     dungeon: null as any
   })
 
+  // 粒子系统：死亡特效
+  const particlesRef = useRef<Array<{
+    id: string
+    x: number
+    y: number
+    vx: number
+    vy: number
+    life: number
+    maxLife: number
+    color: string
+    size: number
+    type: 'death' | 'hit' | 'skill'
+  }>>([])
+
+  // 记录上一帧的 dying 状态，用于检测新进入死亡的敌人
+  const prevDyingRef = useRef<Set<string>>(new Set())
+
+  // 伤害飘字系统
+  const damageTextsRef = useRef<Array<{
+    id: string
+    x: number
+    y: number
+    value: number
+    life: number
+    maxLife: number
+    color: string
+    isPlayer: boolean
+  }>>([])
+
+  // 记录上一帧的 hp，用于检测伤害
+  const prevHpRef = useRef<Map<string, number>>(new Map())
+
   // 插值渲染：保存上一帧和目标位置
   const prevPositions = useRef<Map<string, { x: number; y: number }>>(new Map())
   const targetPositions = useRef<Map<string, { x: number; y: number }>>(new Map())
@@ -108,6 +140,160 @@ export default function GamePage() {
 
   function lerp(a: number, b: number, t: number): number {
     return a + (b - a) * t
+  }
+
+  // 粒子生成函数：敌人死亡特效
+  function spawnDeathParticles(x: number, y: number, color: string) {
+    const particleCount = 12
+    const particles = particlesRef.current
+    for (let i = 0; i < particleCount; i++) {
+      const angle = (Math.PI * 2 * i) / particleCount + Math.random() * 0.5
+      const speed = 80 + Math.random() * 60
+      const life = 0.4 + Math.random() * 0.3 // 0.4-0.7秒
+      particles.push({
+        id: `death_${Date.now()}_${i}`,
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life,
+        maxLife: life,
+        color,
+        size: 3 + Math.random() * 3,
+        type: 'death'
+      })
+    }
+    // 添加一些额外的红色小粒子增加血腥感
+    for (let i = 0; i < 6; i++) {
+      const angle = Math.random() * Math.PI * 2
+      const speed = 50 + Math.random() * 40
+      const life = 0.3 + Math.random() * 0.2
+      particles.push({
+        id: `death_${Date.now()}_extra_${i}`,
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life,
+        maxLife: life,
+        color: '#FF4444',
+        size: 2 + Math.random() * 2,
+        type: 'death'
+      })
+    }
+  }
+
+  // 粒子更新和渲染
+  function updateAndDrawParticles(ctx: CanvasRenderingContext2D) {
+    const particles = particlesRef.current
+    const dt = 1 / 60 // 假设 60fps
+
+    for (let i = particles.length - 1; i >= 0; i--) {
+      const p = particles[i]
+
+      // 更新位置
+      p.x += p.vx * dt
+      p.y += p.vy * dt
+      // 重力效果（让粒子下落）
+      p.vy += 120 * dt
+      // 阻尼（逐渐减速）
+      p.vx *= 0.98
+      p.vy *= 0.98
+      // 生命衰减
+      p.life -= dt
+
+      // 移除死亡粒子
+      if (p.life <= 0) {
+        particles.splice(i, 1)
+        continue
+      }
+
+      // 渲染粒子
+      const alpha = p.life / p.maxLife
+      ctx.globalAlpha = alpha
+      ctx.fillStyle = p.color
+
+      // 根据粒子类型绘制不同形状
+      if (p.type === 'death') {
+        // 死亡粒子：菱形/方形碎片
+        const s = p.size * alpha
+        ctx.fillRect(p.x - s / 2, p.y - s / 2, s, s)
+      } else if (p.type === 'hit') {
+        // 击中粒子：圆形
+        ctx.beginPath()
+        ctx.arc(p.x, p.y, p.size * alpha, 0, Math.PI * 2)
+        ctx.fill()
+      } else {
+        // 技能粒子：三角形
+        const s = p.size * alpha
+        ctx.beginPath()
+        ctx.moveTo(p.x, p.y - s)
+        ctx.lineTo(p.x - s * 0.866, p.y + s * 0.5)
+        ctx.lineTo(p.x + s * 0.866, p.y + s * 0.5)
+        ctx.closePath()
+        ctx.fill()
+      }
+    }
+    ctx.globalAlpha = 1
+  }
+
+  // 伤害飘字生成函数
+  function spawnDamageText(x: number, y: number, value: number, isPlayer: boolean) {
+    const damageTexts = damageTextsRef.current
+    damageTexts.push({
+      id: `dmg_${Date.now()}_${Math.random()}`,
+      x,
+      y,
+      value,
+      life: 1.0, // 1秒持续时间
+      maxLife: 1.0,
+      color: isPlayer ? '#FF6B6B' : '#FFD700', // 玩家受伤红色，敌人受伤金色
+      isPlayer
+    })
+  }
+
+  // 更新和渲染伤害飘字
+  function updateAndDrawDamageTexts(ctx: CanvasRenderingContext2D) {
+    const damageTexts = damageTextsRef.current
+    const dt = 1 / 60 // 假设 60fps
+
+    for (let i = damageTexts.length - 1; i >= 0; i--) {
+      const t = damageTexts[i]
+
+      // 向上飘动
+      t.y -= 60 * dt // 每秒上升60像素
+      // 左右轻微晃动
+      t.x += Math.sin(t.life * 10) * 0.5
+      // 生命衰减
+      t.life -= dt
+
+      // 移除死亡飘字
+      if (t.life <= 0) {
+        damageTexts.splice(i, 1)
+        continue
+      }
+
+      // 渲染飘字
+      const alpha = Math.min(1, t.life / 0.3) // 最后30%开始淡出
+      const scale = 0.8 + 0.4 * (1 - t.life / t.maxLife) // 从小到大
+
+      ctx.save()
+      ctx.globalAlpha = alpha
+      ctx.font = `bold ${Math.floor(18 * scale)}px "Courier New", monospace`
+      ctx.textAlign = 'center'
+      ctx.textBaseline = 'middle'
+
+      // 黑色描边
+      ctx.strokeStyle = '#000'
+      ctx.lineWidth = 3
+      ctx.strokeText(`-${t.value}`, t.x, t.y)
+
+      // 彩色填充
+      ctx.fillStyle = t.color
+      ctx.fillText(`-${t.value}`, t.x, t.y)
+
+      ctx.restore()
+    }
   }
 
   // 动画帧辅助：每~150ms切换一帧 (0→1→2→3→0 循环)
@@ -222,6 +408,15 @@ export default function GamePage() {
           prev.set(key, { x: e.x, y: e.y })
         }
         target.set(key, { x: e.x, y: e.y })
+
+        // 伤害检测：比较 hp 变化
+        const prevHp = prevHpRef.current.get(key)
+        if (prevHp !== undefined && e.hp < prevHp) {
+          const damage = prevHp - e.hp
+          const isPlayer = state.players?.some((p: any) => p.id === key)
+          spawnDamageText(e.x, e.y - 20, damage, isPlayer)
+        }
+        prevHpRef.current.set(key, e.hp)
       }
       lastStateTime.current = performance.now()
 
@@ -489,8 +684,18 @@ export default function GamePage() {
       const size = enemyConfig.size
       const epos = getRenderPos(enemy.id, enemy.x, enemy.y)
 
-      // 死亡动画：闪烁 + 淡出效果
+      // 检测新进入死亡状态的敌人，生成粒子
       const isDying = enemy.state === 'dying'
+      if (isDying && !prevDyingRef.current.has(enemy.id)) {
+        // 新进入死亡状态，生成粒子
+        prevDyingRef.current.add(enemy.id)
+        spawnDeathParticles(enemy.x, enemy.y, enemyConfig.color)
+      } else if (!isDying && prevDyingRef.current.has(enemy.id)) {
+        // 敌人复活或完全死亡，清除记录
+        prevDyingRef.current.delete(enemy.id)
+      }
+
+      // 死亡动画：闪烁 + 淡出效果
       if (isDying) {
         const deathProgress = 1 - (enemy.deathTimer || 0) / 500 // 0~1，1是完全透明
         const flash = Math.sin(performance.now() / 50) * 0.3 + 0.7 // 闪烁效果
@@ -553,6 +758,12 @@ export default function GamePage() {
       )
       }
     }
+
+    // 绘制死亡粒子特效
+    updateAndDrawParticles(ctx)
+
+    // 绘制伤害飘字
+    updateAndDrawDamageTexts(ctx)
 
     // 绘制子弹
     const BULLET_COLORS: Record<string, string> = {
@@ -775,6 +986,16 @@ export default function GamePage() {
     navigate('/lobby')
   }
 
+  const handleReturnToRoom = () => {
+    // 返回房间页面（不通知服务器离开房间，游戏已结束）
+    floorSessionRef.current = 0
+    gameSessionRef.current = 0
+    prevPositions.current.clear()
+    targetPositions.current.clear()
+    reset()
+    navigate(`/room/${roomId}`)
+  }
+
   const { gold, keys } = gameStateRef.current
 
   return (
@@ -961,9 +1182,14 @@ export default function GamePage() {
           }}>
             {isVictory ? '恭喜你通关了地牢！' : '下次再接再厉！'}
           </p>
-          <button onClick={handleExit} className="btn-pixel" style={{ background: 'var(--primary)', minWidth: 200 }}>
-            [ 返回大厅 ]
-          </button>
+          <div style={{ display: 'flex', gap: 16 }}>
+            <button onClick={handleReturnToRoom} className="btn-pixel" style={{ background: 'var(--pixel-green)', minWidth: 160 }}>
+              [ 返回房间 ]
+            </button>
+            <button onClick={handleExit} className="btn-pixel" style={{ background: 'var(--pixel-brown)', minWidth: 160 }}>
+              [ 返回大厅 ]
+            </button>
+          </div>
         </div>
       )}
     </div>

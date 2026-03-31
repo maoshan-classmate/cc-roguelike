@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/useAuthStore'
 import { useLobbyStore } from '../store/useLobbyStore'
 import { networkClient } from '../network/socket'
 import { PixelCastle, PixelDragon, PixelCrown, PixelGem, PixelKey, PixelSword, PixelShield, PixelStar, PixelSkull } from '../components/PixelIcons'
+import { BlurText, GlareHover } from '../components/animations'
 
 // 玩家槽位组件
 function PlayerSlot({ index, username }: { index: number; username?: string }) {
@@ -279,7 +280,7 @@ export default function LobbyPage() {
               textShadow: '3px 3px 0 rgba(0,0,0,0.8)',
               letterSpacing: 2,
             }}>
-              大厅
+              <BlurText text="大厅" delay={50} />
             </h1>
             <div style={{
               display: 'flex',

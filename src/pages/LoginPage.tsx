@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
 import { networkClient } from '../network/socket'
 import { PixelLogo, PixelSword, PixelShield, PixelCastle, PixelGem, PixelCrown, PixelDragon, PixelSkull, PixelStar } from '../components/PixelIcons'
+import { BlurText, GlareHover } from '../components/animations'
 
 // 像素装饰图标组件
 function PixelDecoration({ children, color }: { children: React.ReactNode; color?: string }) {
@@ -151,11 +152,23 @@ export default function LoginPage() {
         </PixelDecoration>
 
         <h1 className="page-header-title" style={{ fontSize: 36 }}>
-          地下城突袭
+          <BlurText
+            text="地下城突袭"
+            className="text-center"
+            animateBy="words"
+            direction="top"
+            delay={100}
+          />
         </h1>
 
         <p className="page-header-subtitle">
-          DUNGEON RAID
+          <BlurText
+            text="DUNGEON RAID"
+            className="text-center"
+            animateBy="letters"
+            direction="bottom"
+            delay={50}
+          />
         </p>
       </div>
 
@@ -266,31 +279,46 @@ export default function LoginPage() {
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="btn-pixel pixel-glow-gold"
-            style={{
-              width: '100%',
-              fontSize: 16,
-              padding: '14px 24px',
-              background: loading ? 'var(--pixel-brown)' : 'var(--pixel-gold)',
-              color: 'var(--pixel-bg)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 8,
-            }}
+          <GlareHover
+            width="100%"
+            height="auto"
+            background="transparent"
+            borderRadius="8px"
+            borderColor="var(--pixel-gold)"
+            glareColor="#FFD700"
+            glareOpacity={0.3}
+            glareAngle={-45}
+            glareSize={200}
+            transitionDuration={500}
+            className="pixel-glow-gold"
+            style={{ padding: 0 }}
           >
-            {loading ? (
-              <>
-                <PixelStar size={14} color="#2D1B2E" className="pixel-loading" />
-                处理中...
-              </>
-            ) : (
-              isRegister ? '创建冒险者' : '进入冒险'
-            )}
-          </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="btn-pixel"
+              style={{
+                width: '100%',
+                fontSize: 16,
+                padding: '14px 24px',
+                background: loading ? 'var(--pixel-brown)' : 'var(--pixel-gold)',
+                color: 'var(--pixel-bg)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 8,
+              }}
+            >
+              {loading ? (
+                <>
+                  <PixelStar size={14} color="#2D1B2E" className="pixel-loading" />
+                  处理中...
+                </>
+              ) : (
+                isRegister ? '创建冒险者' : '进入冒险'
+              )}
+            </button>
+          </GlareHover>
         </form>
 
         <DecorativeLine />

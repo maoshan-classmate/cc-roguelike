@@ -7,6 +7,7 @@ import {
   PixelSword, PixelShield, PixelGem, PixelCrown, PixelStar, PixelSkull, PixelDragon,
   PixelAvatarWarrior, PixelAvatarRanger, PixelAvatarMage, PixelAvatarHealer
 } from '../components/PixelIcons'
+import { BlurText, GlareHover } from '../components/animations'
 
 const PLAYER_COLORS = {
   0: 'var(--player-1)',
@@ -331,15 +332,28 @@ export default function RoomPage() {
             textShadow: '4px 4px 0 rgba(0,0,0,0.8)',
             letterSpacing: 2,
           }}>
-            {roomName || '房间'}
+            <BlurText text={roomName || '房间'} delay={50} />
           </h1>
-          <button
-            onClick={handleLeave}
-            className="btn-pixel"
-            style={{ background: 'var(--pixel-red)' }}
+          <GlareHover
+            width="auto"
+            height="auto"
+            background="transparent"
+            borderRadius="8px"
+            borderColor="var(--pixel-red)"
+            glareColor="#FF4444"
+            glareOpacity={0.3}
+            glareAngle={-45}
+            transitionDuration={400}
+            style={{ padding: 0 }}
           >
-            ← 离开房间
-          </button>
+            <button
+              onClick={handleLeave}
+              className="btn-pixel"
+              style={{ background: 'var(--pixel-red)' }}
+            >
+              ← 离开房间
+            </button>
+          </GlareHover>
         </div>
 
         {/* 装饰线 */}
@@ -366,7 +380,8 @@ export default function RoomPage() {
             alignItems: 'center',
             gap: 10,
           }}>
-            <PixelSword size={20} color="#FFD700" /> 冒险者列表
+            <PixelSword size={20} color="#FFD700" />
+            <BlurText text="冒险者列表" delay={30} />
             <span style={{
               fontSize: 12,
               color: 'var(--pixel-brown)',
@@ -411,7 +426,8 @@ export default function RoomPage() {
             alignItems: 'center',
             gap: 10,
           }}>
-            <PixelCrown size={20} color="#FFD700" /> 选择职业
+            <PixelCrown size={20} color="#FFD700" />
+            <BlurText text="选择职业" delay={30} />
           </h2>
           <div style={{
             display: 'grid',
@@ -473,34 +489,60 @@ export default function RoomPage() {
             gap: 16,
             justifyContent: 'center',
           }}>
-            <button
-              onClick={handleReady}
-              className={`btn-pixel pixel-glow-${isReady ? 'green' : 'gold'}`}
-              style={{
-                minWidth: 180,
-                padding: '14px 28px',
-                fontSize: 16,
-                background: isReady ? 'var(--pixel-green)' : 'var(--pixel-brown)',
-              }}
+            <GlareHover
+              width="180px"
+              height="auto"
+              background="transparent"
+              borderRadius="8px"
+              borderColor={isReady ? 'var(--pixel-green)' : 'var(--pixel-gold)'}
+              glareColor={isReady ? '#32CD32' : '#FFD700'}
+              glareOpacity={0.3}
+              glareAngle={-45}
+              transitionDuration={400}
+              style={{ padding: 0 }}
             >
-              {isReady ? '[ 取消准备 ]' : '[ 点击准备 ]'}
-            </button>
-
-            {isHost && (
               <button
-                onClick={handleStart}
-                disabled={!allReady}
-                className="btn-pixel pixel-glow-gold"
+                onClick={handleReady}
+                className={`btn-pixel pixel-glow-${isReady ? 'green' : 'gold'}`}
                 style={{
-                  minWidth: 180,
+                  width: '100%',
                   padding: '14px 28px',
                   fontSize: 16,
-                  background: allReady ? 'var(--pixel-gold)' : 'var(--pixel-dark)',
-                  cursor: allReady ? 'pointer' : 'not-allowed',
+                  background: isReady ? 'var(--pixel-green)' : 'var(--pixel-brown)',
                 }}
               >
-                [ 开始冒险 ]
+                {isReady ? '[ 取消准备 ]' : '[ 点击准备 ]'}
               </button>
+            </GlareHover>
+
+            {isHost && (
+              <GlareHover
+                width="180px"
+                height="auto"
+                background="transparent"
+                borderRadius="8px"
+                borderColor="var(--pixel-gold)"
+                glareColor="#FFD700"
+                glareOpacity={0.3}
+                glareAngle={-45}
+                transitionDuration={400}
+                style={{ padding: 0 }}
+              >
+                <button
+                  onClick={handleStart}
+                  disabled={!allReady}
+                  className="btn-pixel pixel-glow-gold"
+                  style={{
+                    width: '100%',
+                    padding: '14px 28px',
+                    fontSize: 16,
+                    background: allReady ? 'var(--pixel-gold)' : 'var(--pixel-dark)',
+                    cursor: allReady ? 'pointer' : 'not-allowed',
+                  }}
+                >
+                  [ 开始冒险 ]
+                </button>
+              </GlareHover>
             )}
           </div>
 
