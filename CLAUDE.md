@@ -37,15 +37,17 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 
 ### Commit 前 sprite-audit 强制规则
 
-**每次执行 git commit 前，必须先运行 sprite-audit 审查。**
+**触发条件**：仅当 `sprite-viewer.html`、`docs/sprite-inventory.md`、`src/config/sprites.ts` 三个文件中至少有一个发生变更时，才需要运行 sprite-audit 审查。若三个文件均无变更，可跳过审查直接 commit。
 
 收到用户 `commit` 请求时：
-1. **立即调度** `Agent(sprite-audit)` 执行三文件同步审查
-2. 等待审查报告返回
-3. 若发现不同步 → 阻止 commit，调度 `sprite-fix` 修复后重新审查
-4. 若完全一致 → 方可执行 git commit
-
-> 铁律：sprite-audit 通过是 commit 的**前置条件**，不满足则拒绝提交。
+1. **检查变更文件**：若三个 sprite 文件均无变更 → 直接执行 git commit
+2. **有变更时调度** `Agent(sprite-audit)` 执行三文件同步审查
+3. 等待审查报告返回：
+   - 若完全一致 → 方可执行 git commit
+   - 若发现不同步 → 报告用户选择：
+     - **「执行修复」** → 调度 `sprite-fix` 修复后重新审查
+     - **「强制提交」** → 允许提交，但在 commit message 追加 `[sprite-audit:FAILED]`
+4. 修复后重新审查通过 → 方可执行 git commit
 
 ### 执行公告规范（强制）
 
