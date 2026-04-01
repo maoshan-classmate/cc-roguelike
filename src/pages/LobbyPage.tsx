@@ -4,135 +4,8 @@ import { useAuthStore } from '../store/useAuthStore'
 import { useLobbyStore } from '../store/useLobbyStore'
 import { networkClient } from '../network/socket'
 import { PixelCastle, PixelDragon, PixelCrown, PixelGem, PixelKey, PixelSword, PixelShield, PixelStar, PixelSkull } from '../components/PixelIcons'
-import { BlurText, GlareHover } from '../components/animations'
-
-// 玩家槽位组件
-function PlayerSlot({ index, username }: { index: number; username?: string }) {
-  const colors = ['var(--player-1)', 'var(--player-2)', 'var(--player-3)', 'var(--player-4)']
-  const color = colors[index] || colors[0]
-  const playerIcons = [<PixelSword key="s" size={28} />, <PixelShield key="d" size={28} />, <PixelGem key="g" size={28} />, <PixelCrown key="c" size={28} />]
-
-  return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      gap: 6,
-    }}>
-      <div style={{
-        width: 56,
-        height: 56,
-        border: `3px solid ${color}`,
-        borderRadius: 8,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        background: username ? 'var(--pixel-bg)' : 'transparent',
-        boxShadow: username ? `0 0 15px ${color}40, inset 0 0 10px ${color}20` : 'none',
-        transition: 'all 0.2s',
-      }}>
-        {username ? playerIcons[index] : <div className="player-slot-empty" style={{ width: 56, height: 56, display: 'flex', alignItems: 'center', justifyContent: 'center' }} />}
-      </div>
-      <span style={{
-        fontSize: 10,
-        color: username ? color : 'var(--pixel-brown)',
-        opacity: username ? 1 : 0.5,
-      }}>
-        {username || `玩家 ${index + 1}`}
-      </span>
-    </div>
-  )
-}
-
-// 房间卡片组件
-function RoomCard({
-  room,
-  onJoin
-}: {
-  room: any
-  onJoin: (id: string) => void
-}) {
-  const isWaiting = room.status === 'waiting'
-
-  return (
-    <div
-      className="room-card pixel-glow-gold"
-      onClick={() => onJoin(room.id)}
-      style={{ animation: 'pixel-fade-in 0.3s ease-out' }}
-    >
-      <div style={{ paddingLeft: 12 }}>
-        <div style={{
-          fontWeight: 'bold',
-          marginBottom: 6,
-          color: 'var(--pixel-gold)',
-          fontSize: 15,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-        }}>
-          <PixelCastle size={16} color="#8B4513" /> {room.name}
-        </div>
-        <div style={{
-          fontSize: 12,
-          color: 'var(--pixel-brown)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-        }}>
-          <PixelCrown size={12} color="#FFD700" /> {room.hostName}
-        </div>
-      </div>
-
-      {/* 玩家预览 */}
-      <div style={{
-        display: 'flex',
-        gap: 4,
-        marginRight: 16,
-      }}>
-        {Array.from({ length: room.maxPlayers }).map((_, i) => (
-          <div
-            key={i}
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: 2,
-              background: i < room.players.length
-                ? (['var(--player-1)', 'var(--player-2)', 'var(--player-3)', 'var(--player-4)'][i])
-                : 'var(--pixel-bg-dark, #1a0f1e)',
-              border: '1px solid var(--pixel-brown)',
-            }}
-          />
-        ))}
-      </div>
-
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'flex-end',
-        gap: 6,
-      }}>
-        <div style={{
-          padding: '4px 10px',
-          fontSize: 11,
-          fontWeight: 'bold',
-          background: isWaiting ? 'var(--pixel-green)' : 'var(--pixel-red)',
-          color: isWaiting ? 'var(--pixel-bg)' : 'white',
-        }}>
-          {isWaiting ? '等待中' : '游戏中'}
-        </div>
-        <div style={{
-          fontSize: 11,
-          color: 'var(--pixel-brown)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 4,
-        }}>
-          <PixelSword size={10} color="#C0C0C0" /> {room.players.length}/{room.maxPlayers}
-        </div>
-      </div>
-    </div>
-  )
-}
+import { BlurText } from '../components/animations'
+import { PixelHeader, PixelRoomCard, PixelButton, PixelPanel } from '../components/pixel'
 
 export default function LobbyPage() {
   const { user, logout } = useAuthStore()
@@ -374,7 +247,7 @@ export default function LobbyPage() {
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
             {rooms.map((room) => (
-              <RoomCard
+              <PixelRoomCard
                 key={room.id}
                 room={room}
                 onJoin={handleJoinRoom}

@@ -8,6 +8,7 @@ import {
   PixelAvatarWarrior, PixelAvatarRanger, PixelAvatarMage, PixelAvatarHealer
 } from '../components/PixelIcons'
 import { BlurText, GlareHover } from '../components/animations'
+import { PixelPanel, PixelPlayerSlot, PixelButton, PixelCard } from '../components/pixel'
 
 const PLAYER_COLORS = {
   0: 'var(--player-1)',
@@ -24,176 +25,6 @@ const CHARACTER_CLASSES = [
   { id: 'mage', name: '法师', icon: PixelStar, color: '#FFA500', desc: '魔法，高攻击' },
   { id: 'healer', name: '牧师', icon: PixelGem, color: '#9B59B6', desc: '治疗，辅助' },
 ]
-
-// 玩家槽位组件
-function PlayerSlot({
-  index,
-  player,
-  isHost,
-  isLocalPlayer,
-}: {
-  index: number
-  player: any
-  isHost: string
-  isLocalPlayer: boolean
-}) {
-  const color = PLAYER_COLORS[index as keyof typeof PLAYER_COLORS]
-  const isReady = player?.ready
-  const AvatarComponent = PLAYER_AVATARS[index]
-
-  return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        gap: 16,
-        padding: 16,
-        background: player ? 'var(--pixel-bg)' : 'transparent',
-        border: player ? `4px solid ${color}` : '2px dashed var(--pixel-brown)',
-        boxShadow: isLocalPlayer ? `0 0 20px ${color}50, inset 0 0 15px ${color}20` : 'none',
-        transition: 'all 0.2s',
-        position: 'relative',
-      }}
-    >
-      {/* 玩家像素头像 */}
-      {player && AvatarComponent && (
-        <div style={{
-          width: 56,
-          height: 56,
-          borderRadius: 4,
-          border: `3px solid ${color}`,
-          background: 'var(--pixel-bg)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          boxShadow: `0 0 10px ${color}40`,
-          position: 'relative',
-        }}>
-          <AvatarComponent size={48} color={color} />
-          {isReady && (
-            <div style={{
-              position: 'absolute',
-              top: -4,
-              right: -4,
-              width: 12,
-              height: 12,
-              borderRadius: '50%',
-              background: 'var(--pixel-green)',
-              border: '2px solid var(--pixel-bg)',
-            }} />
-          )}
-        </div>
-      )}
-      {!player && (
-        <div style={{
-          width: 56,
-          height: 56,
-          borderRadius: 4,
-          border: `2px dashed var(--pixel-brown)`,
-          background: 'transparent',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          opacity: 0.4,
-        }}>
-          <span style={{ fontSize: 24, color: 'var(--pixel-brown)', fontWeight: 'bold' }}>?</span>
-        </div>
-      )}
-
-      {/* 玩家信息 */}
-      <div style={{ flex: 1 }}>
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: 8,
-          marginBottom: 4,
-        }}>
-          <span style={{
-            color: player ? 'var(--pixel-white)' : 'var(--pixel-brown)',
-            fontFamily: 'Courier New, monospace',
-            fontSize: 16,
-            fontWeight: 'bold',
-            opacity: player ? 1 : 0.5,
-          }}>
-            {player?.name || `玩家 ${index + 1}`}
-          </span>
-          {player?.id === isHost && (
-            <span style={{
-              padding: '2px 8px',
-              background: 'var(--pixel-gold)',
-              color: 'var(--pixel-bg)',
-              fontSize: 10,
-              fontWeight: 'bold',
-              fontFamily: 'Courier New, monospace',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-            }}>
-              <PixelCrown size={12} color="#8B4513" /> 房主
-            </span>
-          )}
-          {isLocalPlayer && (
-            <span style={{
-              padding: '2px 8px',
-              background: 'var(--pixel-green)',
-              color: 'var(--pixel-bg)',
-              fontSize: 10,
-              fontWeight: 'bold',
-              fontFamily: 'Courier New, monospace',
-              display: 'flex',
-              alignItems: 'center',
-              gap: 4,
-            }}>
-              <PixelStar size={10} color="#8B4513" /> 你
-            </span>
-          )}
-        </div>
-        <div style={{
-          fontSize: 11,
-          color: 'var(--pixel-brown)',
-          fontFamily: 'Courier New, monospace',
-          opacity: player ? 0.7 : 0.5,
-        }}>
-          {player ? '冒险等级 1' : '等待加入...'}
-        </div>
-      </div>
-
-      {/* 状态 */}
-      {player && (
-        <div style={{
-          padding: '6px 14px',
-          background: isReady ? 'var(--pixel-green)' : 'var(--pixel-brown)',
-          color: isReady ? 'var(--pixel-bg)' : 'var(--pixel-white)',
-          fontSize: 12,
-          fontWeight: 'bold',
-          fontFamily: 'Courier New, monospace',
-          boxShadow: isReady ? `0 0 10px var(--pixel-green)` : 'none',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 6,
-        }}>
-          {isReady ? (
-            <PixelStar size={14} color="#8B4513" />
-          ) : (
-            <PixelGem size={14} color="#666" />
-          )}
-          {isReady ? '已准备' : '未准备'}
-        </div>
-      )}
-
-      {/* 空槽位标记 */}
-      {!player && (
-        <div style={{
-          fontSize: 24,
-          color: 'var(--pixel-brown)',
-          opacity: 0.3,
-        }}>
-          <PixelStar size={16} color="var(--pixel-brown)" />
-        </div>
-      )}
-    </div>
-  )
-}
 
 export default function RoomPage() {
   const { roomId } = useParams<{ roomId: string }>()
@@ -397,11 +228,11 @@ export default function RoomPage() {
               const isLocalPlayer = player?.id === user?.id
 
               return (
-                <PlayerSlot
+                <PixelPlayerSlot
                   key={i}
                   index={i}
                   player={player}
-                  isHost={hostId || ''}
+                  isHost={player?.id === hostId}
                   isLocalPlayer={isLocalPlayer}
                 />
               )

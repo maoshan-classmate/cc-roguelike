@@ -4,30 +4,7 @@ import { useAuthStore } from '../store/useAuthStore'
 import { networkClient } from '../network/socket'
 import { PixelLogo, PixelSword, PixelShield, PixelCastle, PixelGem, PixelCrown, PixelDragon, PixelSkull, PixelStar } from '../components/PixelIcons'
 import { BlurText, GlareHover } from '../components/animations'
-
-// 像素装饰图标组件
-function PixelDecoration({ children, color }: { children: React.ReactNode; color?: string }) {
-  return (
-    <div style={{
-      width: 48,
-      height: 48,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      filter: `drop-shadow(0 0 10px ${color || 'rgba(255, 215, 0, 0.5)'})`,
-      animation: 'pixel-bounce 2s ease-in-out infinite',
-    }}>
-      {children}
-    </div>
-  )
-}
-
-// 像素风格装饰线
-function DecorativeLine() {
-  return (
-    <div className="decorative-line" style={{ width: '80%', maxWidth: 280 }} />
-  )
-}
+import { PixelButton, PixelInput, PixelCard } from '../components/pixel'
 
 export default function LoginPage() {
   const [isRegister, setIsRegister] = useState(false)
@@ -147,9 +124,17 @@ export default function LoginPage() {
         alignItems: 'center',
         animation: 'pixel-fade-in 0.5s ease-out',
       }}>
-        <PixelDecoration color="rgba(255, 215, 0, 0.8)">
+        <div style={{
+          width: 48,
+          height: 48,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          filter: 'drop-shadow(0 0 10px rgba(255, 215, 0, 0.5))',
+          animation: 'pixel-bounce 2s ease-in-out infinite',
+        }}>
           <PixelLogo size={64} />
-        </PixelDecoration>
+        </div>
 
         <h1 className="page-header-title" style={{ fontSize: 36 }}>
           <BlurText
@@ -172,11 +157,11 @@ export default function LoginPage() {
         </div>
       </div>
 
-      <DecorativeLine />
+      <div className="decorative-line" style={{ width: '80%', maxWidth: 280 }} />
 
       {/* 登录卡片 */}
-      <div
-        className="card-pixel pixel-glow-gold"
+      <PixelCard
+        glow="gold"
         style={{
           width: '90%',
           maxWidth: 360,
@@ -222,15 +207,11 @@ export default function LoginPage() {
               <PixelStar size={12} color="#FFD700" />
               用户名
             </label>
-            <input
-              type="text"
+            <PixelInput
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="输入你的冒险者名号"
-              required
-              minLength={3}
-              maxLength={20}
-              className="input-pixel"
+              autoFocus
             />
           </div>
 
@@ -248,14 +229,11 @@ export default function LoginPage() {
               <PixelShield size={12} color="#8B4513" />
               密码
             </label>
-            <input
+            <PixelInput
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="输入秘密密钥"
-              required
-              minLength={6}
-              className="input-pixel"
             />
           </div>
 
@@ -280,16 +258,16 @@ export default function LoginPage() {
             </div>
           )}
 
-          <button
+          <PixelButton
             type="submit"
             disabled={loading}
-            className="btn-pixel pixel-glow-gold"
+            variant="gold"
+            glow="gold"
             style={{
               width: '100%',
               fontSize: 16,
               padding: '14px 24px',
-              background: loading ? 'var(--pixel-brown)' : 'var(--pixel-gold)',
-              color: 'var(--pixel-bg)',
+              background: loading ? 'var(--pixel-brown)' : undefined,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -304,10 +282,10 @@ export default function LoginPage() {
             ) : (
               isRegister ? '创建冒险者' : '进入冒险'
             )}
-          </button>
+          </PixelButton>
         </form>
 
-        <DecorativeLine />
+        <div className="decorative-line" style={{ width: '80%', maxWidth: 280 }} />
 
         <div style={{ textAlign: 'center' }}>
           <button
@@ -327,7 +305,7 @@ export default function LoginPage() {
             {isRegister ? '已有账号？登录' : '没有账号？注册'}
           </button>
         </div>
-      </div>
+      </PixelCard>
 
       {/* 底部提示 */}
       <div style={{
