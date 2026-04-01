@@ -202,11 +202,10 @@ src/assets/
 | `health_kenney` | idx=29, sheetW=492 | 16×16 | 医疗包 Kenney fallback(0x72优先) | ✅ | `items.ts:26` |
 | `energy_kenney` | idx=30, sheetW=492 | 16×16 | 能量包 Kenney fallback(0x72优先) | ✅ | `items.ts:89` |
 | `coin_kenney` | idx=31, sheetW=492 | 16×16 | 金币 Kenney fallback(0x72优先) | ✅ | `items.ts:37` |
-| `floor_stairs` | idx=23 → (391,0) | 16×16 | 楼梯出口(Kenney idx=23) | ✅ | `useGameRenderer.ts:190,219` |
 
 ---
 
-### 2.5 场景 (SCENE) — 15 0x72
+### 2.5 场景 (SCENE) — 15 0x72 + 1 Kenney
 
 #### 0x72（15个）预览路径：`frames/SCENE/*.png`
 
@@ -227,6 +226,12 @@ src/assets/
 | `button_blue_up` | (48,208) | 16×16 | — | ❌ |
 | `lever_left` | (80,208) | 16×16 | — | ❌ |
 | `lever_right` | (96,208) | 16×16 | — | ❌ |
+
+#### Kenney CC0（1个）— roguelikeDungeon, 宽492, perRow=28
+
+| 贴图名称 | Atlas索引 | 尺寸 | 游戏用途 | 状态 | 代码引用 |
+|---------|----------|------|---------|------|---------|
+| `floor_stairs` | idx=23 → (391,0) | 16×16 | 楼梯出口(Kenney idx=23) | ✅ | `useGameRenderer.ts:190,219` |
 
 > ⚠️ 地牢墙壁使用 `fillRect` 像素风格渲染，不依赖精灵贴图。
 
