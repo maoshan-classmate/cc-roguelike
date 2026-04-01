@@ -121,7 +121,6 @@
       "Bash(pip install:*)",
       "Skill(update-config)",
       "Bash(jq:*)",
-<<<<<<< Updated upstream
       "Bash(identify D:/cc-roguelike/src/assets/kenney/Spritesheet/roguelikeChar_transparent.png D:/cc-roguelike/src/assets/kenney/Spritesheet/roguelikeDungeon_transparent.png D:/cc-roguelike/src/assets/kenney/Spritesheet/roguelikeSheet_transparent.png)",
       "Bash(identify src/assets/kenney/Spritesheet/roguelikeChar_transparent.png src/assets/kenney/Spritesheet/roguelikeDungeon_transparent.png src/assets/kenney/Spritesheet/roguelikeSheet_transparent.png)",
       "Skill(hookify:help)",
