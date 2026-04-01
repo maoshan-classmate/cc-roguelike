@@ -2,7 +2,7 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Roguelike 多人联机</title>
     <style>
       /* Kenney Pixel Fonts - CC0 License - www.kenney.nl */
@@ -50,7 +50,8 @@
         font-family: 'Kenney Pixel', 'Courier New', monospace;
         background: #1a1a2e;
         color: #eee;
-        overflow: hidden;
+        overflow-x: hidden;
+        min-height: 100vh;
       }
       #root {
         width: 100vw;

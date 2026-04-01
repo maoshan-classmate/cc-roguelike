@@ -48,6 +48,9 @@ export class SocketServer {
             this.sessions.set(socket.id, session);
             console.log(`🔌 Session restored for ${sessionData.username}`);
           });
+        } else {
+          // Token invalid or expired — notify client
+          socket.emit('auth:error', { code: 'TOKEN_INVALID', message: '登录已失效，请重新登录' });
         }
       }
 
@@ -158,6 +161,8 @@ export class SocketServer {
       session.currentRoom = room.id;
       socket.join(`room:${room.id}`);
       socket.emit(RoomMessages.CREATE_RESULT, { success: true, room });
+      // Broadcast updated lobby list so other players see the new room
+      this.io.emit(LobbyMessages.LIST_RESULT, { rooms: this.lobbyManager.getAllRooms() });
     });
   }
 
@@ -376,10 +381,13 @@ export class SocketServer {
             });
           }
         } else if ((gameRoom as any)._gameOver) {
-          // Game ended
+          // Game ended — reset room to waiting so others can find it
           const victory = (gameRoom as any)._victory;
           (gameRoom as any)._gameOver = false;
+          this.lobbyManager.resetRoom(roomId);
           this.io.to(`room:${roomId}`).emit('game:end', { win: victory });
+          // Broadcast updated room list to all in lobby
+          this.io.emit(LobbyMessages.LIST_RESULT, { rooms: this.lobbyManager.getAllRooms() });
         }
       }
     }, 100); // 10 times per second

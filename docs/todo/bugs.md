@@ -36,15 +36,14 @@
 - [x] 角色图标过小，攻击范围与实际图标大小不符。 — 2026-03-29 SPRITE_REGISTRY CHARACTER size 32→48（atlas原始16px，scale=3x放大到48px使角色在768px canvas中清晰可见）；PLAYER_BASE.radius 保持 20；白色棍子 drawDirectionArrow 已移除
 - [x] 第二次进入游戏角色高速瞬移 — 2026-03-29 GameRoom tick 残留 + session 过滤失效，详见 docs/bugs/2026-03-29-second-entry-teleport.md；修复：handleRoomLeave/disconnect 清理 GameRoom，handleExit 重置 session refs，简化 game:state 过滤逻辑
 - [x] 贴图资产三文件不一致 — 2026-03-29 审计发现 cleric 武器贴图错误（weapon_knight_sword→weapon_red_magic_staff）；移除 pumpkin_dude_kenney 和 bullet_kenney 两个死代码条目；sprites.ts/sprite-inventory.md/sprite-viewer.html 三文件同步修正
-- [ ] 页面没有做自适应
-- [ ] 用户登录之后，登录失效后应该回到登录页面
-### 未修复
+- [x] 页面没有做自适应 — 2026-04-01 viewport meta添加maximum-scale=1，body overflow:hidden→overflow-x:hidden，LoginCard width 360→90%/maxWidth，Lobby弹窗width 400→90%/maxWidth，添加@media响应式断点(768px/480px)
+- [x] 用户登录之后，登录失效后应该回到登录页面 — 2026-04-01 server: token无效时主动emit auth:error；client: AuthErrorHandler组件监听auth:error并调用logout()+navigate('/login')
 
 ## 中优先级
 
 ### 已修复
+- [x] 多人游戏结束后回到房间，其他玩家在大厅里面无法找到那个房间。 — 2026-04-01 根因：endGame()删除房间+getAllRooms()过滤waiting+endGame从未被调用；修复：LobbyManager新增resetRoom()方法将房间重置为waiting状态，SocketServer.startStateBroadcast在game:end时调用resetRoom并广播lobby:list更新；E2E验证：playerb返回大厅房间列表自动显示无需刷新
 ### 未修复
-- [ ] 多人游戏结束后回到房间，其他玩家在大厅里面无法找到那个房间。
 - [ ] 没有怪物图鉴系统
 - [ ] 没有职业系统
 ## 低优先级

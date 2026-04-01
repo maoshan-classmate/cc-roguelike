@@ -413,7 +413,8 @@ export default function LobbyPage() {
           <div
             className="card-pixel pixel-glow-gold"
             style={{
-              width: 400,
+              width: '90%',
+              maxWidth: 400,
               animation: 'pixel-fade-in 0.2s ease-out',
             }}
           >

@@ -117,6 +117,14 @@ export class LobbyManager {
     }
   }
 
+  resetRoom(roomId: string): RoomInfo | null {
+    const room = this.rooms.get(roomId);
+    if (!room) return null;
+    room.status = 'waiting';
+    room.players = [];
+    return room;
+  }
+
   removeRoom(roomId: string): void {
     this.rooms.delete(roomId);
     this.clearRoomTimer(roomId);

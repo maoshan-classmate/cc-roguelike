@@ -161,7 +161,7 @@ export default function LoginPage() {
           />
         </h1>
 
-        <p className="page-header-subtitle">
+        <div className="page-header-subtitle">
           <BlurText
             text="DUNGEON RAID"
             className="text-center"
@@ -169,7 +169,7 @@ export default function LoginPage() {
             direction="bottom"
             delay={50}
           />
-        </p>
+        </div>
       </div>
 
       <DecorativeLine />
@@ -178,7 +178,8 @@ export default function LoginPage() {
       <div
         className="card-pixel pixel-glow-gold"
         style={{
-          width: 360,
+          width: '90%',
+          maxWidth: 360,
           animation: 'pixel-fade-in 0.5s ease-out 0.2s both',
           position: 'relative',
         }}
