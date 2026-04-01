@@ -38,15 +38,17 @@
 - [x] 贴图资产三文件不一致 — 2026-03-29 审计发现 cleric 武器贴图错误（weapon_knight_sword→weapon_red_magic_staff）；移除 pumpkin_dude_kenney 和 bullet_kenney 两个死代码条目；sprites.ts/sprite-inventory.md/sprite-viewer.html 三文件同步修正
 - [x] 页面没有做自适应 — 2026-04-01 viewport meta添加maximum-scale=1，body overflow:hidden→overflow-x:hidden，LoginCard width 360→90%/maxWidth，Lobby弹窗width 400→90%/maxWidth，添加@media响应式断点(768px/480px)
 - [x] 用户登录之后，登录失效后应该回到登录页面 — 2026-04-01 server: token无效时主动emit auth:error；client: AuthErrorHandler组件监听auth:error并调用logout()+navigate('/login')
-
+- [x] 角色攻击时，武器没有攻击动作，只有简单的平移。 — 2026-04-01 drawWeaponSprite() 增加 isMelee 参数，攻击时切换 weapon_anime_sword 挥砍帧；SPRITE_REGISTRY 添加 weapon_anime_sword 注册
+- [x] 角色贴图和武器贴图的位置不自然。 — 2026-04-01 drawWeaponSprite() 偏移系数 0.2→0.3（握柄偏右30%于玩家中心），isMelee 近战专用挥砍帧
+- [x] 在房间里，玩家切换职业后并没有正常显示。 — 2026-04-01 SocketServer.handleSelectClass 添加 room:player:update 广播；RoomPage 监听事件并调用 setPlayerCharacterType 更新其他玩家职业显示
+- [x] 怪物遇到障碍物之后就一直顶着障碍物了，避障有问题。 — 2026-04-01 GameRoom.updateEnemy() stuck 分支改为 8 方向逃逸尝试（±90°/±45°/±135°/180°/0°），而非只试一个垂直方向
+- [x] 有的时候角色可以穿墙。 — 2026-04-01 GameRoom.handlePlayerInput() 碰撞检测从 isWalkable 单点改为 isWalkableRadius(player, 16) 5点检测，与敌人一致
 ## 中优先级
 
-### 已修复
 - [x] 多人游戏结束后回到房间，其他玩家在大厅里面无法找到那个房间。 — 2026-04-01 根因：endGame()删除房间+getAllRooms()过滤waiting+endGame从未被调用；修复：LobbyManager新增resetRoom()方法将房间重置为waiting状态，SocketServer.startStateBroadcast在game:end时调用resetRoom并广播lobby:list更新；E2E验证：playerb返回大厅房间列表自动显示无需刷新
-### 未修复
 - [ ] 没有怪物图鉴系统
 - [ ] 没有职业系统
+- 
 ## 低优先级
 
-### 已修复
-### 未修复
+

@@ -4,6 +4,7 @@ interface Player {
   id: string
   name: string
   ready: boolean
+  characterType?: string
 }
 
 interface RoomState {
@@ -18,6 +19,7 @@ interface RoomState {
   addPlayer: (player: Player) => void
   removePlayer: (playerId: string, newHostId?: string) => void
   setPlayerReady: (playerId: string, ready: boolean) => void
+  setPlayerCharacterType: (playerId: string, characterType: string) => void
   setGameStarted: (started: boolean) => void
   clearRoom: () => void
   setReady: (ready: boolean) => void
@@ -54,6 +56,10 @@ export const useRoomStore = create<RoomState>((set) => ({
 
   setPlayerReady: (playerId, ready) => set((state) => ({
     players: state.players.map(p => p.id === playerId ? { ...p, ready } : p)
+  })),
+
+  setPlayerCharacterType: (playerId, characterType) => set((state) => ({
+    players: state.players.map(p => p.id === playerId ? { ...p, characterType } : p)
   })),
 
   setGameStarted: (started) => set({ gameStarted: started }),

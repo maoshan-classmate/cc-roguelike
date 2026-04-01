@@ -292,14 +292,15 @@ export class GameRoom {
       const newX = player.x + player.dx * speed;
       const newY = player.y + player.dy * speed;
 
-      // Collision check - only move if target tile is walkable
-      if (this.isWalkable(newX, newY)) {
+      // 玩家碰撞半径 16px，用 5 点检测防止穿墙（中心+4角）
+      const PLAYER_RADIUS = 16;
+      if (this.isWalkableRadius(newX, newY, PLAYER_RADIUS)) {
         player.x = newX;
         player.y = newY;
-      } else if (this.isWalkable(newX, player.y)) {
+      } else if (this.isWalkableRadius(newX, player.y, PLAYER_RADIUS)) {
         // Slide along X
         player.x = newX;
-      } else if (this.isWalkable(player.x, newY)) {
+      } else if (this.isWalkableRadius(player.x, newY, PLAYER_RADIUS)) {
         // Slide along Y
         player.y = newY;
       }
@@ -435,14 +436,20 @@ export class GameRoom {
         // Slide along Y
         enemy.y = newEY;
       } else {
-        // Stuck: try perpendicular directions with random bias
-        const offsetAngle = (Math.random() > 0.5 ? 1 : -1) * Math.PI / 2;
-        const altX = enemy.x + Math.cos(Math.atan2(dirY, dirX) + offsetAngle) * speed;
-        const altY = enemy.y + Math.sin(Math.atan2(dirY, dirX) + offsetAngle) * speed;
-        if (this.isWalkableRadius(altX, enemy.y, radius)) {
-          enemy.x = altX;
-        } else if (this.isWalkableRadius(enemy.x, altY, radius)) {
-          enemy.y = altY;
+        // Stuck: 尝试 8 个不同逃逸角度，直到找到可行方向
+        const baseAngle = Math.atan2(dirY, dirX);
+        const escapeOffsets = [-Math.PI / 2, Math.PI / 2, -Math.PI / 4, Math.PI / 4, -3 * Math.PI / 4, 3 * Math.PI / 4, Math.PI, 0];
+        let escaped = false;
+        for (const offset of escapeOffsets) {
+          const escapeAngle = baseAngle + offset;
+          const tryX = enemy.x + Math.cos(escapeAngle) * speed;
+          const tryY = enemy.y + Math.sin(escapeAngle) * speed;
+          if (this.isWalkableRadius(tryX, tryY, radius)) {
+            enemy.x = tryX;
+            enemy.y = tryY;
+            escaped = true;
+            break;
+          }
         }
       }
 

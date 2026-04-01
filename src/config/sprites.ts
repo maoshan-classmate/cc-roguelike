@@ -65,6 +65,7 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
 
   // ── WEAPON ────────────────────────────────────────────────────────────────
   weapon_knight_sword:    { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_knight_sword',   size: 32, animated: false, frameCount: 1 },
+  weapon_anime_sword:     { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_anime_sword',  size: 32, animated: false, frameCount: 1 },
   weapon_arrow:          { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_arrow',          size: 32, animated: false, frameCount: 1 },
   weapon_red_magic_staff: { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_red_magic_staff', size: 32, animated: false, frameCount: 1 },
   weapon_axe:             { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_axe',             size: 32, animated: false, frameCount: 1 },
@@ -392,7 +393,8 @@ export function drawRangedWeapon(
 /**
  * 绘制武器精灵（0x72 atlas 真实贴图，旋转至鼠标方向）
  * 武器从玩家中心向外延伸，限制最大宽高使贴图不变形
- * @param flash 攻击闪光强度 0-1，攻击时为正，渲染更亮+武器前伸
+ * @param flash 攻击闪光强度 0-1，攻击时为正，渲染更亮+武器前伸+弧形摆动
+ * @param isMelee 近战武器（warrior）攻击时切换到 weapon_anime_sword 挥砍帧+摆动
  */
 export function drawWeaponSprite(
   ctx: CanvasRenderingContext2D,
@@ -400,36 +402,53 @@ export function drawWeaponSprite(
   spriteName: string,
   x: number, y: number,
   angle: number,
-  maxSize: number = 28,  // 最大宽/高（px），防止细小sprite被过度放大
-  flash: number = 0      // 攻击闪光 0-1
+  maxSize: number = 28,
+  flash: number = 0,
+  isMelee: boolean = false
 ): void {
-  const entry = SPRITE_ATLAS[spriteName]
-  if (!entry) return
-  ctx.save()
-  ctx.translate(x, y)
-  ctx.rotate(angle)
+  // 攻击时切换到挥砍帧（近战），静态时用原武器贴图
+  const activeSprite = (flash > 0 && isMelee) ? 'weapon_anime_sword' : spriteName
+  const entry = SPRITE_ATLAS[activeSprite]
+  const baseEntry = SPRITE_ATLAS[spriteName]
+  if (!entry || !baseEntry) return
 
-  // 按宽度比例缩放，限制最大尺寸
   const targetW = Math.min(entry.w, maxSize)
   const scale = targetW / entry.w
   const drawW = entry.w * scale
   const drawH = entry.h * scale
 
-  // 攻击闪光：武器前伸 + 发光
-  const attackOffset = flash * 12  // 最多前移12px
+  // 攻击前伸（flash 1.0时最大16px）
+  const attackOffset = flash * 16
 
-  // 发光层
-  if (flash > 0) {
-    ctx.shadowColor = '#FFD700'
-    ctx.shadowBlur = 20 * flash
+  // 握柄偏移（握柄在武器左侧30%处）
+  const gripOffset = drawW * 0.3
+
+  ctx.save()
+  ctx.translate(x, y)
+
+  // 近战攻击时：武器在鼠标方向基础上做弧形摆动（flash驱动）
+  if (flash > 0 && isMelee) {
+    // 弧形摆动：sin曲线，-0.4到+0.4弧度，制造挥砍弧线感
+    const swing = Math.sin((1 - flash) * Math.PI) * 0.4
+    ctx.rotate(angle + swing)
+  } else {
+    ctx.rotate(angle)
   }
 
-  // 武器从玩家中心向右（angle方向）延伸；y偏移使武器视觉上居中于玩家
-  ctx.drawImage(img, entry.x, entry.y, entry.w, entry.h, drawW * 0.2 + attackOffset, -drawH / 2, drawW, drawH)
+  // 发光层（攻击时）
+  if (flash > 0) {
+    ctx.shadowColor = '#FFD700'
+    ctx.shadowBlur = 24 * flash
+  }
+
+  // 绘制武器：握柄在原点，武器向右延伸
+  // -gripOffset让握柄端在旋转中心
+  ctx.drawImage(img, entry.x, entry.y, entry.w, entry.h, -gripOffset + attackOffset, -drawH / 2, drawW, drawH)
 
   ctx.shadowBlur = 0
   ctx.restore()
 }
+
 
 /**
  * 绘制子弹精灵（0x72 weapon_arrow，旋转至飞行方向）

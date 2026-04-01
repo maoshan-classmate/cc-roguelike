@@ -317,6 +317,11 @@ export class SocketServer {
       // 同时更新内存（lobby）和数据库，handleRoomStart 优先读内存避免竞态
       if (session.currentRoom) {
         this.lobbyManager.setPlayerCharacterType(session.currentRoom, session.accountId, serverType);
+        // 广播职业变更给房间内其他玩家
+        socket.to(`room:${session.currentRoom}`).emit('room:player:update', {
+          playerId: session.accountId,
+          characterType: serverType
+        });
       }
       await this.authManager.updateCharacterType(session.accountId, serverType);
     });

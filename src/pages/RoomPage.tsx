@@ -41,7 +41,8 @@ export default function RoomPage() {
     setPlayerReady,
     setGameStarted,
     clearRoom,
-    setReady
+    setReady,
+    setPlayerCharacterType
   } = useRoomStore()
   const navigate = useNavigate()
   const [selectedClass, setSelectedClass] = useState<string>('warrior')
@@ -61,6 +62,12 @@ export default function RoomPage() {
       setPlayerReady(data.playerId, data.ready)
     }
 
+    const handlePlayerUpdate = (data: any) => {
+      if (data.characterType) {
+        setPlayerCharacterType(data.playerId, data.characterType)
+      }
+    }
+
     const handleStartPush = (data: any) => {
       setGameStarted(true)
       navigate(`/game/${data.roomId}`)
@@ -74,6 +81,7 @@ export default function RoomPage() {
     networkClient.on('room:join:push', handleJoinPush)
     networkClient.on('room:leave:push', handleLeavePush)
     networkClient.on('room:ready:push', handleReadyPush)
+    networkClient.on('room:player:update', handlePlayerUpdate)
     networkClient.on('room:start:push', handleStartPush)
     networkClient.on('room:error', handleError)
 
@@ -89,6 +97,7 @@ export default function RoomPage() {
       networkClient.off('room:join:push', handleJoinPush)
       networkClient.off('room:leave:push', handleLeavePush)
       networkClient.off('room:ready:push', handleReadyPush)
+      networkClient.off('room:player:update', handlePlayerUpdate)
       networkClient.off('room:start:push', handleStartPush)
       networkClient.off('room:error', handleError)
       clearRoom()
@@ -102,6 +111,10 @@ export default function RoomPage() {
 
   const handleSelectClass = (classId: string) => {
     setSelectedClass(classId)
+    // 同步更新本地玩家在 players 数组中的职业（Bug3 根因：只更新了 selectedClass，没更新 players）
+    if (user?.id) {
+      setPlayerCharacterType(user.id, classId)
+    }
     networkClient.emit('room:selectClass', { characterType: classId })
   }
 

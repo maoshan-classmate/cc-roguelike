@@ -426,8 +426,9 @@ export function useGameRenderer(
 
       const pAngle = player.angle ?? 0
       const wSprite = WEAPON_SPRITE[player.characterType] || 'weapon_knight_sword'
+      const isMelee = player.characterType === 'warrior'
       if (tileset2Atlas.complete) {
-        drawWeaponSprite(ctx, tileset2Atlas, wSprite, ppos.x, ppos.y, pAngle, 48, isLocal ? (deps as any).attackFlashRef?.current || 0 : 0)
+        drawWeaponSprite(ctx, tileset2Atlas, wSprite, ppos.x, ppos.y, pAngle, 48, isLocal ? (deps as any).attackFlashRef?.current || 0 : 0, isMelee)
       }
 
       drawHPBar(ctx, ppos.x - 24, ppos.y - 34, 48, 6, player.hp, player.hpMax, charConfig.color)

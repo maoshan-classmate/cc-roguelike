@@ -8,11 +8,16 @@ const PLAYER_COLORS = {
   3: 'var(--player-4)',
 }
 
-const PLAYER_AVATARS = ['PixelSword', 'PixelShield', 'PixelGem', 'PixelCrown']
+const CLASS_AVATARS: Record<string, string> = {
+  warrior: 'PixelSword',
+  ranger: 'PixelShield',
+  mage: 'PixelStar',
+  cleric: 'PixelGem',
+}
 
 interface PixelPlayerSlotProps {
   index: number
-  player?: { name: string; ready: boolean; id: string }
+  player?: { name: string; ready: boolean; id: string; characterType?: string }
   isHost?: boolean
   isLocalPlayer?: boolean
 }
@@ -63,7 +68,7 @@ export function PixelPlayerSlot({
       >
         {player && (
           <>
-            {React.createElement(avatarComponents[PLAYER_AVATARS[index]] || PixelSword, { size: 48, color })}
+            {React.createElement(avatarComponents[CLASS_AVATARS[player.characterType || 'warrior']] || PixelSword, { size: 48, color })}
             {player.ready && (
               <div
                 style={{
