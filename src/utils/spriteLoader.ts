@@ -3,7 +3,7 @@
  * 用于加载和管理游戏精灵图
  */
 
-import { TILE_SIZE, TILE_MARGIN } from '../assets/kenney';
+import { TILE_SIZE, TILE_MARGIN } from '../config/sprites';
 
 // 预加载的精灵图缓存
 const imageCache: Map<string, HTMLImageElement> = new Map();

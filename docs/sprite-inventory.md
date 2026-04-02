@@ -62,15 +62,6 @@ src/assets/
 | `lizard_m_idle_anim_f0` | (128,228) | 16×28 | — | ❌ | |
 | `lizard_f_idle_anim_f0` | (128,196) | 16×28 | — | ❌ | |
 
-#### Kenney CC0（4个）— roguelikeChar, 宽918, perRow=54
-
-| 贴图名称 | Atlas索引 | 尺寸 | 游戏用途 | 状态 | 代码引用 |
-|---------|----------|------|---------|------|---------|
-| `warrior_kenney` | idx=0, sheetW=918 | 16×16 | 战士 Kenney fallback | ✅ | `characters.ts:33` |
-| `mage_kenney` | idx=108, sheetW=918 | 16×16 | 法师 Kenney fallback | ✅ | `characters.ts:61` |
-| `ranger_kenney` | idx=162, sheetW=918 | 16×16 | 游侠 Kenney fallback | ✅ | `characters.ts:47` |
-| `cleric_kenney` | idx=378, sheetW=918 | 16×16 | 牧师 Kenney fallback | ✅ | `characters.ts:75` |
-
 #### 职业→精灵映射
 
 | 职业 | 正面 | 背面 | 颜色 |
@@ -111,14 +102,6 @@ src/assets/
 | `ogre_idle_anim_f0` | (16,380) | 32×36 | — | ❌ | |
 | `doc_idle_anim_f0` | (368,345) | 16×23 | — | ❌ | |
 
-#### Kenney CC0（3个）
-
-| 贴图名称 | Atlas索引 | 尺寸 | spritesheet | 游戏用途 | 状态 | 代码引用 |
-|---------|----------|------|------------|---------|------|---------|
-| `slime_kenney` | idx=1671 | 16×16 | roguelikeSheet(968) | 史莱姆 fallback | ✅ | `enemies.ts:26` |
-| `bat_kenney` | idx=1665 | 16×16 | roguelikeSheet(968) | 蝙蝠 fallback | ✅ | `enemies.ts:41` |
-| `boss_kenney` | idx=1668 | 16×16 | roguelikeSheet(968) | 恶魔 fallback | ✅ | `enemies.ts:72` |
-
 #### 敌人→精灵映射
 
 | 敌人 | 精灵 | 尺寸 | 颜色 |
@@ -146,7 +129,7 @@ src/assets/
 | `weapon_mace` | (339,39) | 10×24 | — | ❌ |
 | `weapon_hammer` | (307,39) | 10×24 | — | ❌ |
 | `weapon_big_hammer` | (291,26) | 10×37 | — | ❌ |
-| `weapon_anime_sword` | (322,65) | 12×30 | — | ❌ |
+| `weapon_anime_sword` | (322,65) | 12×30 | — | ✅ | `GamePage.tsx:410` |
 | `weapon_duel_sword` | (325,97) | 9×30 | — | ❌ |
 | `weapon_golden_sword` | (291,137) | 10×22 | — | ❌ |
 | `weapon_lavish_sword` | (307,129) | 10×30 | — | ❌ |
@@ -193,21 +176,11 @@ src/assets/
 | `chest_full_open_anim_f0` | (304,416) | 16×16 | 宝箱 chest | ✅ | `items.ts:101` |
 | `bomb_f0` | (288,320) | 16×16 | — | ❌ | |
 
-#### Kenney CC0（3+1个）— roguelikeDungeon, 宽492, perRow=28
-
-> ⚠️ 注意：health/energy/coin/key/potion/shield 优先使用上方 0x72 精灵（flask_big_red 等），Kenney 版本为 0x72 加载失败时的 fallback。chest 用 0x72 渲染。bullet 直接使用 drawDungeonSprite(idx=35) 渲染，无需注册到 SPRITE_REGISTRY。floor_stairs 固定使用 Kenney index=23。
-
-| 贴图名称 | Atlas索引 | 尺寸 | 游戏用途 | 状态 | 代码引用 |
-|---------|----------|------|---------|------|---------|
-| `health_kenney` | idx=29, sheetW=492 | 16×16 | 医疗包 Kenney fallback(0x72优先) | ✅ | `items.ts:26` |
-| `energy_kenney` | idx=30, sheetW=492 | 16×16 | 能量包 Kenney fallback(0x72优先) | ✅ | `items.ts:89` |
-| `coin_kenney` | idx=31, sheetW=492 | 16×16 | 金币 Kenney fallback(0x72优先) | ✅ | `items.ts:37` |
-
 ---
 
-### 2.5 场景 (SCENE) — 15 0x72 + 1 Kenney
+### 2.5 场景 (SCENE) — 16 0x72
 
-#### 0x72（15个）预览路径：`frames/SCENE/*.png`
+#### 0x72（16个）预览路径：`frames/SCENE/*.png`
 
 | 贴图名称 | Atlas坐标 | 尺寸 | 用途 | 状态 |
 |---------|----------|------|-----|------|
@@ -217,6 +190,7 @@ src/assets/
 | `floor_1` | (16,64) | 16×16 | — | ❌ |
 | `floor_2` | (32,64) | 16×16 | — | ❌ |
 | `floor_3` | (48,64) | 16×16 | — | ❌ |
+| `floor_stairs` | (80,192) | 16×16 | 楼梯出口(0x72) | ✅ |
 | `doors_leaf_closed` | (32,240) | 32×32 | — | ❌ |
 | `column` | (80,80) | 16×48 | — | ❌ |
 | `column_wall` | (96,80) | 16×48 | — | ❌ |
@@ -226,12 +200,6 @@ src/assets/
 | `button_blue_up` | (48,208) | 16×16 | — | ❌ |
 | `lever_left` | (80,208) | 16×16 | — | ❌ |
 | `lever_right` | (96,208) | 16×16 | — | ❌ |
-
-#### Kenney CC0（1个）— roguelikeDungeon, 宽492, perRow=28
-
-| 贴图名称 | Atlas索引 | 尺寸 | 游戏用途 | 状态 | 代码引用 |
-|---------|----------|------|---------|------|---------|
-| `floor_stairs` | idx=23 → (391,0) | 16×16 | 楼梯出口(Kenney idx=23) | ✅ | `useGameRenderer.ts:190,219` |
 
 > ⚠️ 地牢墙壁使用 `fillRect` 像素风格渲染，不依赖精灵贴图。
 

@@ -14,8 +14,20 @@ export interface CharacterConfig {
   }
   /** 0x72 精灵名 (TilesetII) - 优先使用 */
   spriteName?: {
-    front: string  // e.g. 'knight_m_idle_anim_f0'
-    back: string   // e.g. 'knight_m_idle_anim_f1'
+    /** idle 动画帧数组（front 方向，4帧）*/
+    front: string[]  // e.g. ['knight_m_idle_anim_f0', 'knight_m_idle_anim_f1', 'knight_m_idle_anim_f2', 'knight_m_idle_anim_f3']
+    /** idle 动画帧数组（back 方向，4帧）*/
+    back: string[]
+  }
+  /** 奔跑动画帧 */
+  spriteRun?: {
+    front: string[]  // e.g. ['knight_m_run_anim_f0', 'knight_m_run_anim_f1', ...]
+    back: string[]
+  }
+  /** 受击动画帧 */
+  spriteHit?: {
+    front: string   // e.g. 'knight_m_hit_anim_f0'
+    back: string
   }
   color: string
   hp: number
@@ -31,8 +43,16 @@ export const CHARACTERS: Record<string, CharacterConfig> = {
     name: '战士',
     // Kenney 索引 0,1 (保留兼容)
     spriteIndex: { front: 0, back: 1 },
-    // 0x72 TilesetII - 骑士男性
-    spriteName: { front: 'knight_m_idle_anim_f0', back: 'knight_m_idle_anim_f1' },
+    // 0x72 TilesetII - 骑士男性 (4帧 idle 动画)
+    spriteName: {
+      front: ['knight_m_idle_anim_f0', 'knight_m_idle_anim_f1', 'knight_m_idle_anim_f2', 'knight_m_idle_anim_f3'],
+      back: ['knight_m_idle_anim_f0', 'knight_m_idle_anim_f1', 'knight_m_idle_anim_f2', 'knight_m_idle_anim_f3']
+    },
+    spriteRun: {
+      front: ['knight_m_run_anim_f0', 'knight_m_run_anim_f1', 'knight_m_run_anim_f2', 'knight_m_run_anim_f3'],
+      back: ['knight_m_run_anim_f0', 'knight_m_run_anim_f1', 'knight_m_run_anim_f2', 'knight_m_run_anim_f3']
+    },
+    spriteHit: { front: 'knight_m_hit_anim_f0', back: 'knight_m_hit_anim_f0' },
     color: '#4A9EFF',
     hp: 100,
     attack: 15,
@@ -45,8 +65,16 @@ export const CHARACTERS: Record<string, CharacterConfig> = {
     name: '游侠',
     // Kenney 索引 162,163
     spriteIndex: { front: 162, back: 163 },
-    // 0x72 TilesetII - 精灵男性
-    spriteName: { front: 'elf_m_idle_anim_f0', back: 'elf_m_idle_anim_f1' },
+    // 0x72 TilesetII - 精灵男性 (4帧 idle 动画)
+    spriteName: {
+      front: ['elf_m_idle_anim_f0', 'elf_m_idle_anim_f1', 'elf_m_idle_anim_f2', 'elf_m_idle_anim_f3'],
+      back: ['elf_m_idle_anim_f0', 'elf_m_idle_anim_f1', 'elf_m_idle_anim_f2', 'elf_m_idle_anim_f3']
+    },
+    spriteRun: {
+      front: ['elf_m_run_anim_f0', 'elf_m_run_anim_f1', 'elf_m_run_anim_f2', 'elf_m_run_anim_f3'],
+      back: ['elf_m_run_anim_f0', 'elf_m_run_anim_f1', 'elf_m_run_anim_f2', 'elf_m_run_anim_f3']
+    },
+    spriteHit: { front: 'elf_m_hit_anim_f0', back: 'elf_m_hit_anim_f0' },
     color: '#51CF66',
     hp: 80,
     attack: 12,
@@ -59,8 +87,16 @@ export const CHARACTERS: Record<string, CharacterConfig> = {
     name: '法师',
     // Kenney 索引 108,109
     spriteIndex: { front: 108, back: 109 },
-    // 0x72 TilesetII - 男巫
-    spriteName: { front: 'wizzard_m_idle_anim_f0', back: 'wizzard_m_idle_anim_f1' },
+    // 0x72 TilesetII - 男巫 (4帧 idle 动画)
+    spriteName: {
+      front: ['wizzard_m_idle_anim_f0', 'wizzard_m_idle_anim_f1', 'wizzard_m_idle_anim_f2', 'wizzard_m_idle_anim_f3'],
+      back: ['wizzard_m_idle_anim_f0', 'wizzard_m_idle_anim_f1', 'wizzard_m_idle_anim_f2', 'wizzard_m_idle_anim_f3']
+    },
+    spriteRun: {
+      front: ['wizzard_m_run_anim_f0', 'wizzard_m_run_anim_f1', 'wizzard_m_run_anim_f2', 'wizzard_m_run_anim_f3'],
+      back: ['wizzard_m_run_anim_f0', 'wizzard_m_run_anim_f1', 'wizzard_m_run_anim_f2', 'wizzard_m_run_anim_f3']
+    },
+    spriteHit: { front: 'wizzard_m_hit_anim_f0', back: 'wizzard_m_hit_anim_f0' },
     color: '#FFA500',
     hp: 60,
     attack: 20,
@@ -73,8 +109,16 @@ export const CHARACTERS: Record<string, CharacterConfig> = {
     name: '牧师',
     // Kenney 索引 378,379
     spriteIndex: { front: 378, back: 379 },
-    // 0x72 TilesetII - 女性法师（区别于男法师 wizzard_m，且不同于任何怪物）
-    spriteName: { front: 'wizzard_f_idle_anim_f0', back: 'wizzard_f_idle_anim_f1' },
+    // 0x72 TilesetII - 女性法师 (4帧 idle 动画，区别于男法师 wizzard_m)
+    spriteName: {
+      front: ['wizzard_f_idle_anim_f0', 'wizzard_f_idle_anim_f1', 'wizzard_f_idle_anim_f2', 'wizzard_f_idle_anim_f3'],
+      back: ['wizzard_f_idle_anim_f0', 'wizzard_f_idle_anim_f1', 'wizzard_f_idle_anim_f2', 'wizzard_f_idle_anim_f3']
+    },
+    spriteRun: {
+      front: ['wizzard_f_run_anim_f0', 'wizzard_f_run_anim_f1', 'wizzard_f_run_anim_f2', 'wizzard_f_run_anim_f3'],
+      back: ['wizzard_f_run_anim_f0', 'wizzard_f_run_anim_f1', 'wizzard_f_run_anim_f2', 'wizzard_f_run_anim_f3']
+    },
+    spriteHit: { front: 'wizzard_f_hit_anim_f0', back: 'wizzard_f_hit_anim_f0' },
     color: '#9B59B6',
     hp: 70,
     attack: 8,

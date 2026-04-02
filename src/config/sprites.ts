@@ -2,11 +2,15 @@
  * 统一 Sprite Registry + 精灵渲染工具
  *
  * 分类体系：CHARACTER / MONSTER / WEAPON / ITEM / SCENE / UI
- * 资源来源：kenney (索引式) + 0x72 (atlas 坐标式)
+ * 资源来源：0x72 (atlas 坐标式)
  */
 
-import { TILE_SIZE, TILE_MARGIN } from '../assets/kenney'
 import { SPRITE_ATLAS, type SpriteEntry } from '../assets/0x72/spriteIndex'
+
+// ─── 常量（原 kenney/index.ts，仅用于 drawDungeonSprite fallback）──
+const TILE_SIZE = 16
+const TILE_MARGIN = 0
+export { TILE_SIZE, TILE_MARGIN }
 
 // ─── 统一类型定义 ────────────────────────────────────────────────────────────────
 
@@ -47,21 +51,43 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
   // wizzard_f_idle_anim_f2/f3: 存在于atlas但未被任何角色使用（cleric仅用f0/f1），不注册
   // orc_shaman_idle_anim_f0/f1: ⚠️ 已废弃，代码无引用，不注册
 
-  // Kenney fallback CHARACTER
-  warrior_kenney: { category: 'CHARACTER', source: 'kenney', atlasKey: 0,   size: 16, animated: false, frameCount: 1 },
-  ranger_kenney: { category: 'CHARACTER', source: 'kenney', atlasKey: 162, size: 16, animated: false, frameCount: 1 },
-  mage_kenney:   { category: 'CHARACTER', source: 'kenney', atlasKey: 108, size: 16, animated: false, frameCount: 1 },
-  cleric_kenney: { category: 'CHARACTER', source: 'kenney', atlasKey: 378, size: 16, animated: false, frameCount: 1 },
+  // ── CHARACTER 动画帧补全 ──────────────────────────────────────────────────
+  // idle f2/f3（characters.ts 仅用 f0/f1 但 atlas 有完整4帧，补齐以备后用）
+  knight_m_idle_anim_f2:  { category: 'CHARACTER', source: '0x72', atlasKey: 'knight_m_idle_anim_f2',  size: 48, animated: true, frameCount: 4 },
+  knight_m_idle_anim_f3:  { category: 'CHARACTER', source: '0x72', atlasKey: 'knight_m_idle_anim_f3',  size: 48, animated: true, frameCount: 4 },
+  elf_m_idle_anim_f2:     { category: 'CHARACTER', source: '0x72', atlasKey: 'elf_m_idle_anim_f2',      size: 48, animated: true, frameCount: 4 },
+  elf_m_idle_anim_f3:     { category: 'CHARACTER', source: '0x72', atlasKey: 'elf_m_idle_anim_f3',      size: 48, animated: true, frameCount: 4 },
+  wizzard_m_idle_anim_f2: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_m_idle_anim_f2', size: 48, animated: true, frameCount: 4 },
+  wizzard_m_idle_anim_f3: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_m_idle_anim_f3', size: 48, animated: true, frameCount: 4 },
+  wizzard_f_idle_anim_f2: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_idle_anim_f2', size: 48, animated: true, frameCount: 4 },
+  wizzard_f_idle_anim_f3: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_idle_anim_f3', size: 48, animated: true, frameCount: 4 },
+  // run 动画帧（characters.ts spriteRun 配置，4帧）
+  knight_m_run_anim_f0:  { category: 'CHARACTER', source: '0x72', atlasKey: 'knight_m_run_anim_f0',  size: 48, animated: true, frameCount: 4 },
+  knight_m_run_anim_f1:  { category: 'CHARACTER', source: '0x72', atlasKey: 'knight_m_run_anim_f1',  size: 48, animated: true, frameCount: 4 },
+  knight_m_run_anim_f2:  { category: 'CHARACTER', source: '0x72', atlasKey: 'knight_m_run_anim_f2',  size: 48, animated: true, frameCount: 4 },
+  knight_m_run_anim_f3:  { category: 'CHARACTER', source: '0x72', atlasKey: 'knight_m_run_anim_f3',  size: 48, animated: true, frameCount: 4 },
+  elf_m_run_anim_f0:     { category: 'CHARACTER', source: '0x72', atlasKey: 'elf_m_run_anim_f0',      size: 48, animated: true, frameCount: 4 },
+  elf_m_run_anim_f1:     { category: 'CHARACTER', source: '0x72', atlasKey: 'elf_m_run_anim_f1',      size: 48, animated: true, frameCount: 4 },
+  elf_m_run_anim_f2:     { category: 'CHARACTER', source: '0x72', atlasKey: 'elf_m_run_anim_f2',      size: 48, animated: true, frameCount: 4 },
+  elf_m_run_anim_f3:     { category: 'CHARACTER', source: '0x72', atlasKey: 'elf_m_run_anim_f3',      size: 48, animated: true, frameCount: 4 },
+  wizzard_m_run_anim_f0: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_m_run_anim_f0', size: 48, animated: true, frameCount: 4 },
+  wizzard_m_run_anim_f1: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_m_run_anim_f1', size: 48, animated: true, frameCount: 4 },
+  wizzard_m_run_anim_f2: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_m_run_anim_f2', size: 48, animated: true, frameCount: 4 },
+  wizzard_m_run_anim_f3: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_m_run_anim_f3', size: 48, animated: true, frameCount: 4 },
+  wizzard_f_run_anim_f0: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_run_anim_f0', size: 48, animated: true, frameCount: 4 },
+  wizzard_f_run_anim_f1: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_run_anim_f1', size: 48, animated: true, frameCount: 4 },
+  wizzard_f_run_anim_f2: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_run_anim_f2', size: 48, animated: true, frameCount: 4 },
+  wizzard_f_run_anim_f3: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_run_anim_f3', size: 48, animated: true, frameCount: 4 },
+  // hit 动画帧
+  knight_m_hit_anim_f0:  { category: 'CHARACTER', source: '0x72', atlasKey: 'knight_m_hit_anim_f0',  size: 48, animated: false, frameCount: 1 },
+  elf_m_hit_anim_f0:     { category: 'CHARACTER', source: '0x72', atlasKey: 'elf_m_hit_anim_f0',      size: 48, animated: false, frameCount: 1 },
+  wizzard_m_hit_anim_f0: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_m_hit_anim_f0', size: 48, animated: false, frameCount: 1 },
+  wizzard_f_hit_anim_f0: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_hit_anim_f0', size: 48, animated: false, frameCount: 1 },
 
   // ── MONSTER ────────────────────────────────────────────────────────────────
   goblin_idle_anim_f0:   { category: 'MONSTER', source: '0x72', atlasKey: 'goblin_idle_anim_f0',   size: 32, animated: true,  frameCount: 4 },
   skelet_idle_anim_f0:   { category: 'MONSTER', source: '0x72', atlasKey: 'skelet_idle_anim_f0',   size: 32, animated: true,  frameCount: 4 },
   big_demon_idle_anim_f0:{ category: 'MONSTER', source: '0x72', atlasKey: 'big_demon_idle_anim_f0',size: 64, animated: true,  frameCount: 4 },
-
-  // Kenney fallback MONSTER
-  slime_kenney: { category: 'MONSTER', source: 'kenney', atlasKey: 1671, size: 16, animated: false, frameCount: 1 },
-  bat_kenney:   { category: 'MONSTER', source: 'kenney', atlasKey: 1665, size: 16, animated: false, frameCount: 1 },
-  boss_kenney:  { category: 'MONSTER', source: 'kenney', atlasKey: 1668, size: 16, animated: false, frameCount: 1 },
 
   // ── WEAPON ────────────────────────────────────────────────────────────────
   weapon_knight_sword:    { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_knight_sword',   size: 32, animated: false, frameCount: 1 },
@@ -81,19 +107,13 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
   crate:               { category: 'ITEM', source: '0x72', atlasKey: 'crate',             size: 28, animated: false, frameCount: 1 },
   chest_full_open_anim_f0:{ category:'ITEM',source:'0x72',atlasKey:'chest_full_open_anim_f0', size: 28, animated: true, frameCount: 3 },
 
-  // Kenney fallback ITEM（bullet 使用 drawDungeonSprite(idx=35) 直接渲染，无需注册）
-  health_kenney: { category: 'ITEM', source: 'kenney', atlasKey: 29, size: 16, animated: false, frameCount: 1 },
-  energy_kenney: { category: 'ITEM', source: 'kenney', atlasKey: 30, size: 16, animated: false, frameCount: 1 },
-  coin_kenney:   { category: 'ITEM', source: 'kenney', atlasKey: 31, size: 16, animated: false, frameCount: 1 },
-
   // ── SCENE ────────────────────────────────────────────────────────────────
   wall_left:        { category: 'SCENE', source: '0x72', atlasKey: 'wall_left',        size: 32, animated: false, frameCount: 1 },
   wall_mid:         { category: 'SCENE', source: '0x72', atlasKey: 'wall_mid',         size: 32, animated: false, frameCount: 1 },
   wall_right:       { category: 'SCENE', source: '0x72', atlasKey: 'wall_right',       size: 32, animated: false, frameCount: 1 },
-  // floor_stairs: 游戏使用 Kenney roguelikeDungeon index=23（出口楼梯）
-  // 注：0x72 atlas 也有 floor_stairs (x=80,y=192) 但与 Kenney idx=23 是不同 sprite，未被游戏使用
-  // 代码引用: useGameRenderer.ts:190,219
-  floor_stairs:     { category: 'SCENE', source: 'kenney', atlasKey: 23,               size: 32, animated: false, frameCount: 1 },
+  // floor_stairs: 出口楼梯（0x72 atlas）
+  // 渲染路径: useGameRenderer.ts:189-197 (collisionGrid 模式) / useGameRenderer.ts:218-226 (rooms 模式)
+  floor_stairs:     { category: 'SCENE', source: '0x72', atlasKey: 'floor_stairs',    size: 32, animated: false, frameCount: 1 },
   doors_leaf_closed: { category: 'SCENE', source: '0x72', atlasKey: 'doors_leaf_closed', size: 64, animated: false, frameCount: 1 },
 
   // ── UI ──────────────────────────────────────────────────────────────────

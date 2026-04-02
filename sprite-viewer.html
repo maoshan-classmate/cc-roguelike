@@ -170,7 +170,7 @@ const SPRITES = [
   { n:'weapon_mace',             c:'WEAPON',x:339,y:39, w:10,h:24,u:false,g:'',                        s:'0x72' },
   { n:'weapon_hammer',           c:'WEAPON',x:307,y:39, w:10,h:24,u:false,g:'',                        s:'0x72' },
   { n:'weapon_big_hammer',       c:'WEAPON',x:291,y:26, w:10,h:37,u:false,g:'',                        s:'0x72' },
-  { n:'weapon_anime_sword',      c:'WEAPON',x:322,y:65, w:12,h:30,u:false,g:'',                        s:'0x72' },
+  { n:'weapon_anime_sword',      c:'WEAPON',x:322,y:65, w:12,h:30,u:true, g:'',r:'src/pages/GamePage.tsx:410', s:'0x72' },
   { n:'weapon_duel_sword',       c:'WEAPON',x:325,y:97, w:9, h:30,u:false,g:'',                        s:'0x72' },
   { n:'weapon_golden_sword',     c:'WEAPON',x:291,y:137,w:10,h:22,u:false,g:'',                        s:'0x72' },
   { n:'weapon_lavish_sword',     c:'WEAPON',x:307,y:129,w:10,h:30,u:false,g:'',                        s:'0x72' },
@@ -223,26 +223,8 @@ const SPRITES = [
   { n:'ui_heart_empty',        c:'UI',x:321,y:370,w:13,h:12,u:false,g:'',                             s:'0x72' },
   { n:'ui_heart_half',         c:'UI',x:305,y:370,w:13,h:12,u:false,g:'',                             s:'0x72' },
 
-  // ── Kenney CHARACTER (4) — roguelikeChar, 918宽, perRow=54 ──
-  { n:'warrior_kenney', c:'CHARACTER',idx:0,   w:16,h:16,sw:918,u:true, g:'战士 Kenney fallback', s:'Kenney', ref:'src/config/characters.ts:33' },
-  { n:'mage_kenney',   c:'CHARACTER',idx:108,  w:16,h:16,sw:918,u:true, g:'法师 Kenney fallback',  s:'Kenney', ref:'src/config/characters.ts:61' },
-  { n:'ranger_kenney', c:'CHARACTER',idx:162,  w:16,h:16,sw:918,u:true, g:'游侠 Kenney fallback',  s:'Kenney', ref:'src/config/characters.ts:47' },
-  { n:'cleric_kenney', c:'CHARACTER',idx:378,  w:16,h:16,sw:918,u:true, g:'牧师 Kenney fallback',  s:'Kenney', ref:'src/config/characters.ts:75' },
-
-  // ── Kenney MONSTER (3) — roguelikeSheet, 968宽, perRow=56 ──
-  { n:'slime_kenney', c:'MONSTER',idx:1671,w:16,h:16,sw:968,u:true,g:'史莱姆 basic fallback', s:'Kenney', ref:'src/config/enemies.ts:26' },
-  { n:'bat_kenney',   c:'MONSTER',idx:1665,w:16,h:16,sw:968,u:true,g:'蝙蝠 fast fallback',   s:'Kenney', ref:'src/config/enemies.ts:41' },
-  { n:'boss_kenney',  c:'MONSTER',idx:1668,w:16,h:16,sw:968,u:true,g:'恶魔 boss fallback',   s:'Kenney', ref:'src/config/enemies.ts:72' },
-
-  // ── Kenney ITEM (3) — roguelikeDungeon, 492宽, perRow=28 ──
-  // 注意：items.ts 中 health/energy/coin/key/potion/shield 优先使用 0x72（flask_big_red 等），
-  //       0x72 加载失败时才 fallback 到这些 Kenney 精灵。chest 用 0x72 渲染（chest_full_open_anim_f0）。
-  //       bullet 直接使用 drawDungeonSprite(idx=35) 渲染，无需注册。
-  { n:'health_kenney', c:'ITEM',idx:29,w:16,h:16,sw:492,u:true, g:'医疗包 Kenney fallback(0x72优先)', s:'Kenney', ref:'src/config/items.ts:26' },
-  { n:'energy_kenney', c:'ITEM',idx:30,w:16,h:16,sw:492,u:true, g:'能量包 Kenney fallback(0x72优先)', s:'Kenney', ref:'src/config/items.ts:89' },
-  { n:'coin_kenney',   c:'ITEM',idx:31,w:16,h:16,sw:492,u:true, g:'金币 Kenney fallback(0x72优先)',   s:'Kenney', ref:'src/config/items.ts:37' },
-  // dungeon exit stairs — drawn via Kenney roguelikeDungeon index 23
-  { n:'floor_stairs',  c:'SCENE',idx:23,w:16,h:16,sw:492,u:true, g:'楼梯出口',                   s:'Kenney', ref:'useGameRenderer.ts:190,219' },
+  // dungeon exit stairs — 0x72 atlas (Kenney fallback via useGameRenderer.ts)
+  { n:'floor_stairs',  c:'SCENE',x:80,y:192,w:16,h:16,u:true, g:'楼梯出口(0x72)',             s:'0x72', ref:'useGameRenderer.ts' },
 ];
 
 // ══════════════════════════════════════════════════════════════════
@@ -346,8 +328,7 @@ function renderCard(sp) {
   if (sp.s === '0x72') {
     spriteHtml = `<img src="${BASE}/${sp.c}/${sp.n}.png" alt="${sp.n}" onerror="this.style.display='none';this.parentElement.style.background='#333'">`;
   } else {
-    const sheetKey = sp.n === 'floor_stairs' ? 'kenney_dungeon'  // floor_stairs 来自 dungeon sheet
-                  : sp.c === 'CHARACTER' ? 'kenney_char'
+    const sheetKey = sp.c === 'CHARACTER' ? 'kenney_char'
                   : sp.c === 'ITEM' ? 'kenney_dungeon'
                   : 'kenney_sheet';
     spriteHtml = `<canvas width="72" height="72" data-sheet="${sheetKey}" data-idx="${sp.idx}" data-w="${sp.w}" data-h="${sp.h}" data-sw="${sp.sw}" style="image-rendering:pixelated;"></canvas>`;
