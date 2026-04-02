@@ -6,10 +6,8 @@
 
 - **[架构问题（最高优先级）](docs/todo/architecture.md)**
 - [UI 优化](docs/todo/ui-optimization.md)
-- [游戏逻辑](docs/todo/game-logic.md)
 - [功能待办](docs/todo/features.md)
 - [Bug 修复清单](docs/todo/bugs.md)
-- [装备系统](docs/todo/equipment.md)
 
 ## 用户需求
 

@@ -14,7 +14,7 @@
 | warrior | knight_m | 16×28 | f0-f3 | f0-f3 |
 | ranger | elf_m | 16×28 | f0-f3 | f0-f3 |
 | mage | wizzard_m | 16×28 | f0-f3 | f0-f3 |
-| cleric | orc_shaman | 16×23 | f0-f3 | f0-f3 |
+| cleric | dwarf_m | 16×28 | f0-f3 | f0-f3 |
 
 **额外角色（当前游戏未使用）:**
 | 名称 | 0x72 Sprite Key | 尺寸 |
@@ -33,12 +33,12 @@
 
 | 游戏ID | 名称 | 0x72 Sprite Key | 尺寸 | idle帧 | run帧 |
 |--------|------|----------------|------|--------|-------|
-| basic | 史莱姆 | ~~slime~~(atlas无)→**goblin** | 16×16 | f0-f3 | f0-f3 |
+| basic | 哥布林 | goblin | 16×16 | f0-f3 | f0-f3 |
 | fast | 哥布林 | goblin | 16×16 | f0-f3 | f0-f3 |
 | tank | 骷髅 | skelet | 16×16 | f0-f3 | f0-f3 |
 | boss | 恶魔领主 | big_demon | 32×36 | f0-f3 | f0-f3 |
 
-> ⚠️ slime 不存在于 atlas，需从 Kenney roguelikeSheet 导入作为 fallback
+> ⚠️ slime 不存在于 atlas，basic 敌人 fallback 到 goblin
 
 **额外怪物（当前游戏未使用）:**
 | 名称 | 0x72 Sprite Key | 尺寸 |
@@ -194,7 +194,7 @@
 | warrior | knight_m_idle_anim | knight_m_run_anim | f1 | 16×28 |
 | ranger | elf_m_idle_anim | elf_m_run_anim | f1 | 16×28 |
 | mage | wizzard_m_idle_anim | wizzard_m_run_anim | f1 | 16×28 |
-| cleric | orc_shaman_idle_anim | orc_shaman_run_anim | f1 | 16×23 |
+| cleric | dwarf_m_idle_anim | dwarf_m_run_anim | f1 | 16×28 |
 
 ### 敌人 MONSTER
 
@@ -221,9 +221,10 @@
 
 | 游戏武器 | sprite key | 尺寸 |
 |---------|-----------|------|
-| sword | weapon_knight_sword | 10×29 |
-| pistol | weapon_arrow | 7×21 |
-| staff | weapon_red_magic_staff | 8×30 |
+| warrior 剑 | weapon_knight_sword | 10×29 |
+| ranger 弓 | weapon_bow | 14×26 |
+| mage 红法杖 | weapon_red_magic_staff | 8×30 |
+| cleric 绿法杖 | weapon_green_magic_staff | 8×30 |
 
 ---
 
