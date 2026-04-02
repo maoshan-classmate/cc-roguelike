@@ -223,7 +223,7 @@ export class AuthManager {
     warrior: { weapon: 'sword',   skills: ['dash', 'shield', 'heal', 'speed_boost'] },
     ranger:  { weapon: 'pistol',  skills: ['dash', 'speed_boost', 'heal', 'shield'] },
     mage:    { weapon: 'pistol',  skills: ['dash', 'shield', 'speed_boost', 'heal'] },
-    cleric:  { weapon: 'staff',   skills: ['dash', 'heal', 'shield', 'speed_boost'] }
+    cleric:  { weapon: 'pistol',  skills: ['dash', 'heal', 'shield', 'speed_boost'] }
   };
 
   async updateCharacterType(accountId: string, characterType: string): Promise<void> {

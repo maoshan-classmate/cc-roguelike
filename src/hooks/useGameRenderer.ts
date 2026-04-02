@@ -46,7 +46,7 @@ const BULLET_SPRITE: Record<string, string> = {
   warrior: 'weapon_arrow',
   ranger:  'weapon_arrow',
   mage:    'weapon_green_magic_staff',
-  cleric:  'weapon_mace',
+  cleric:  'flask_big_green',
 }
 
 const WEAPON_SPRITE: Record<string, string> = {
@@ -331,20 +331,21 @@ export function useGameRenderer(
       const color = bullet.friendly
         ? (BULLET_COLORS[bullet.ownerType] || '#4A9EFF')
         : '#FF6B6B'
-      ctx.save()
-      ctx.shadowColor = color
-      ctx.shadowBlur = 8
-      ctx.fillStyle = color
-      ctx.beginPath()
-      ctx.arc(bullet.x, bullet.y, bullet.radius || 4, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.shadowBlur = 0
-      ctx.restore()
+      const bulletAngle = Math.atan2(bullet.vy, bullet.vx)
+      const bulletSize = Math.max((bullet.radius || 4) * 3, 10)
+      const bulletSprite = bullet.friendly ? (BULLET_SPRITE[bullet.ownerType] || 'weapon_arrow') : 'weapon_arrow'
+
+      // 先绘制贴图精灵，贴图优先
       if (tileset2Atlas.complete) {
-        const bulletAngle = Math.atan2(bullet.vy, bullet.vx)
-        const bulletSize = Math.max((bullet.radius || 4) * 3, 10)
-        const bulletSprite = bullet.friendly ? (BULLET_SPRITE[bullet.ownerType] || 'weapon_arrow') : 'weapon_arrow'
-        drawBulletSprite(ctx, tileset2Atlas, bullet.x, bullet.y, bulletAngle, bulletSize, bulletSprite)
+        drawBulletSprite(ctx, tileset2Atlas, bullet.x, bullet.y, bulletAngle, bulletSize, bulletSprite, color)
+      } else {
+        // fallback: 纯色圆点
+        ctx.save()
+        ctx.fillStyle = color
+        ctx.beginPath()
+        ctx.arc(bullet.x, bullet.y, bullet.radius || 4, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.restore()
       }
     }
 

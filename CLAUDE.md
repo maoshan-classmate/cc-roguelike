@@ -307,9 +307,9 @@ npx tsc --noEmit                                # TypeScript 编译检查
 - **怪物精灵**: roguelikeSheet perRow=56，最大索引 1679，超出即越界（如 1721/1725）
 - **地牢色系**: FLOOR=#3A2E2C, GRID=#504440, WALL=#5C4A3A, BG=#1A1210（网格线与底色色差须 >30 色阶才可见）
 - **职业速度** `CLASS_SPEED`: warrior=180, ranger=220, mage=180, cleric=190 (px/s)
-- **职业武器** class→weapon: warrior=sword(近战), ranger/mage=pistol(远程), cleric=staff(魔法杖)
+- **职业武器** class→weapon: warrior=sword(近战), ranger/mage/pistol(远程), cleric=pistol(远程治疗弹)
 - **职业贴图分配** (必须跨种族): warrior=knight_m(骑士), ranger=elf_m(精灵), mage=wizzard_m(法师), cleric=dwarf_m(矮人)
-- **职业子弹贴图**: warrior/ranger=weapon_arrow, mage=weapon_green_magic_staff, cleric=weapon_mace
+- **职业子弹贴图**: warrior/ranger=weapon_arrow, mage=weapon_green_magic_staff, cleric=flask_big_green(治疗弹)
 - **职业武器贴图**: warrior=weapon_knight_sword, ranger=weapon_bow, mage=weapon_red_magic_staff, cleric=weapon_green_magic_staff
 - **职业映射** SocketServer validTypes: warrior/ranger/mage 直传，healer→cleric 映射，cleric→cleric 直传（客户端两种都可能发）
 - **4 技能槽**: dash/shield/heal/speed_boost 按职业不同排列

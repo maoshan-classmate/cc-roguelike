@@ -64,6 +64,7 @@ export interface BulletState {
   friendly: boolean;
   piercing: number;
   radius: number;
+  healing?: boolean;
 }
 
 export interface GameState {
@@ -642,7 +643,7 @@ export class GameRoom {
     };
   }
 
-  spawnBullet(ownerId: string, x: number, y: number, angle: number, damage: number, friendly: boolean, ownerType: string = 'warrior'): void {
+  spawnBullet(ownerId: string, x: number, y: number, angle: number, damage: number, friendly: boolean, ownerType: string = 'warrior', healing: boolean = false): void {
     const speed = GAME_CONFIG.BULLET_SPEED;
     const id = `bullet_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
@@ -657,7 +658,8 @@ export class GameRoom {
       damage,
       friendly,
       piercing: 1,
-      radius: GAME_CONFIG.BULLET_RADIUS
+      radius: GAME_CONFIG.BULLET_RADIUS,
+      healing
     });
   }
 
@@ -694,6 +696,12 @@ export class GameRoom {
     if (player.hp <= 0) {
       player.alive = false;
     }
+  }
+
+  healPlayer(playerId: string, amount: number): void {
+    const player = this.players.get(playerId);
+    if (!player || !player.alive) return;
+    player.hp = Math.min(player.hpMax, player.hp + amount);
   }
 
   removeBullet(bulletId: string): void {

@@ -31,6 +31,7 @@ export class Combat {
   private fireGun(player: PlayerState, weapon: any): void {
     const count = weapon.bulletCount || 1;
     const spread = (weapon.spread || 0) * Math.PI / 180;
+    const isHealer = player.characterType === 'cleric';
 
     for (let i = 0; i < count; i++) {
       const angle = player.angle + (this.random() - 0.5) * spread;
@@ -41,7 +42,8 @@ export class Combat {
         angle,
         weapon.damage,
         true,
-        player.characterType
+        player.characterType,
+        isHealer
       );
     }
   }
@@ -137,13 +139,33 @@ export class Combat {
     const state = this.room.getState();
 
     if (bullet.friendly) {
-      // Check against enemies
+      // Healing bullet (cleric): heal allies, damage enemies
+      if (bullet.healing) {
+        // Check against teammates first
+        for (const player of state.players) {
+          if (!player.alive || player.id === bullet.ownerId) continue;
+          if (player.hp >= player.hpMax) continue;
+
+          const dist = Math.hypot(bullet.x - player.x, bullet.y - player.y);
+          if (dist < bullet.radius + 16) {
+            this.room.healPlayer(player.id, bullet.damage);
+            bullet.piercing--;
+            if (bullet.piercing <= 0) {
+              this.room.removeBullet(bullet.id);
+              return;
+            }
+          }
+        }
+      }
+
+      // Check against enemies (healing bullets still damage enemies)
       for (const enemy of state.enemies) {
         if (!enemy.alive) continue;
 
         const dist = Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y);
         if (dist < bullet.radius + 15) {
-          this.room.damageEnemy(enemy.id, bullet.damage);
+          const dmg = bullet.healing ? Math.floor(bullet.damage / 2) : bullet.damage;
+          this.room.damageEnemy(enemy.id, dmg);
           bullet.piercing--;
 
           if (bullet.piercing <= 0) {

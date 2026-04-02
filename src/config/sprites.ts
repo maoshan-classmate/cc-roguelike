@@ -114,6 +114,7 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
   flask_big_red:      { category: 'ITEM', source: '0x72', atlasKey: 'flask_big_red',      size: 28, animated: false, frameCount: 1 },
   flask_big_blue:     { category: 'ITEM', source: '0x72', atlasKey: 'flask_big_blue',     size: 28, animated: false, frameCount: 1 },
   flask_blue:         { category: 'ITEM', source: '0x72', atlasKey: 'flask_blue',         size: 28, animated: false, frameCount: 1 },
+  flask_big_green:    { category: 'ITEM', source: '0x72', atlasKey: 'flask_big_green',    size: 28, animated: false, frameCount: 1 },
   coin_anim_f0:        { category: 'ITEM', source: '0x72', atlasKey: 'coin_anim_f0',      size: 28, animated: true,  frameCount: 4 },
   skull:               { category: 'ITEM', source: '0x72', atlasKey: 'skull',             size: 28, animated: false, frameCount: 1 },
   crate:               { category: 'ITEM', source: '0x72', atlasKey: 'crate',             size: 28, animated: false, frameCount: 1 },
@@ -501,12 +502,13 @@ export function drawBulletSprite(
   x: number, y: number,
   angle: number,
   size: number = 12,  // 子弹渲染大小
-  spriteName: string = 'weapon_arrow'
+  spriteName: string = 'weapon_arrow',
+  glowColor?: string
 ): void {
   const entry = SPRITE_ATLAS[spriteName]
   if (!entry) {
     // Fallback: 纯色小圆
-    ctx.fillStyle = '#FFD700'
+    ctx.fillStyle = glowColor || '#FFD700'
     ctx.beginPath()
     ctx.arc(x, y, size / 2, 0, Math.PI * 2)
     ctx.fill()
@@ -514,10 +516,17 @@ export function drawBulletSprite(
   }
   ctx.save()
   ctx.translate(x, y)
-  ctx.rotate(angle)
+  // 竖向贴图(如weapon_arrow 7×21)默认朝上，atan2角度0=向右，需补偿-π/2
+  const isVertical = entry.h > entry.w
+  ctx.rotate(angle + (isVertical ? -Math.PI / 2 : 0))
   const scale = size / Math.max(entry.w, entry.h)
   const drawW = entry.w * scale
   const drawH = entry.h * scale
+  // 边缘发光（不覆盖贴图主体）
+  if (glowColor) {
+    ctx.shadowColor = glowColor
+    ctx.shadowBlur = 6
+  }
   ctx.drawImage(img, entry.x, entry.y, entry.w, entry.h, -drawW / 2, -drawH / 2, drawW, drawH)
   ctx.restore()
 }

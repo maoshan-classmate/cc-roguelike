@@ -127,7 +127,7 @@ src/assets/
 | `weapon_axe` | (341,74) | 9×21 | — | ❌ |
 | `weapon_katana` | (293,66) | 6×29 | — | ❌ |
 | `weapon_spear` | (309,161) | 6×30 | — | ❌ |
-| `weapon_mace` | (339,39) | 10×24 | cleric子弹 | ✅ |
+| `weapon_mace` | (339,39) | 10×24 | — | ❌ | |
 | `weapon_hammer` | (307,39) | 10×24 | — | ❌ |
 | `weapon_big_hammer` | (291,26) | 10×37 | — | ❌ |
 | `weapon_anime_sword` | (322,65) | 12×30 | — | ✅ | `GamePage.tsx:410` |
@@ -165,7 +165,7 @@ src/assets/
 |---------|----------|------|---------|------|---------|
 | `flask_big_red` | (288,336) | 16×16 | 医疗包 health | ✅ | `items.ts:28` |
 | `flask_big_blue` | (304,336) | 16×16 | 能量包 energy | ✅ | `items.ts:91` |
-| `flask_big_green` | (320,336) | 16×16 | — | ❌ | |
+| `flask_big_green` | (320,336) | 16×16 | 治疗弹 healer bullet | ✅ | `useGameRenderer.ts:49` |
 | `flask_big_yellow` | (336,336) | 16×16 | — | ❌ | |
 | `flask_blue` | (304,352) | 16×16 | 药水 potion | ✅ | `items.ts:60` |
 | `flask_red` | (288,352) | 16×16 | — | ❌ | |

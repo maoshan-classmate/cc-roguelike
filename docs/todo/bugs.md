@@ -55,7 +55,7 @@
 - [x] 在房间中或游戏中时，页面刷新后，游戏信息丢失。 — 2026-04-02 三层根因修复：①服务端accountSessions Map+30s宽限期+reconnect同步恢复(session不进异步.then) ②客户端socket.ts connect()防重连守卫(if this.socket return,避免StrictMode双渲染创建双socket) ③客户端emit()支持connecting态缓冲 ④RoomPage/GamePage挂载时确保connect()
 - [x] 牧师角色贴图使用错误（目前是战士的贴图）。 — 2026-04-02 SocketServer validTypes添加cleric键，修复客户端发'cleric'被静默丢弃的映射遗漏
 - [x] 牧师角色贴图与法师贴图重复、武器也重复。每个职业的角色、武器、攻击子弹贴图必须要唯一。利用好贴图资产三文件里面未使用的贴图。 — 2026-04-02 cleric武器改用weapon_green_magic_staff，子弹按职业分发(mage=green_staff,cleric=mace)；三文件同步；tsc零error；E2E牧师+法师双验证通过
-- [ ] 
+- [x] 游侠使用弓箭，攻击子弹就应该使用weapon_arrow贴图，而不是法师的魔法弹。牧师的攻击子弹应该是治疗，而不是跟战士一样 — 2026-04-03 ranger子弹已是weapon_arrow确认OK；cleric改为远程治疗弹(flash_big_green贴图)，命中队友治疗、命中敌人半伤；CLASS_CONFIG staff→pistol
 ## 中优先级
 
 - [x] 多人游戏结束后回到房间，其他玩家在大厅里面无法找到那个房间。 — 2026-04-01 根因：endGame()删除房间+getAllRooms()过滤waiting+endGame从未被调用；修复：LobbyManager新增resetRoom()方法将房间重置为waiting状态，SocketServer.startStateBroadcast在game:end时调用resetRoom并广播lobby:list更新；E2E验证：playerb返回大厅房间列表自动显示无需刷新
