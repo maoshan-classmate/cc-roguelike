@@ -150,6 +150,15 @@ netstat -ano | grep LISTENING | grep -E "300[01]"   # 检查端口
 npx tsc --noEmit                                # TypeScript 编译检查
 ```
 
+## AI 调试工具
+
+**DebugMenu**（按 `D` 键，DEV模式专用，**非作弊工具**）：
+- 服务端：`GameRoom.handleDebugCommand()`，生产环境安全（`NODE_ENV !== 'production'`）
+- `teleport` → 跳关（floor 1-5）
+- `killAll` → 一键清怪
+- `setInvincible` → 角色无敌开关
+- 用途：快速复现游戏状态、验证修复、跨 floor 测试
+
 ## Sprite 关键发现
 
 **Kenney 地牢精灵图 (roguelikeDungeon)**：
