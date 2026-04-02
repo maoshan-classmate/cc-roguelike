@@ -106,15 +106,25 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
   skull:               { category: 'ITEM', source: '0x72', atlasKey: 'skull',             size: 28, animated: false, frameCount: 1 },
   crate:               { category: 'ITEM', source: '0x72', atlasKey: 'crate',             size: 28, animated: false, frameCount: 1 },
   chest_full_open_anim_f0:{ category:'ITEM',source:'0x72',atlasKey:'chest_full_open_anim_f0', size: 28, animated: true, frameCount: 3 },
+  bomb_f0:            { category: 'ITEM', source: '0x72', atlasKey: 'bomb_f0',           size: 28, animated: false, frameCount: 1 },
 
   // ── SCENE ────────────────────────────────────────────────────────────────
   wall_left:        { category: 'SCENE', source: '0x72', atlasKey: 'wall_left',        size: 32, animated: false, frameCount: 1 },
   wall_mid:         { category: 'SCENE', source: '0x72', atlasKey: 'wall_mid',         size: 32, animated: false, frameCount: 1 },
   wall_right:       { category: 'SCENE', source: '0x72', atlasKey: 'wall_right',       size: 32, animated: false, frameCount: 1 },
-  // floor_stairs: 出口楼梯（0x72 atlas）
-  // 渲染路径: useGameRenderer.ts:189-197 (collisionGrid 模式) / useGameRenderer.ts:218-226 (rooms 模式)
+  floor_1:          { category: 'SCENE', source: '0x72', atlasKey: 'floor_1',          size: 32, animated: false, frameCount: 1 },
+  floor_2:          { category: 'SCENE', source: '0x72', atlasKey: 'floor_2',          size: 32, animated: false, frameCount: 1 },
+  floor_3:          { category: 'SCENE', source: '0x72', atlasKey: 'floor_3',          size: 32, animated: false, frameCount: 1 },
   floor_stairs:     { category: 'SCENE', source: '0x72', atlasKey: 'floor_stairs',    size: 32, animated: false, frameCount: 1 },
-  doors_leaf_closed: { category: 'SCENE', source: '0x72', atlasKey: 'doors_leaf_closed', size: 64, animated: false, frameCount: 1 },
+  doors_leaf_closed: { category: 'SCENE', source: '0x72', atlasKey: 'doors_leaf_closed', size: 32, animated: false, frameCount: 1 },
+  column:           { category: 'SCENE', source: '0x72', atlasKey: 'column',           size: 32, animated: false, frameCount: 1 },
+  column_wall:      { category: 'SCENE', source: '0x72', atlasKey: 'column_wall',      size: 32, animated: false, frameCount: 1 },
+  hole:             { category: 'SCENE', source: '0x72', atlasKey: 'hole',             size: 32, animated: false, frameCount: 1 },
+  floor_spikes_anim_f0: { category: 'SCENE', source: '0x72', atlasKey: 'floor_spikes_anim_f0', size: 32, animated: false, frameCount: 1 },
+  button_red_up:    { category: 'SCENE', source: '0x72', atlasKey: 'button_red_up',    size: 32, animated: false, frameCount: 1 },
+  button_blue_up:   { category: 'SCENE', source: '0x72', atlasKey: 'button_blue_up',   size: 32, animated: false, frameCount: 1 },
+  lever_left:       { category: 'SCENE', source: '0x72', atlasKey: 'lever_left',       size: 32, animated: false, frameCount: 1 },
+  lever_right:      { category: 'SCENE', source: '0x72', atlasKey: 'lever_right',      size: 32, animated: false, frameCount: 1 },
 
   // ── UI ──────────────────────────────────────────────────────────────────
   ui_heart_full:   { category: 'UI', source: '0x72', atlasKey: 'ui_heart_full',   size: 26, animated: false, frameCount: 1 },
