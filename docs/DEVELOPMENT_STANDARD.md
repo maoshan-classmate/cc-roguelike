@@ -15,7 +15,7 @@
 - 不得在 `assets/inbox/` 以外的裸路径引用外部 URL
 - 素材集成后立即更新对应 config 文件，不得遗留"裸索引"
 
-**流程**：`人类放资源到 inbox → Agent 移动到 src/assets/ → 分析 → 分类 → 更新 sprites.ts → 更新 docs/sprites.md → 编译验证`
+**流程**：`人类放资源到 inbox → Agent 移动到 src/assets/ → 分析 → 分类 → 更新 sprites.ts → 同步 sprite-inventory.md + sprite-viewer.html → 编译验证`
 
 ### 1.2 Sprite Registry（强制）
 
@@ -29,7 +29,7 @@
 1. 从 `assets/inbox/` 移动资源到 `src/assets/` 分类路径
 2. 在 `SPRITE_REGISTRY` 添加条目：`category` / `source` / `atlasKey` / `size` / `animated` / `frameCount`
 3. 独立 spritesheet 需新增专用绘制函数（如 `drawPumpkinDudeSprite`）
-4. 更新 `docs/sprites/0x72-classification.md` 或 `docs/sprites.md`
+4. 同步 `docs/sprite-inventory.md` 和 `sprite-viewer.html`
 5. 编译验证
 
 ### 1.3 配置分散原则
@@ -249,7 +249,7 @@ server/config/
 
 **你必须**：
 - 新增 config/接口/工具函数后，同步更新 `docs/project-structure.md`
-- 资源集成后更新 `docs/sprites.md` 和 `docs/sprites/0x72-classification.md`
+- 资源集成后同步 `docs/sprite-inventory.md` 和 `sprite-viewer.html`（三文件铁律）
 - Bug 修复后写入 `docs/bugs/`
 
 ### 10.2 TODO 管理
@@ -268,7 +268,7 @@ server/config/
 ### 资源管理
 - [ ] 外源素材统一在 `assets/inbox/`，不裸引 URL
 - [ ] sprite 扩展已写入 `src/config/sprites.ts` 的 `SPRITE_REGISTRY`
-- [ ] sprite 扩展已同步到 `docs/sprites/0x72-classification.md`
+- [ ] sprite 扩展已同步到 `docs/sprite-inventory.md` 和 `sprite-viewer.html`
 - [ ] 所有 config 的 `spriteName` 值是 Registry key，无两层查找
 - [ ] 渲染代码用 `is0x72Sprite()` 检测 source，不依赖 `!== undefined`
 

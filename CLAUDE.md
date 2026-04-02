@@ -101,7 +101,6 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 │   ├── room/              # 游戏房间逻辑（GameRoom）
 │   └── index.ts           # Express + Socket.io 入口
 ├── docs/                  # 项目文档
-│   ├── sprites.md         # 精灵使用规范
 │   ├── components.md      # 组件库索引
 │   ├── bugs/              # Bug 记录（按系统分类）
 │   └── todo/              # 待办任务（按领域分类）
@@ -170,7 +169,6 @@ grep "目标sprite名" sprite-viewer.html docs/sprite-inventory.md src/config/sp
 - [UI 设计规范](docs/ui-design.md)
 - **[组件库](docs/components.md)** — 像素风格组件索引与 API 文档
 - **[Pencil UI 设计架构](pencil/docs/architecture.md)** — 三层架构（Tokens/Components/Pages），组件索引+目录结构
-- [精灵/资源使用](docs/sprites.md)
 - **[贴图资产清单（交互）](sprite-viewer.html)** — 109个精灵可视化，0x72+Kenney双源，代码引用可点击
 - **[贴图资产清单（文档）](docs/sprite-inventory.md)** — 与上方HTML 1:1 对应，静态检索
 - [Playwright MCP](docs/playwright.md)
@@ -302,7 +300,7 @@ npx tsc --noEmit                                # TypeScript 编译检查
 
 - **地牢渲染**: collisionGrid 从服务端发给客户端，逐 tile 渲染（视觉=物理边界），不再用 room 矩形画墙框
 - **敌人碰撞半径** `ENEMY_RADIUS`: basic=16, fast=14, tank=20, boss=28（按 size 计算，不要硬编码固定值）
-- **角色精灵**: 只有 front/back 两个方向，左右用 Canvas `ctx.scale(-1,1)` 翻转（不要用 `rotate(π)`），索引 2-5 是空白。0x72 精灵默认朝右，详见 [精灵文档](docs/sprites.md)
+- **角色精灵**: 只有 front/back 两个方向，左右用 Canvas `ctx.scale(-1,1)` 翻转（不要用 `rotate(π)`），索引 2-5 是空白。0x72 精灵默认朝右
 - **角色种族**: warrior=knight_m, ranger=elf_m, mage=wizzard_m, cleric=dwarf_m（⚠️同种族男女变体在游戏尺度下视觉不可区分，必须跨种族分配）
 - **怪物精灵**: roguelikeSheet perRow=56，最大索引 1679，超出即越界（如 1721/1725）
 - **地牢色系**: FLOOR=#3A2E2C, GRID=#504440, WALL=#5C4A3A, BG=#1A1210（网格线与底色色差须 >30 色阶才可见）
