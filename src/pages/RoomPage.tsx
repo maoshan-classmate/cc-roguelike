@@ -20,10 +20,10 @@ const PLAYER_COLORS = {
 const PLAYER_AVATARS = [PixelAvatarWarrior, PixelAvatarRanger, PixelAvatarMage, PixelAvatarHealer]
 
 const CHARACTER_CLASSES = [
-  { id: 'warrior', name: '战士', icon: PixelSword, color: '#4A9EFF', desc: '近战，高防御' },
-  { id: 'ranger', name: '游侠', icon: PixelShield, color: '#51CF66', desc: '远程，高速度' },
-  { id: 'mage', name: '法师', icon: PixelStar, color: '#FFA500', desc: '魔法，高攻击' },
-  { id: 'healer', name: '牧师', icon: PixelGem, color: '#9B59B6', desc: '治疗，辅助' },
+  { id: 'warrior', name: '战士', icon: PixelAvatarWarrior, color: '#4A9EFF', desc: '近战，高防御' },
+  { id: 'ranger', name: '游侠', icon: PixelAvatarRanger, color: '#51CF66', desc: '远程，高速度' },
+  { id: 'mage', name: '法师', icon: PixelAvatarMage, color: '#FFA500', desc: '魔法，高攻击' },
+  { id: 'cleric', name: '牧师', icon: PixelAvatarHealer, color: '#9B59B6', desc: '治疗，辅助' },
 ]
 
 export default function RoomPage() {
@@ -247,6 +247,7 @@ export default function RoomPage() {
                   player={player}
                   isHost={player?.id === hostId}
                   isLocalPlayer={isLocalPlayer}
+                  selectedClass={isLocalPlayer ? selectedClass : undefined}
                 />
               )
             })}

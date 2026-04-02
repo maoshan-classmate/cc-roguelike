@@ -43,11 +43,14 @@
 - [x] 在房间里，玩家切换职业后并没有正常显示。 — 2026-04-01 SocketServer.handleSelectClass 添加 room:player:update 广播；RoomPage 监听事件并调用 setPlayerCharacterType 更新其他玩家职业显示
 - [x] 怪物遇到障碍物之后就一直顶着障碍物了，避障有问题。 — 2026-04-01 GameRoom.updateEnemy() stuck 分支改为 8 方向逃逸尝试（±90°/±45°/±135°/180°/0°），而非只试一个垂直方向
 - [x] 有的时候角色可以穿墙。 — 2026-04-01 GameRoom.handlePlayerInput() 碰撞检测从 isWalkable 单点改为 isWalkableRadius(player, 16) 5点检测，与敌人一致
+- [x] 角色、怪物、场景贴图不匹配，需要参考贴图资产三文件重新选择，此外，完全废弃kenney相关贴图资产，与游戏主题不符 — 2026-04-02 P9团队E2E验证通过：零sprite错误，10条kenney死代码已清除，floor_stairs改为SPRITE_REGISTRY动态查找，weapon_anime_sword三文件同步
+- [x] 贴图资产三文件里面要删除kenney相关贴图资产，项目里面Kenney的相关资源也都要删除。 — 2026-04-02 Kenney目录已物理删除，src/assets/kenney/不存在，sprites.ts无kenney导入，GamePage.tsx/priteLoader.ts残留引用已修复
+- [x] 贴图资产三文件里面的角色精灵图引用遗漏。举个例子：战士knight目前只引用了knight_m_idle_anim_f0、knight_m_idle_anim_f1，但是knight_m_idle_anim_f2、knight_m_idle_anim_f3、knight_f_idle_anim_f0未被引用，其他资源也是一样。 — 2026-04-02 28条registry条目已补全（idle f2/f3×8 + run f0-3×16 + hit×4），characters.ts spriteName改为4帧数组，useGameRenderer.ts适配，tsc零error
+- [x] 目前游戏是打完当前关卡的怪物就自动进入下一层，应该是进入floor_stairs才到达下一层 — 2026-04-02 GameRoom.checkFloorCompletion()改为exitPoint碰撞检测（exitRange=40px）触发下一层
+- [x] 大厅选择角色时，法师和牧师的角色图标没有变更 — 2026-04-02 PixelPlayerSlot avatarComponents加入PixelStar，mage/cleric图标正确显示；2026-04-02 根因修复：PixelPlayerSlot传入selectedClass prop，本地玩家直接用selectedClass（响应式）而非player.characterType（Zustand异步），tsc零error，E2E验证通过
 ## 中优先级
 
 - [x] 多人游戏结束后回到房间，其他玩家在大厅里面无法找到那个房间。 — 2026-04-01 根因：endGame()删除房间+getAllRooms()过滤waiting+endGame从未被调用；修复：LobbyManager新增resetRoom()方法将房间重置为waiting状态，SocketServer.startStateBroadcast在game:end时调用resetRoom并广播lobby:list更新；E2E验证：playerb返回大厅房间列表自动显示无需刷新
-- [ ] 没有怪物图鉴系统
-- [ ] 没有职业系统
 - 
 ## 低优先级
 

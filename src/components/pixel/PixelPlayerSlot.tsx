@@ -20,6 +20,8 @@ interface PixelPlayerSlotProps {
   player?: { name: string; ready: boolean; id: string; characterType?: string }
   isHost?: boolean
   isLocalPlayer?: boolean
+  /** 本地玩家当前选择的职业（立即响应式），远程玩家传 undefined */
+  selectedClass?: string
 }
 
 const avatarComponents: Record<string, React.ComponentType<{ size?: number; color?: string }>> = {
@@ -27,6 +29,7 @@ const avatarComponents: Record<string, React.ComponentType<{ size?: number; colo
   PixelShield,
   PixelGem,
   PixelCrown,
+  PixelStar,
 }
 
 export function PixelPlayerSlot({
@@ -34,8 +37,14 @@ export function PixelPlayerSlot({
   player,
   isHost = false,
   isLocalPlayer = false,
+  selectedClass,
 }: PixelPlayerSlotProps) {
   const color = PLAYER_COLORS[index as keyof typeof PLAYER_COLORS]
+
+  // 本地玩家用 selectedClass（立即响应），远程玩家用 player.characterType
+  const avatarClass = isLocalPlayer
+    ? (selectedClass || player?.characterType || 'warrior')
+    : (player?.characterType || 'warrior')
 
   return (
     <div
@@ -68,7 +77,7 @@ export function PixelPlayerSlot({
       >
         {player && (
           <>
-            {React.createElement(avatarComponents[CLASS_AVATARS[player.characterType || 'warrior']] || PixelSword, { size: 48, color })}
+            {React.createElement(avatarComponents[CLASS_AVATARS[avatarClass]] || PixelSword, { size: 48, color })}
             {player.ready && (
               <div
                 style={{
