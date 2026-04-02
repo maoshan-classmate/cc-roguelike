@@ -20,7 +20,7 @@ export class LobbyManager {
       name,
       hostId,
       hostName,
-      players: [{ id: hostId, name: hostName, ready: false }],
+      players: [{ id: hostId, name: hostName, ready: false, characterType: 'warrior' }],
       maxPlayers,
       status: 'waiting'
     };
@@ -56,7 +56,7 @@ export class LobbyManager {
     // Check if already in room
     if (room.players.some(p => p.id === playerId)) return null;
 
-    room.players.push({ id: playerId, name: playerName, ready: false });
+    room.players.push({ id: playerId, name: playerName, ready: false, characterType: 'warrior' });
     return room;
   }
 
@@ -121,7 +121,7 @@ export class LobbyManager {
     const room = this.rooms.get(roomId);
     if (!room) return null;
     room.status = 'waiting';
-    room.players = [];
+    room.players.forEach(p => p.ready = false);
     return room;
   }
 
