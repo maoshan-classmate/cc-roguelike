@@ -3,9 +3,6 @@ import { CHARACTERS } from '../config/characters'
 import { ENEMIES } from '../config/enemies'
 import { ITEMS } from '../config/items'
 import {
-  drawCharacterSprite,
-  drawDungeonSprite,
-  drawSheetSprite,
   draw0x72Sprite,
   drawHPBar,
   drawBossCrown,
@@ -65,9 +62,6 @@ interface GameState {
 interface RenderDeps {
   user: any
   spritesLoaded: boolean
-  charSpriteSheet: HTMLImageElement
-  dungeonSpriteSheet: HTMLImageElement
-  sheetSpriteSheet: HTMLImageElement
   tileset2Atlas: HTMLImageElement
   lastAnimTime: React.MutableRefObject<number>
   prevPositions: React.MutableRefObject<Map<string, { x: number; y: number }>>
@@ -98,9 +92,6 @@ export function useGameRenderer(
     const {
       user,
       spritesLoaded,
-      charSpriteSheet,
-      dungeonSpriteSheet,
-      sheetSpriteSheet,
       tileset2Atlas,
       lastAnimTime,
       prevPositions,
@@ -136,7 +127,7 @@ export function useGameRenderer(
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
     // 绘制地牢
-    if (dungeon && dungeon.collisionGrid && spritesLoaded && dungeonSpriteSheet.complete) {
+    if (dungeon && dungeon.collisionGrid && spritesLoaded && tileset2Atlas.complete) {
       const tileSize = 32
       const grid = dungeon.collisionGrid
       const rows = grid.length
@@ -187,7 +178,11 @@ export function useGameRenderer(
       }
 
       if (dungeon.exitPoint) {
-        drawDungeonSprite(ctx, dungeonSpriteSheet, 23, dungeon.exitPoint.x, dungeon.exitPoint.y, tileSize)
+        const exitSprite = getSpriteEntry('floor_stairs')
+        if (exitSprite?.source === '0x72' && tileset2Atlas.complete) {
+          draw0x72Sprite(ctx, tileset2Atlas, exitSprite.atlasKey as string, dungeon.exitPoint.x, dungeon.exitPoint.y, tileSize)
+        }
+        // 无 Kenney fallback：0x72 不可用时直接跳过（占位符）
       }
     } else if (dungeon && dungeon.rooms) {
       const tileSize = 32
@@ -216,7 +211,11 @@ export function useGameRenderer(
         }
       }
       if (dungeon.exitPoint) {
-        drawDungeonSprite(ctx, dungeonSpriteSheet, 23, dungeon.exitPoint.x, dungeon.exitPoint.y, tileSize)
+        const exitSprite = getSpriteEntry('floor_stairs')
+        if (exitSprite?.source === '0x72' && tileset2Atlas.complete) {
+          draw0x72Sprite(ctx, tileset2Atlas, exitSprite.atlasKey as string, dungeon.exitPoint.x, dungeon.exitPoint.y, tileSize)
+        }
+        // 无 Kenney fallback：0x72 不可用时直接跳过（占位符）
       }
     } else {
       ctx.strokeStyle = '#3D2B3E'
@@ -236,8 +235,6 @@ export function useGameRenderer(
       if (spritesLoaded && tileset2Atlas.complete && is0x72Sprite(itemConfig.spriteName ?? '')) {
         const animSprite = getAnimSprite(itemConfig.spriteName ?? '', performance.now() - lastAnimTime.current)
         draw0x72Sprite(ctx, tileset2Atlas, animSprite, item.x, item.y, itemSize)
-      } else if (spritesLoaded && dungeonSpriteSheet.complete) {
-        drawDungeonSprite(ctx, dungeonSpriteSheet, itemConfig.spriteIndex, item.x, item.y, itemSize)
       } else {
         ctx.fillStyle = itemConfig.color
         ctx.fillRect(item.x - 14, item.y - 14, 28, 28)
@@ -273,12 +270,6 @@ export function useGameRenderer(
         if (tileset2Atlas.complete && is0x72Sprite(enemyConfig.spriteName ?? '')) {
           const animSprite = getAnimSprite(enemyConfig.spriteName ?? '', performance.now() - lastAnimTime.current)
           draw0x72Sprite(ctx, tileset2Atlas, animSprite, epos.x, epos.y, size)
-        } else if (enemyConfig.sheet === 'sheet' && sheetSpriteSheet.complete) {
-          drawSheetSprite(ctx, sheetSpriteSheet, enemyConfig.spriteIndex, epos.x, epos.y, size)
-        } else if (enemyConfig.sheet === 'dungeon' && dungeonSpriteSheet.complete) {
-          drawDungeonSprite(ctx, dungeonSpriteSheet, enemyConfig.spriteIndex, epos.x, epos.y, size)
-        } else if (charSpriteSheet.complete) {
-          drawCharacterSprite(ctx, charSpriteSheet, enemyConfig.spriteIndex, epos.x, epos.y, size)
         } else {
           ctx.fillStyle = enemyConfig.color
           ctx.fillRect(epos.x - size/2, epos.y - size/2, size, size)
@@ -354,14 +345,14 @@ export function useGameRenderer(
       const isLocal = player.id === user?.id
       const charConfig = CHARACTERS[player.characterType] || CHARACTERS.warrior
       const ppos = getRenderPos(player.id, player.x, player.y)
-      const size = getSpriteEntry(charConfig.spriteName?.front ?? '')?.size ?? 48
+      const idleFrame = (charConfig.spriteName?.front ?? [''])[0] ?? ''
+      const idleBase = idleFrame.replace(/_f\d+$/, '')
+      const size = getSpriteEntry(idleBase)?.size ?? 48
 
       if (!player.alive) {
         ctx.globalAlpha = 0.4
-        if (spritesLoaded && tileset2Atlas.complete && is0x72Sprite(charConfig.spriteName?.front ?? '')) {
-          draw0x72Sprite(ctx, tileset2Atlas, charConfig.spriteName?.front ?? '', ppos.x, ppos.y, size)
-        } else if (spritesLoaded && charSpriteSheet.complete) {
-          drawCharacterSprite(ctx, charSpriteSheet, charConfig.spriteIndex.front, ppos.x, ppos.y, size)
+        if (spritesLoaded && tileset2Atlas.complete && is0x72Sprite(idleFrame)) {
+          draw0x72Sprite(ctx, tileset2Atlas, idleFrame, ppos.x, ppos.y, size)
         } else {
           ctx.fillStyle = '#666'
           ctx.fillRect(ppos.x - size/2, ppos.y - size/2, size, size)
@@ -377,28 +368,30 @@ export function useGameRenderer(
       }
 
       let spriteIndex = charConfig.spriteIndex.front
-      let spriteName = charConfig.spriteName?.front
+      let spriteNameArr = charConfig.spriteName?.front ?? ['']
       let flipH = false
       if (player.angle !== undefined) {
         const angle = player.angle
         if (angle > Math.PI/4 && angle <= 3*Math.PI/4) {
           spriteIndex = charConfig.spriteIndex.back
-          spriteName = charConfig.spriteName?.back
+          spriteNameArr = charConfig.spriteName?.back ?? ['']
         } else if (angle > -Math.PI/4 && angle <= Math.PI/4) {
           spriteIndex = charConfig.spriteIndex.front
-          spriteName = charConfig.spriteName?.front
+          spriteNameArr = charConfig.spriteName?.front ?? ['']
           flipH = true
         } else if (angle > 3*Math.PI/4 || angle <= -3*Math.PI/4) {
           spriteIndex = charConfig.spriteIndex.front
-          spriteName = charConfig.spriteName?.front
+          spriteNameArr = charConfig.spriteName?.front ?? ['']
         } else {
           spriteIndex = charConfig.spriteIndex.front
-          spriteName = charConfig.spriteName?.front
+          spriteNameArr = charConfig.spriteName?.front ?? ['']
         }
       }
+      // 从帧数组提取第一帧（完整帧名，用于查表和动画）
+      const firstFrame = spriteNameArr[0] ?? ''
 
-      if (spritesLoaded && tileset2Atlas.complete && is0x72Sprite(spriteName ?? '')) {
-        const animSprite = getAnimSprite(spriteName ?? '', performance.now() - lastAnimTime.current)
+      if (spritesLoaded && tileset2Atlas.complete && is0x72Sprite(firstFrame)) {
+        const animSprite = getAnimSprite(firstFrame, performance.now() - lastAnimTime.current)
         if (flipH) {
           ctx.save()
           ctx.scale(-1, 1)
@@ -406,15 +399,6 @@ export function useGameRenderer(
           ctx.restore()
         } else {
           draw0x72Sprite(ctx, tileset2Atlas, animSprite, ppos.x, ppos.y, size)
-        }
-      } else if (spritesLoaded && charSpriteSheet.complete) {
-        if (flipH) {
-          ctx.save()
-          ctx.scale(-1, 1)
-          drawCharacterSprite(ctx, charSpriteSheet, spriteIndex, -ppos.x, ppos.y, size)
-          ctx.restore()
-        } else {
-          drawCharacterSprite(ctx, charSpriteSheet, spriteIndex, ppos.x, ppos.y, size)
         }
       } else {
         ctx.fillStyle = charConfig.color

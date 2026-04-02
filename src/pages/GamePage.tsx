@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
 import { useGameStore } from '../store/useGameStore'
 import { networkClient } from '../network/socket'
-import { roguelikeCharSheetPath, roguelikeDungeonSheetPath, roguelikeSheetPath } from '../assets/kenney'
 import { mainAtlasPath } from '../assets/0x72'
 import { useParticleSystem } from '../hooks/useParticleSystem'
 import { useDamageTexts } from '../hooks/useDamageTexts'
@@ -19,13 +18,7 @@ import {
   PixelStar,
 } from '../components/PixelIcons'
 
-// 加载精灵图
-const charSpriteSheet = new Image()
-charSpriteSheet.src = roguelikeCharSheetPath
-const dungeonSpriteSheet = new Image()
-dungeonSpriteSheet.src = roguelikeDungeonSheetPath
-const sheetSpriteSheet = new Image()
-sheetSpriteSheet.src = roguelikeSheetPath
+// 加载精灵图（仅 0x72 TilesetII，Kenney 已废弃）
 const tileset2Atlas = new Image()
 tileset2Atlas.src = mainAtlasPath
 
@@ -37,6 +30,96 @@ const SKILL_ICONS = [
   { name: '技能4', color: '#9B59B6' },
 ]
 const SkillIconComponents = [PixelSword, PixelShield, PixelBow, PixelStar]
+
+// 调试菜单组件
+function DebugMenu({
+  onTeleport,
+  onKillAll,
+  onToggleInvincible,
+  isInvincible
+}: {
+  onTeleport: (floor: number) => void
+  onKillAll: () => void
+  onToggleInvincible: () => void
+  isInvincible: boolean
+}) {
+  const [floorInput, setFloorInput] = useState('')
+
+  const handleTeleport = () => {
+    const floor = parseInt(floorInput)
+    if (floor >= 1 && floor <= 5) {
+      onTeleport(floor)
+    }
+  }
+
+  return (
+    <div style={{
+      position: 'absolute',
+      bottom: 60,
+      left: 10,
+      zIndex: 20,
+      background: 'rgba(0,0,0,0.9)',
+      border: '2px solid var(--pixel-gold)',
+      padding: 12,
+      fontFamily: 'Courier New, monospace',
+      fontSize: 12,
+    }}>
+      <div style={{ color: 'var(--pixel-gold)', marginBottom: 8, fontWeight: 'bold' }}>[ 调试菜单 ]</div>
+
+      {/* 跳关 */}
+      <div style={{ display: 'flex', gap: 4, marginBottom: 8 }}>
+        <input
+          type="number"
+          min="1"
+          max="5"
+          value={floorInput}
+          onChange={(e) => setFloorInput(e.target.value)}
+          placeholder="1-5"
+          style={{
+            width: 50,
+            background: 'var(--pixel-bg)',
+            border: '1px solid var(--pixel-brown)',
+            color: 'var(--pixel-gold)',
+            padding: '2px 4px',
+            fontFamily: 'Courier New',
+            fontSize: 11,
+          }}
+        />
+        <button
+          onClick={handleTeleport}
+          className="btn-pixel"
+          style={{ background: 'var(--pixel-brown)', fontSize: 11, padding: '2px 8px' }}
+        >
+          跳关
+        </button>
+      </div>
+
+      {/* 无敌开关 */}
+      <button
+        onClick={onToggleInvincible}
+        className="btn-pixel"
+        style={{
+          background: isInvincible ? 'var(--pixel-green)' : 'var(--pixel-dark)',
+          fontSize: 11,
+          padding: '4px 8px',
+          marginBottom: 8,
+          width: '100%',
+        }}
+      >
+        {isInvincible ? '[ 无敌 ON ]' : '[ 无敌 OFF ]'}
+      </button>
+
+      {/* 一键清怪 */}
+      <button
+        onClick={onKillAll}
+        className="btn-pixel"
+        style={{ background: 'var(--pixel-red)', fontSize: 11, padding: '4px 8px', width: '100%' }}
+      >
+        [ 一键清怪 ]
+      </button>
+    </div>
+  )
+}
 
 export default function GamePage() {
   const { roomId } = useParams<{ roomId: string }>()
@@ -62,6 +145,8 @@ export default function GamePage() {
   const mouseRef = useRef({ x: 0, y: 0, down: false })
   const animationRef = useRef<number | undefined>(undefined)
   const [spritesLoaded, setSpritesLoaded] = useState(false)
+  const [showDebug, setShowDebug] = useState(false)
+  const [isInvincible, setIsInvincible] = useState(false)
 
   const gameStateRef = useRef({
     players: [] as any[],
@@ -92,9 +177,6 @@ export default function GamePage() {
   const renderDeps = {
     user,
     spritesLoaded,
-    charSpriteSheet,
-    dungeonSpriteSheet,
-    sheetSpriteSheet,
     tileset2Atlas,
     lastAnimTime,
     prevPositions,
@@ -130,9 +212,6 @@ export default function GamePage() {
       })
 
     Promise.all([
-      loadSprite(charSpriteSheet, 'char'),
-      loadSprite(dungeonSpriteSheet, 'dungeon'),
-      loadSprite(sheetSpriteSheet, 'sheet'),
       loadSprite(tileset2Atlas, 'tileset2'),
     ]).then(() => setSpritesLoaded(true))
   }, [])
@@ -203,6 +282,10 @@ export default function GamePage() {
     const handleKeyDown = (e: KeyboardEvent) => {
       keysRef.current.add(e.key.toLowerCase())
       if (e.key === 'Escape') setPaused(!isPaused)
+      // 调试菜单快捷键 (D)
+      if (e.key === 'd' && import.meta.env.DEV) {
+        setShowDebug(prev => !prev)
+      }
       const skillKey = e.key
       if (['1', '2', '3', '4'].includes(skillKey) && !skillKeysDown.has(skillKey)) {
         skillKeysDown.add(skillKey)
@@ -306,6 +389,20 @@ export default function GamePage() {
     targetPositions.current.clear()
     reset()
     navigate(`/room/${roomId}`)
+  }
+
+  // 调试功能处理函数
+  const handleDebugTeleport = (targetFloor: number) => {
+    networkClient.emit('game:debug', { action: 'teleport', floor: targetFloor })
+  }
+
+  const handleDebugKillAll = () => {
+    networkClient.emit('game:debug', { action: 'killAll' })
+  }
+
+  const handleDebugToggleInvincible = () => {
+    networkClient.emit('game:debug', { action: 'setInvincible', invincible: !isInvincible })
+    setIsInvincible(!isInvincible)
   }
 
   const { gold, keys } = gameStateRef.current
@@ -418,6 +515,16 @@ export default function GamePage() {
             <button onClick={handleExit} className="btn-pixel" style={{ background: 'var(--pixel-brown)', minWidth: 160 }}>[ 返回大厅 ]</button>
           </div>
         </div>
+      )}
+
+      {/* 调试菜单 (仅 DEV 模式) */}
+      {import.meta.env.DEV && showDebug && (
+        <DebugMenu
+          onTeleport={handleDebugTeleport}
+          onKillAll={handleDebugKillAll}
+          onToggleInvincible={handleDebugToggleInvincible}
+          isInvincible={isInvincible}
+        />
       )}
     </div>
   )
