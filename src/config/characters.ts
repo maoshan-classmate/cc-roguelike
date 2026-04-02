@@ -109,16 +109,16 @@ export const CHARACTERS: Record<string, CharacterConfig> = {
     name: '牧师',
     // Kenney 索引 378,379
     spriteIndex: { front: 378, back: 379 },
-    // 0x72 TilesetII - 女性法师 (4帧 idle 动画，区别于男法师 wizzard_m)
+    // 0x72 TilesetII - 矮人男性 (4帧 idle 动画，区别于法师 wizzard_m)
     spriteName: {
-      front: ['wizzard_f_idle_anim_f0', 'wizzard_f_idle_anim_f1', 'wizzard_f_idle_anim_f2', 'wizzard_f_idle_anim_f3'],
-      back: ['wizzard_f_idle_anim_f0', 'wizzard_f_idle_anim_f1', 'wizzard_f_idle_anim_f2', 'wizzard_f_idle_anim_f3']
+      front: ['dwarf_m_idle_anim_f0', 'dwarf_m_idle_anim_f1', 'dwarf_m_idle_anim_f2', 'dwarf_m_idle_anim_f3'],
+      back: ['dwarf_m_idle_anim_f0', 'dwarf_m_idle_anim_f1', 'dwarf_m_idle_anim_f2', 'dwarf_m_idle_anim_f3']
     },
     spriteRun: {
-      front: ['wizzard_f_run_anim_f0', 'wizzard_f_run_anim_f1', 'wizzard_f_run_anim_f2', 'wizzard_f_run_anim_f3'],
-      back: ['wizzard_f_run_anim_f0', 'wizzard_f_run_anim_f1', 'wizzard_f_run_anim_f2', 'wizzard_f_run_anim_f3']
+      front: ['dwarf_m_run_anim_f0', 'dwarf_m_run_anim_f1', 'dwarf_m_run_anim_f2', 'dwarf_m_run_anim_f3'],
+      back: ['dwarf_m_run_anim_f0', 'dwarf_m_run_anim_f1', 'dwarf_m_run_anim_f2', 'dwarf_m_run_anim_f3']
     },
-    spriteHit: { front: 'wizzard_f_hit_anim_f0', back: 'wizzard_f_hit_anim_f0' },
+    spriteHit: { front: 'dwarf_m_hit_anim_f0', back: 'dwarf_m_hit_anim_f0' },
     color: '#9B59B6',
     hp: 70,
     attack: 8,

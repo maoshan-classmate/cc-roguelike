@@ -33,6 +33,7 @@ interface BulletState {
   vy: number
   friendly: boolean
   radius: number
+  ownerType: string
 }
 
 interface GameState {

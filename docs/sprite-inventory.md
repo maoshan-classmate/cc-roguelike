@@ -55,9 +55,10 @@ src/assets/
 | `elf_f_idle_anim_f0` | (128,4) | 16×28 | — | ❌ | |
 | `wizzard_m_idle_anim_f0` | (128,164) | 16×28 | 法师 mage 正面 | ✅ | `characters.ts:63` |
 | `wizzard_m_idle_anim_f1` | (144,164) | 16×28 | 法师 mage 背面 | ✅ | `characters.ts:63` |
-| `wizzard_f_idle_anim_f0` | (128,132) | 16×28 | 牧师 cleric 正面 | ✅ | `characters.ts:77` |
-| `wizzard_f_idle_anim_f1` | (144,132) | 16×28 | 牧师 cleric 背面 | ✅ | `characters.ts:77` |
-| `dwarf_m_idle_anim_f0` | (128,292) | 16×28 | — | ❌ | |
+| `wizzard_f_idle_anim_f0` | (128,132) | 16×28 | — | ❌ | |
+| `wizzard_f_idle_anim_f1` | (144,132) | 16×28 | — | ❌ | |
+| `dwarf_m_idle_anim_f0` | (128,292) | 16×28 | 牧师 cleric 正面 | ✅ | `characters.ts:77` |
+| `dwarf_m_idle_anim_f1` | (144,292) | 16×28 | 牧师 cleric 背面 | ✅ | `characters.ts:77` |
 | `dwarf_f_idle_anim_f0` | (128,260) | 16×28 | — | ❌ | |
 | `lizard_m_idle_anim_f0` | (128,228) | 16×28 | — | ❌ | |
 | `lizard_f_idle_anim_f0` | (128,196) | 16×28 | — | ❌ | |
@@ -69,7 +70,7 @@ src/assets/
 | warrior | `knight_m_idle_anim_f0` | `knight_m_idle_anim_f1` | #4A9EFF |
 | ranger | `elf_m_idle_anim_f0` | `elf_m_idle_anim_f1` | #51CF66 |
 | mage | `wizzard_m_idle_anim_f0` | `wizzard_m_idle_anim_f1` | #FFA500 |
-| cleric | `wizzard_f_idle_anim_f0` | `wizzard_f_idle_anim_f1` | #9B59B6 |
+| cleric | `dwarf_m_idle_anim_f0` | `dwarf_m_idle_anim_f1` | #9B59B6 |
 
 ---
 
@@ -126,7 +127,7 @@ src/assets/
 | `weapon_axe` | (341,74) | 9×21 | — | ❌ |
 | `weapon_katana` | (293,66) | 6×29 | — | ❌ |
 | `weapon_spear` | (309,161) | 6×30 | — | ❌ |
-| `weapon_mace` | (339,39) | 10×24 | — | ❌ |
+| `weapon_mace` | (339,39) | 10×24 | cleric子弹 | ✅ |
 | `weapon_hammer` | (307,39) | 10×24 | — | ❌ |
 | `weapon_big_hammer` | (291,26) | 10×37 | — | ❌ |
 | `weapon_anime_sword` | (322,65) | 12×30 | — | ✅ | `GamePage.tsx:410` |
@@ -143,7 +144,7 @@ src/assets/
 | `weapon_waraxe` | (324,168) | 12×23 | — | ❌ |
 | `weapon_throwing_axe` | (340,161) | 10×14 | — | ❌ |
 | `weapon_baton_with_spikes` | (323,41) | 10×22 | — | ❌ |
-| `weapon_green_magic_staff` | (340,129) | 8×30 | — | ❌ |
+| `weapon_green_magic_staff` | (340,129) | 8×30 | cleric武器,mage子弹 | ✅ |
 
 #### 职业→武器映射
 

@@ -235,6 +235,12 @@ npx tsc --noEmit                                # TypeScript 编译检查
 - 所有 0x72 精灵**默认朝右**，flipH=true 仅在向左移动时设置（angle ≈ ±π）
 - 武器/角色翻转用 `ctx.scale(-1,1)`，**禁止 `ctx.rotate(π)`**（180°旋转≠水平镜像）
 
+**角色种族视觉辨识度规则**（铁律）：
+- 0x72 atlas 有5大种族系列：knight（骑士）、elf（精灵）、wizzard（法师）、dwarf（矮人）、lizard（蜥蜴人）
+- 同系列内男女变体（如 `wizzard_m` vs `wizzard_f`）在 16×28px → 48px 放大后**视觉几乎无法区分**
+- **分配角色贴图时必须跨种族**，禁止同系列重复：warrior=knight_m, ranger=elf_m, mage=wizzard_m, **cleric=dwarf_m**
+- 未用种族变体（lizard_m/f, knight_f, elf_f, dwarf_f）可分配给未来新职业
+
 ## Playwright MCP 验证流程
 
 登录→创建房间→选择职业→准备→开始冒险（完整流程覆盖）
@@ -297,10 +303,14 @@ npx tsc --noEmit                                # TypeScript 编译检查
 - **地牢渲染**: collisionGrid 从服务端发给客户端，逐 tile 渲染（视觉=物理边界），不再用 room 矩形画墙框
 - **敌人碰撞半径** `ENEMY_RADIUS`: basic=16, fast=14, tank=20, boss=28（按 size 计算，不要硬编码固定值）
 - **角色精灵**: 只有 front/back 两个方向，左右用 Canvas `ctx.scale(-1,1)` 翻转（不要用 `rotate(π)`），索引 2-5 是空白。0x72 精灵默认朝右，详见 [精灵文档](docs/sprites.md)
+- **角色种族**: warrior=knight_m, ranger=elf_m, mage=wizzard_m, cleric=dwarf_m（⚠️同种族男女变体在游戏尺度下视觉不可区分，必须跨种族分配）
 - **怪物精灵**: roguelikeSheet perRow=56，最大索引 1679，超出即越界（如 1721/1725）
 - **地牢色系**: FLOOR=#3A2E2C, GRID=#504440, WALL=#5C4A3A, BG=#1A1210（网格线与底色色差须 >30 色阶才可见）
 - **职业速度** `CLASS_SPEED`: warrior=180, ranger=220, mage=180, cleric=190 (px/s)
 - **职业武器** class→weapon: warrior=sword(近战), ranger/mage=pistol(远程), cleric=staff(魔法杖)
+- **职业贴图分配** (必须跨种族): warrior=knight_m(骑士), ranger=elf_m(精灵), mage=wizzard_m(法师), cleric=dwarf_m(矮人)
+- **职业子弹贴图**: warrior/ranger=weapon_arrow, mage=weapon_green_magic_staff, cleric=weapon_mace
+- **职业武器贴图**: warrior=weapon_knight_sword, ranger=weapon_bow, mage=weapon_red_magic_staff, cleric=weapon_green_magic_staff
 - **职业映射** SocketServer validTypes: warrior/ranger/mage 直传，healer→cleric 映射，cleric→cleric 直传（客户端两种都可能发）
 - **4 技能槽**: dash/shield/heal/speed_boost 按职业不同排列
 - **碰撞半径**: `isWalkableRadius(x,y,r)` 检查中心+4角共5点

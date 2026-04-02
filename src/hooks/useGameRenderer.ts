@@ -42,11 +42,18 @@ const BULLET_COLORS: Record<string, string> = {
   cleric:  '#32CD32'
 }
 
+const BULLET_SPRITE: Record<string, string> = {
+  warrior: 'weapon_arrow',
+  ranger:  'weapon_arrow',
+  mage:    'weapon_green_magic_staff',
+  cleric:  'weapon_mace',
+}
+
 const WEAPON_SPRITE: Record<string, string> = {
   warrior: 'weapon_knight_sword',
   ranger:  'weapon_bow',
   mage:    'weapon_red_magic_staff',
-  cleric:  'weapon_red_magic_staff',
+  cleric:  'weapon_green_magic_staff',
 }
 
 interface GameState {
@@ -336,7 +343,8 @@ export function useGameRenderer(
       if (tileset2Atlas.complete) {
         const bulletAngle = Math.atan2(bullet.vy, bullet.vx)
         const bulletSize = Math.max((bullet.radius || 4) * 3, 10)
-        drawBulletSprite(ctx, tileset2Atlas, bullet.x, bullet.y, bulletAngle, bulletSize)
+        const bulletSprite = bullet.friendly ? (BULLET_SPRITE[bullet.ownerType] || 'weapon_arrow') : 'weapon_arrow'
+        drawBulletSprite(ctx, tileset2Atlas, bullet.x, bullet.y, bulletAngle, bulletSize, bulletSprite)
       }
     }
 

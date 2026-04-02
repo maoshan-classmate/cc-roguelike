@@ -48,6 +48,8 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
   wizzard_m_idle_anim_f1: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_m_idle_anim_f1', size: 48, animated: true,  frameCount: 4 },
   wizzard_f_idle_anim_f0: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_idle_anim_f0', size: 48, animated: true,  frameCount: 4 },
   wizzard_f_idle_anim_f1: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_idle_anim_f1', size: 48, animated: true,  frameCount: 4 },
+  dwarf_m_idle_anim_f0:   { category: 'CHARACTER', source: '0x72', atlasKey: 'dwarf_m_idle_anim_f0',   size: 48, animated: true,  frameCount: 4 },
+  dwarf_m_idle_anim_f1:   { category: 'CHARACTER', source: '0x72', atlasKey: 'dwarf_m_idle_anim_f1',   size: 48, animated: true,  frameCount: 4 },
   // wizzard_f_idle_anim_f2/f3: 存在于atlas但未被任何角色使用（cleric仅用f0/f1），不注册
   // orc_shaman_idle_anim_f0/f1: ⚠️ 已废弃，代码无引用，不注册
 
@@ -61,6 +63,8 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
   wizzard_m_idle_anim_f3: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_m_idle_anim_f3', size: 48, animated: true, frameCount: 4 },
   wizzard_f_idle_anim_f2: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_idle_anim_f2', size: 48, animated: true, frameCount: 4 },
   wizzard_f_idle_anim_f3: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_idle_anim_f3', size: 48, animated: true, frameCount: 4 },
+  dwarf_m_idle_anim_f2:   { category: 'CHARACTER', source: '0x72', atlasKey: 'dwarf_m_idle_anim_f2',   size: 48, animated: true, frameCount: 4 },
+  dwarf_m_idle_anim_f3:   { category: 'CHARACTER', source: '0x72', atlasKey: 'dwarf_m_idle_anim_f3',   size: 48, animated: true, frameCount: 4 },
   // run 动画帧（characters.ts spriteRun 配置，4帧）
   knight_m_run_anim_f0:  { category: 'CHARACTER', source: '0x72', atlasKey: 'knight_m_run_anim_f0',  size: 48, animated: true, frameCount: 4 },
   knight_m_run_anim_f1:  { category: 'CHARACTER', source: '0x72', atlasKey: 'knight_m_run_anim_f1',  size: 48, animated: true, frameCount: 4 },
@@ -78,11 +82,16 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
   wizzard_f_run_anim_f1: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_run_anim_f1', size: 48, animated: true, frameCount: 4 },
   wizzard_f_run_anim_f2: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_run_anim_f2', size: 48, animated: true, frameCount: 4 },
   wizzard_f_run_anim_f3: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_run_anim_f3', size: 48, animated: true, frameCount: 4 },
+  dwarf_m_run_anim_f0:   { category: 'CHARACTER', source: '0x72', atlasKey: 'dwarf_m_run_anim_f0',   size: 48, animated: true, frameCount: 4 },
+  dwarf_m_run_anim_f1:   { category: 'CHARACTER', source: '0x72', atlasKey: 'dwarf_m_run_anim_f1',   size: 48, animated: true, frameCount: 4 },
+  dwarf_m_run_anim_f2:   { category: 'CHARACTER', source: '0x72', atlasKey: 'dwarf_m_run_anim_f2',   size: 48, animated: true, frameCount: 4 },
+  dwarf_m_run_anim_f3:   { category: 'CHARACTER', source: '0x72', atlasKey: 'dwarf_m_run_anim_f3',   size: 48, animated: true, frameCount: 4 },
   // hit 动画帧
   knight_m_hit_anim_f0:  { category: 'CHARACTER', source: '0x72', atlasKey: 'knight_m_hit_anim_f0',  size: 48, animated: false, frameCount: 1 },
   elf_m_hit_anim_f0:     { category: 'CHARACTER', source: '0x72', atlasKey: 'elf_m_hit_anim_f0',      size: 48, animated: false, frameCount: 1 },
   wizzard_m_hit_anim_f0: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_m_hit_anim_f0', size: 48, animated: false, frameCount: 1 },
   wizzard_f_hit_anim_f0: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_hit_anim_f0', size: 48, animated: false, frameCount: 1 },
+  dwarf_m_hit_anim_f0:   { category: 'CHARACTER', source: '0x72', atlasKey: 'dwarf_m_hit_anim_f0',   size: 48, animated: false, frameCount: 1 },
 
   // ── MONSTER ────────────────────────────────────────────────────────────────
   goblin_idle_anim_f0:   { category: 'MONSTER', source: '0x72', atlasKey: 'goblin_idle_anim_f0',   size: 32, animated: true,  frameCount: 4 },
@@ -94,6 +103,7 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
   weapon_anime_sword:     { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_anime_sword',  size: 32, animated: false, frameCount: 1 },
   weapon_arrow:          { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_arrow',          size: 32, animated: false, frameCount: 1 },
   weapon_red_magic_staff: { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_red_magic_staff', size: 32, animated: false, frameCount: 1 },
+  weapon_green_magic_staff: { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_green_magic_staff', size: 32, animated: false, frameCount: 1 },
   weapon_axe:             { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_axe',             size: 32, animated: false, frameCount: 1 },
   weapon_katana:          { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_katana',          size: 32, animated: false, frameCount: 1 },
   weapon_mace:            { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_mace',            size: 32, animated: false, frameCount: 1 },
@@ -490,9 +500,10 @@ export function drawBulletSprite(
   img: HTMLImageElement,
   x: number, y: number,
   angle: number,
-  size: number = 12  // 子弹渲染大小
+  size: number = 12,  // 子弹渲染大小
+  spriteName: string = 'weapon_arrow'
 ): void {
-  const entry = SPRITE_ATLAS['weapon_arrow']
+  const entry = SPRITE_ATLAS[spriteName]
   if (!entry) {
     // Fallback: 纯色小圆
     ctx.fillStyle = '#FFD700'
