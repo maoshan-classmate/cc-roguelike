@@ -516,9 +516,10 @@ export function drawBulletSprite(
   }
   ctx.save()
   ctx.translate(x, y)
-  // 竖向贴图(如weapon_arrow 7×21)默认朝上，atan2角度0=向右，需补偿-π/2
+  // 竖向贴图(如weapon_arrow 7×21)默认朝上，atan2角度0=向右
+  // 需顺时针旋转90°(+π/2)使UP→RIGHT：ctx.rotate(0 + π/2) = π/2 ✅
   const isVertical = entry.h > entry.w
-  ctx.rotate(angle + (isVertical ? -Math.PI / 2 : 0))
+  ctx.rotate(angle + (isVertical ? Math.PI / 2 : 0))
   const scale = size / Math.max(entry.w, entry.h)
   const drawW = entry.w * scale
   const drawH = entry.h * scale
@@ -528,5 +529,47 @@ export function drawBulletSprite(
     ctx.shadowBlur = 6
   }
   ctx.drawImage(img, entry.x, entry.y, entry.w, entry.h, -drawW / 2, -drawH / 2, drawW, drawH)
+  ctx.restore()
+}
+
+/**
+ * 绘制魔法能量弹（纯 Canvas 生成，不依赖精灵贴图）
+ * 用于 mage（紫色魔法弹）和 cleric（绿色治疗弹）
+ * 三层结构：外层光晕 → 中层能量体 → 内层高光核心
+ */
+export function drawMagicOrb(
+  ctx: CanvasRenderingContext2D,
+  x: number, y: number,
+  size: number,
+  color: string,
+  innerColor: string = '#FFFFFF'
+): void {
+  const r = Math.max(size / 2, 3)
+  ctx.save()
+
+  // 外层光晕
+  ctx.globalAlpha = 0.35
+  ctx.shadowColor = color
+  ctx.shadowBlur = r * 2
+  ctx.fillStyle = color
+  ctx.beginPath()
+  ctx.arc(x, y, r, 0, Math.PI * 2)
+  ctx.fill()
+
+  // 中层能量体
+  ctx.shadowBlur = r
+  ctx.globalAlpha = 0.8
+  ctx.beginPath()
+  ctx.arc(x, y, r * 0.6, 0, Math.PI * 2)
+  ctx.fill()
+
+  // 内层高光核心
+  ctx.shadowBlur = 0
+  ctx.globalAlpha = 1
+  ctx.fillStyle = innerColor
+  ctx.beginPath()
+  ctx.arc(x, y, r * 0.25, 0, Math.PI * 2)
+  ctx.fill()
+
   ctx.restore()
 }

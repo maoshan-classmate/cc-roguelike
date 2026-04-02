@@ -9,6 +9,7 @@ import {
   drawNameTag,
   drawWeaponSprite,
   drawBulletSprite,
+  drawMagicOrb,
   getSpriteEntry,
   is0x72Sprite,
 } from '../config/sprites'
@@ -34,19 +35,9 @@ export function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
 }
 
-// 职业武器配置
-const BULLET_COLORS: Record<string, string> = {
-  warrior: '#FFD700',
-  ranger:  '#4A9EFF',
-  mage:    '#9B59B6',
-  cleric:  '#32CD32'
-}
-
+// 游侠箭矢贴图（战士近战无子弹，法师/牧师用Canvas生成效果）
 const BULLET_SPRITE: Record<string, string> = {
-  warrior: 'weapon_arrow',
-  ranger:  'weapon_arrow',
-  mage:    'weapon_green_magic_staff',
-  cleric:  'flask_big_green',
+  ranger: 'weapon_arrow',
 }
 
 const WEAPON_SPRITE: Record<string, string> = {
@@ -60,6 +51,7 @@ interface GameState {
   players: any[]
   enemies: any[]
   bullets: any[]
+  healWaves: any[]
   items: any[]
   gold: number
   keys: number
@@ -112,7 +104,7 @@ export function useGameRenderer(
       updateAndDrawDamageTexts,
     } = deps
 
-    const { players, enemies, bullets, items, dungeon } = gameStateRef.current
+    const { players, enemies, bullets, healWaves, items, dungeon } = gameStateRef.current
 
     // 计算插值 t (0~1)
     const stateInterval = 100
@@ -326,27 +318,77 @@ export function useGameRenderer(
     // 绘制伤害飘字
     updateAndDrawDamageTexts(ctx)
 
-    // 绘制子弹
+    // 绘制子弹 — 每种职业/敌人完全独立的渲染路径
     for (const bullet of bullets) {
-      const color = bullet.friendly
-        ? (BULLET_COLORS[bullet.ownerType] || '#4A9EFF')
-        : '#FF6B6B'
+      const ownerType = bullet.ownerType || 'warrior'
       const bulletAngle = Math.atan2(bullet.vy, bullet.vx)
       const bulletSize = Math.max((bullet.radius || 4) * 3, 10)
-      const bulletSprite = bullet.friendly ? (BULLET_SPRITE[bullet.ownerType] || 'weapon_arrow') : 'weapon_arrow'
 
-      // 先绘制贴图精灵，贴图优先
-      if (tileset2Atlas.complete) {
-        drawBulletSprite(ctx, tileset2Atlas, bullet.x, bullet.y, bulletAngle, bulletSize, bulletSprite, color)
-      } else {
-        // fallback: 纯色圆点
+      // ── 游侠：箭矢精灵贴图 ──
+      if (bullet.friendly && ownerType === 'ranger') {
+        if (tileset2Atlas.complete) {
+          drawBulletSprite(ctx, tileset2Atlas, bullet.x, bullet.y, bulletAngle, bulletSize, 'weapon_arrow', '#4A9EFF')
+        }
+        continue
+      }
+
+      // ── 法师：紫色魔法能量弹（Canvas 生成） ──
+      if (bullet.friendly && ownerType === 'mage') {
+        drawMagicOrb(ctx, bullet.x, bullet.y, bulletSize * 1.2, '#9B59B6')
+        continue
+      }
+
+      // ── 敌人子弹：红色能量弹（Canvas 生成） ──
+      if (!bullet.friendly) {
         ctx.save()
-        ctx.fillStyle = color
+        ctx.shadowColor = '#FF4444'
+        ctx.shadowBlur = 8
+        ctx.globalAlpha = 0.7
+        ctx.fillStyle = '#FF4444'
         ctx.beginPath()
-        ctx.arc(bullet.x, bullet.y, bullet.radius || 4, 0, Math.PI * 2)
+        ctx.arc(bullet.x, bullet.y, bulletSize * 0.5, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.globalAlpha = 1
+        ctx.fillStyle = '#FF8888'
+        ctx.beginPath()
+        ctx.arc(bullet.x, bullet.y, bulletSize * 0.2, 0, Math.PI * 2)
         ctx.fill()
         ctx.restore()
+        continue
       }
+
+      // ── 未知友好子弹 fallback ──
+      ctx.save()
+      ctx.fillStyle = '#4A9EFF'
+      ctx.beginPath()
+      ctx.arc(bullet.x, bullet.y, bullet.radius || 4, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.restore()
+    }
+
+    // 绘制治疗波（牧师 AoE，从牧师位置扩散的绿色波纹）
+    for (const wave of (healWaves || [])) {
+      const progress = wave.age / 400 // 0→1 over 400ms
+      const r = wave.radius || progress * wave.maxRadius
+      const alpha = 1 - progress
+      ctx.save()
+      // 外层波纹
+      ctx.globalAlpha = alpha * 0.6
+      ctx.strokeStyle = '#32CD32'
+      ctx.lineWidth = 4
+      ctx.shadowColor = '#32CD32'
+      ctx.shadowBlur = 12
+      ctx.beginPath()
+      ctx.arc(wave.x, wave.y, r, 0, Math.PI * 2)
+      ctx.stroke()
+      // 内层波纹
+      ctx.globalAlpha = alpha * 0.3
+      ctx.lineWidth = 2
+      ctx.shadowBlur = 6
+      ctx.beginPath()
+      ctx.arc(wave.x, wave.y, r * 0.6, 0, Math.PI * 2)
+      ctx.stroke()
+      ctx.restore()
     }
 
     // 绘制玩家

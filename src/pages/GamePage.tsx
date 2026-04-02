@@ -152,6 +152,7 @@ export default function GamePage() {
     players: [] as any[],
     enemies: [] as any[],
     bullets: [] as any[],
+    healWaves: [] as any[],
     items: [] as any[],
     gold: 0,
     keys: 0,
@@ -254,6 +255,7 @@ export default function GamePage() {
         players: state.players || [],
         enemies: state.enemies || [],
         bullets: state.bullets || [],
+        healWaves: state.healWaves || [],
         items: state.items || [],
         gold: state.gold || 0,
         keys: state.keys || 0,
@@ -265,7 +267,7 @@ export default function GamePage() {
     networkClient.on('game:floor:start', (data: any) => {
       prevPositions.current.clear()
       targetPositions.current.clear()
-      gameStateRef.current = { players: [], enemies: [], bullets: [], items: [], gold: 0, keys: 0, dungeon: null }
+      gameStateRef.current = { players: [], enemies: [], bullets: [], healWaves: [], items: [], gold: 0, keys: 0, dungeon: null }
       floorSessionRef.current = data.floor
       gameSessionRef.current = data.gameSession
       lastStateTime.current = performance.now()

@@ -99,3 +99,20 @@
 - `handleLogin` / `handleRegister` 必须同时设置 `accountSessions` Map
 - 否则 disconnect handler 找不到 entry → 30s 宽限期失效 → 页面刷新直接被踢
 - `handleDisconnect` 依赖 `accountSessions.get(accountId)` 设置定时器
+
+### 16. 子弹渲染独立性（Bug #58-59）
+- 四个职业+敌人是五条**完全独立**的渲染路径，用 `continue` 隔离
+- 改一个职业的子弹时**不允许**影响其他职业的 if 分支
+- 子弹渲染循环结构：ranger(mage(cleric(enemy(fallback，每条路径独立结束
+- **warrior 不产生子弹**（服务端 sword 近战），循环中无需 warrior 分支
+
+### 17. 机制变更≠视觉调参
+- 用户说"改XXX效果"时，先确认是**视觉调整**还是**游戏机制变更**
+- 视觉调整：只改客户端渲染代码（如颜色、大小、发光）
+- 机制变更：需要改服务端+客户端（如治疗弹→治疗波，需要改 Combat.ts + GameRoom.ts + 渲染）
+- **典型错误**：治疗波从"飞行子弹"改成"AoE脉冲"，只在渲染层画波纹，没改服务端机制→5轮失败
+
+### 18. 竖向精灵旋转补偿方向
+- 0x72 竖向贴图（h>w，如 weapon_arrow 7×21）默认朝上
+- `ctx.rotate(angle + π/2)` 使其朝向飞行方向（+π/2 = 顺时针90° = UP→RIGHT）
+- **注意是 `+π/2` 不是 `-π/2`**，`-π/2` 会导致所有竖向子弹方向反转180°

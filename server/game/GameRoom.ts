@@ -64,7 +64,6 @@ export interface BulletState {
   friendly: boolean;
   piercing: number;
   radius: number;
-  healing?: boolean;
 }
 
 export interface GameState {
@@ -74,6 +73,7 @@ export interface GameState {
   players: PlayerState[];
   enemies: EnemyState[];
   bullets: BulletState[];
+  healWaves: HealWaveState[];
   items: { id: string; x: number; y: number; type: string }[];
   boss?: EnemyState;
   floorCompleted: boolean;
@@ -86,12 +86,24 @@ export interface GameState {
   };
 }
 
+// 牧师治疗波（AoE 脉冲，从牧师位置扩散）
+export interface HealWaveState {
+  id: string;
+  x: number;
+  y: number;
+  radius: number;
+  maxRadius: number;
+  age: number;       // ms
+  ownerId: string;
+}
+
 export class GameRoom {
   private roomId: string;
   private db: Database;
   private players: Map<string, PlayerState> = new Map();
   private enemies: Map<string, EnemyState> = new Map();
   private bullets: Map<string, BulletState> = new Map();
+  private healWaves: HealWaveState[] = [];
   private items: { id: string; x: number; y: number; type: string }[] = [];
   private dungeonGenerator: DungeonGenerator;
   private combat: Combat;
@@ -183,6 +195,7 @@ export class GameRoom {
     this.currentFloor = floor;
     this.enemies.clear();
     this.bullets.clear();
+    this.healWaves = [];
     this.items = [];
 
     const seed = this.floorSeeds[floor - 1];
@@ -369,6 +382,13 @@ export class GameRoom {
       // Check collisions
       this.combat.checkBulletCollision(bullet);
     }
+
+    // Update heal waves (expand radius, remove expired)
+    this.healWaves = this.healWaves.filter(w => {
+      w.age += dt * 1000;
+      w.radius = (w.age / 400) * w.maxRadius; // 400ms expand to max
+      return w.age < 400;
+    });
 
     // Item pickup
     this.checkItemPickup();
@@ -631,6 +651,7 @@ export class GameRoom {
       players: Array.from(this.players.values()),
       enemies: Array.from(this.enemies.values()),
       bullets: Array.from(this.bullets.values()),
+      healWaves: this.healWaves,
       items: this.items,
       floorCompleted: false,
       dungeon: this.currentDungeon ? {
@@ -643,7 +664,7 @@ export class GameRoom {
     };
   }
 
-  spawnBullet(ownerId: string, x: number, y: number, angle: number, damage: number, friendly: boolean, ownerType: string = 'warrior', healing: boolean = false): void {
+  spawnBullet(ownerId: string, x: number, y: number, angle: number, damage: number, friendly: boolean, ownerType: string = 'warrior'): void {
     const speed = GAME_CONFIG.BULLET_SPEED;
     const id = `bullet_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
@@ -659,7 +680,6 @@ export class GameRoom {
       friendly,
       piercing: 1,
       radius: GAME_CONFIG.BULLET_RADIUS,
-      healing
     });
   }
 
@@ -702,6 +722,28 @@ export class GameRoom {
     const player = this.players.get(playerId);
     if (!player || !player.alive) return;
     player.hp = Math.min(player.hpMax, player.hp + amount);
+  }
+
+  spawnHealWave(ownerId: string, x: number, y: number, healAmount: number): void {
+    const maxRadius = 80;
+    // Instant AoE heal
+    for (const [id, player] of this.players) {
+      if (!player.alive) continue;
+      if (player.hp >= player.hpMax) continue;
+      const dist = Math.hypot(player.x - x, player.y - y);
+      if (dist <= maxRadius) {
+        this.healPlayer(id, healAmount);
+      }
+    }
+    // Spawn visual wave
+    this.healWaves.push({
+      id: `wave_${Date.now()}_${Math.random().toString(36).slice(2)}`,
+      x, y,
+      radius: 0,
+      maxRadius,
+      age: 0,
+      ownerId,
+    });
   }
 
   removeBullet(bulletId: string): void {
@@ -758,5 +800,6 @@ export class GameRoom {
     this.players.clear();
     this.enemies.clear();
     this.bullets.clear();
+    this.healWaves = [];
   }
 }
