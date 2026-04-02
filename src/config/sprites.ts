@@ -96,6 +96,8 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
   weapon_red_magic_staff: { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_red_magic_staff', size: 32, animated: false, frameCount: 1 },
   weapon_axe:             { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_axe',             size: 32, animated: false, frameCount: 1 },
   weapon_katana:          { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_katana',          size: 32, animated: false, frameCount: 1 },
+  weapon_mace:            { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_mace',            size: 32, animated: false, frameCount: 1 },
+  weapon_hammer:          { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_hammer',          size: 32, animated: false, frameCount: 1 },
   weapon_bow:             { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_bow',             size: 32, animated: false, frameCount: 1 },
 
   // ── ITEM ─────────────────────────────────────────────────────────────────
