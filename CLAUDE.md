@@ -164,7 +164,6 @@ grep "目标sprite名" sprite-viewer.html docs/sprite-inventory.md src/config/sp
 ## 索引
 
 - [项目结构](docs/project-structure.md)
-- [完整资源审计](docs/resource-audit.md) — 像素级精灵分析，索引→内容映射
 - [调试经验 + Bug 模式](docs/debugging.md)
 - [UI 设计规范](docs/ui-design.md)
 - **[组件库](docs/components.md)** — 像素风格组件索引与 API 文档
