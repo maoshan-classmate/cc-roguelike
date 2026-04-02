@@ -103,10 +103,25 @@ grep "目标sprite名" sprite-viewer.html docs/sprite-inventory.md src/config/sp
 ```
 
 **已知同步历史**：
-- `floor_stairs` → source=kenney, atlasKey=23, category=SCENE（三文件一致）
-- `bullet_kenney` → source=kenney, atlasKey=35, category=ITEM（三文件一致）
-- `orc_shaman_idle_anim_f0/f1` → ⚠️ 已废弃，代码无引用，不注册
-- `wizzard_f_idle_anim_f2/f3` → 存在于atlas但未被使用，不注册
+- `floor_stairs` → source=0x72, atlasKey=23, category=SCENE；三文件一致，但**渲染路径硬编码** drawDungeonSprite(23) 绕过 SPRITE_REGISTRY（见下方架构风险）
+- `bullet_kenney` → ⚠️ 已废弃，代码无引用
+- `weapon_anime_sword` → sprites.ts有注册，代码有引用，但HTML/MD标记u:false（需人工确认）
+- `weapon_mace` / `weapon_hammer` → sprites.ts曾缺失，已补齐
+
+**sprite-audit agent 局限性（需人工补充核查）**：
+- 只检查 registry 是否有缺失条目，不检查 `u:false` 标记准确性
+- 不自动验证 HTML vs MD 的 x/y/w/h 坐标一致性
+- weapon_anime_sword 漏标事件：HTML/MD标记未使用但代码有引用
+- 修复后需手动 `grep` 核对关键条目的坐标一致性
+
+**sprite-fix 局限性（需人工补枪）**：
+- 只补缺失条目（registry有→无），不修复已存在条目间的坐标/尺寸不一致
+- WEAPON 类 HTML vs MD 坐标差异需人工确认实际 atlas 坐标后手动同步
+
+**red-team 深度发现（架构风险）**：
+- `floor_stairs` 渲染：**硬编码 drawDungeonSprite(23)**，完全绕过 SPRITE_REGISTRY，是三文件"假同步"的典型
+- `spriteRun` / `spriteHit` 配置（characters.ts）：定义但**渲染器从未使用**，属于死代码
+- Bug #50 根因：PixelPlayerSlot 用 CLASS_AVATARS 映射到剑/盾/星星/宝石，应改用 PixelAvatarWarrior/Ranger/Mage/Healer
 
 ## 索引
 
@@ -246,8 +261,7 @@ npx tsc --noEmit                                # TypeScript 编译检查
 - **弃用文件**：`src/assets/0x72/index.ts` 和 `spriteRegistry.ts` 为弃用，运行时代码只读 `src/config/sprites.ts`
 - **异步竞态**：DB 写 + 内存写双保险，`handleRoomStart` 优先读内存
 - **Session refs 重置**：组件 unmount 时必须重置 `gameSessionRef`，否则旧状态污染新游戏
-
-## 删除废弃文件前先 grep 确认无引用
+- **Zustand + immer 渲染失效**：immer proxy 对象引用不变时不触发重渲染。本地玩家头像应优先用 React state（如 `selectedClass`）而非 Zustand store（如 `player.characterType`）
 
 删除文件前：`grep -r "文件名" src/ --include="*.ts" --include="*.tsx"`；特别注意 `ui-optimization.md` 可能引用 `PixelSprites.tsx`
 
