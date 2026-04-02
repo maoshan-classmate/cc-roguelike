@@ -68,6 +68,48 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 - 最终必须输出总结行（成功/失败 + 统计数据）
 - 不得以任何理由跳过公告输出
 
+## 快速上手
+
+**首次开发**（按顺序执行）：
+1. `npm install` — 安装依赖
+2. `npm run dev` — 启动前后端（前端3000 + 后端3001）
+3. 打开 http://localhost:3000 — 验证页面可访问
+4. `npx tsc --noEmit` — 确认零 TS 错误
+
+**日常开发**：
+- `npm run dev` — 重启前后端
+- `taskkill //PID <pid> //F && sleep 2 && npm run dev` — 强制重启
+- DebugMenu 按 `D` 键 — 调出调试菜单（teleport/killAll/setInvincible）
+
+**Commit 前必查**：
+- sprite 文件有变更？ → `/sprite-audit` 审查
+- `npx tsc --noEmit` — 零 error 才能提交
+
+---
+
+## 项目结构
+
+```
+./
+├── src/                    # React 前端（Vite，端口3000）
+│   ├── config/            # 配置文件（sprites.ts/characters.ts/enemies.ts/items.ts）
+│   ├── components/        # React 组件（像素风格组件库）
+│   ├── hooks/             # 自定义 Hooks
+│   ├── pages/            # 页面（GamePage/LoginPage 等）
+│   └── assets/            # 静态资源（kenney/0x72 精灵图）
+├── server/                # Node.js 后端（端口3001）
+│   ├── room/              # 游戏房间逻辑（GameRoom）
+│   └── index.ts           # Express + Socket.io 入口
+├── docs/                  # 项目文档
+│   ├── sprites.md         # 精灵使用规范
+│   ├── components.md      # 组件库索引
+│   ├── bugs/              # Bug 记录（按系统分类）
+│   └── todo/              # 待办任务（按领域分类）
+└── sprite-viewer.html     # 贴图资产可视化预览（交互）
+```
+
+---
+
 ## 项目概述
 
 **游戏**：局域网多人联机 Roguelike 闯关游戏
@@ -118,10 +160,7 @@ grep "目标sprite名" sprite-viewer.html docs/sprite-inventory.md src/config/sp
 - 只补缺失条目（registry有→无），不修复已存在条目间的坐标/尺寸不一致
 - WEAPON 类 HTML vs MD 坐标差异需人工确认实际 atlas 坐标后手动同步
 
-**red-team 深度发现（架构风险）**：
-- `floor_stairs` 渲染：**硬编码 drawDungeonSprite(23)**，完全绕过 SPRITE_REGISTRY，是三文件"假同步"的典型
-- `spriteRun` / `spriteHit` 配置（characters.ts）：定义但**渲染器从未使用**，属于死代码
-- Bug #50 根因：PixelPlayerSlot 用 CLASS_AVATARS 映射到剑/盾/星星/宝石，应改用 PixelAvatarWarrior/Ranger/Mage/Healer
+**red-team 深度发现（架构风险）**：详见 [架构问题](docs/todo/architecture.md)
 
 ## 索引
 
