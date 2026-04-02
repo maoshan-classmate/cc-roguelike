@@ -5,7 +5,6 @@ import { useRoomStore } from '../store/useRoomStore'
 import { networkClient } from '../network/socket'
 import {
   PixelSword, PixelShield, PixelGem, PixelCrown, PixelStar, PixelSkull, PixelDragon,
-  PixelAvatarWarrior, PixelAvatarRanger, PixelAvatarMage, PixelAvatarHealer
 } from '../components/PixelIcons'
 import { BlurText, GlareHover } from '../components/animations'
 import { PixelPanel, PixelPlayerSlot, PixelButton, PixelCard } from '../components/pixel'
@@ -17,13 +16,11 @@ const PLAYER_COLORS = {
   3: 'var(--player-4)'
 }
 
-const PLAYER_AVATARS = [PixelAvatarWarrior, PixelAvatarRanger, PixelAvatarMage, PixelAvatarHealer]
-
 const CHARACTER_CLASSES = [
-  { id: 'warrior', name: '战士', icon: PixelAvatarWarrior, color: '#4A9EFF', desc: '近战，高防御' },
-  { id: 'ranger', name: '游侠', icon: PixelAvatarRanger, color: '#51CF66', desc: '远程，高速度' },
-  { id: 'mage', name: '法师', icon: PixelAvatarMage, color: '#FFA500', desc: '魔法，高攻击' },
-  { id: 'cleric', name: '牧师', icon: PixelAvatarHealer, color: '#9B59B6', desc: '治疗，辅助' },
+  { id: 'warrior', name: '战士', icon: PixelSword, color: '#4A9EFF', desc: '近战，高防御' },
+  { id: 'ranger', name: '游侠', icon: PixelShield, color: '#51CF66', desc: '远程，高速度' },
+  { id: 'mage', name: '法师', icon: PixelStar, color: '#FFA500', desc: '魔法，高攻击' },
+  { id: 'cleric', name: '牧师', icon: PixelGem, color: '#9B59B6', desc: '治疗，辅助' },
 ]
 
 export default function RoomPage() {
