@@ -7,13 +7,8 @@ class NetworkClient {
   connect() {
     const token = useAuthStore.getState().token
 
-    // If already connected but no token, reconnect with token
-    if (this.socket?.connected && !token) {
-      this.socket.disconnect()
-      this.socket = null
-    }
-
-    if (this.socket?.connected) return
+    // 防止重复连接：socket 已存在（connecting 或 connected）直接返回
+    if (this.socket) return
 
     // Socket.io 走 Vite proxy（开发模式）
     // 客户端访问 http://<服务端IP>:3000，proxy 转发到 localhost:3001
@@ -45,6 +40,11 @@ class NetworkClient {
   emit(event: string, data?: any) {
     if (this.socket?.connected) {
       this.socket.emit(event, data)
+    } else if (this.socket) {
+      // 正在连接中：等连接建立后再发送
+      this.socket.once('connect', () => {
+        this.socket?.emit(event, data)
+      })
     }
   }
 

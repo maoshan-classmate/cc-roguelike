@@ -72,3 +72,30 @@
 ### 10. 碰撞网格空数组危险 Fallback
 - `isWalkable()` 在 `collisionGrid.length === 0` 时返回 `true`（允许穿墙）
 - 修复：空网格时返回 `false`
+
+### 11. Canvas 水平翻转陷阱（Bug #54）
+- **错误**：`ctx.rotate(π)` 是 180° 旋转，会让横向精灵上下颠倒，不是水平镜像
+- **正确**：`ctx.save() + ctx.scale(-1, 1) + 绘制 + ctx.restore()`
+- 翻转后坐标需取负：`draw0x72Sprite(ctx, atlas, sprite, -ppos.x, ppos.y, size)`
+- **根因**：rotate 变换围绕原点旋转整个坐标系，scale(-1,1) 才是 X 轴镜像
+
+### 12. Socket.io 防重连守卫（Bug #55）
+- **错误**：`if (this.socket?.connected) return` — 允许 connecting 态创建第二个 socket
+- **正确**：`if (this.socket) return` — 只要 socket 对象存在就阻止新建
+- **触发场景**：React StrictMode 双渲染，第一次 render 创建 socket（connecting），第二次 render 时第一个还在 connecting，`?.connected` 为 false 于是再创建一个
+
+### 13. 服务端断线重连同步恢复（Bug #55）
+- **错误**：reconnect 路径的 session 恢复放在 `.then()` 异步回调里
+- **正确**：reconnect 必须同步恢复（立即 `this.sessions.set(socket.id, session)`）
+- **根因**：客户端 connect 后立刻发 `room:join` 等事件，异步 `.then()` 来不及执行，`requireAuth` 找不到 session
+- 新连接（无 disconnectTimer）可以用异步（没有后续事件急迫性）
+
+### 14. emit() 连接中缓冲（Bug #55）
+- **错误**：`if (!this.socket?.connected) return` — connecting 态事件被静默丢弃
+- **正确**：connecting 态用 `.once('connect', () => this.socket?.emit(...))` 缓冲
+- 页面刷新后 RoomPage 挂载时立刻发 `room:join`，此时 socket 可能还在 connecting
+
+### 15. accountSessions 必须全覆盖（Bug #55）
+- `handleLogin` / `handleRegister` 必须同时设置 `accountSessions` Map
+- 否则 disconnect handler 找不到 entry → 30s 宽限期失效 → 页面刷新直接被踢
+- `handleDisconnect` 依赖 `accountSessions.get(accountId)` 设置定时器

@@ -165,6 +165,7 @@ export default function GamePage() {
   const lastStateTime = useRef(performance.now())
   const lastAnimTime = useRef(performance.now())
   const lastSentAngleRef = useRef<number | null>(null)
+  const facingAngleRef = useRef<number | null>(null)
   const attackFlashRef = useRef(0)
   const prevAttackRef = useRef(false)
   const floorSessionRef = useRef<number>(0)
@@ -199,6 +200,13 @@ export default function GamePage() {
   useEffect(() => {
     if (user) setLocalPlayerId(user.id)
   }, [user])
+
+  // Ensure network connection on mount (handles page refresh)
+  useEffect(() => {
+    if (!networkClient.isConnected()) {
+      networkClient.connect()
+    }
+  }, [])
 
   // 预加载精灵图
   useEffect(() => {
@@ -345,9 +353,15 @@ export default function GamePage() {
         return
       }
 
-      const rawDx = mouseRef.current.x - localPlayer.x
-      const rawDy = mouseRef.current.y - localPlayer.y
-      const angle = Math.atan2(rawDy, rawDx)
+      // 角色朝向跟随移动方向，而非鼠标位置
+      const isMoving = dx !== 0 || dy !== 0
+      let angle: number
+      if (isMoving) {
+        angle = Math.atan2(dy, dx)
+        facingAngleRef.current = angle
+      } else {
+        angle = facingAngleRef.current ?? Math.atan2(mouseRef.current.y - localPlayer.y, mouseRef.current.x - localPlayer.x)
+      }
 
       const now = performance.now()
       if (now - lastInputTime >= 33) {

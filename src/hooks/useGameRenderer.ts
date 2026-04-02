@@ -375,17 +375,13 @@ export function useGameRenderer(
         if (angle > Math.PI/4 && angle <= 3*Math.PI/4) {
           spriteIndex = charConfig.spriteIndex.back
           spriteNameArr = charConfig.spriteName?.back ?? ['']
-        } else if (angle > -Math.PI/4 && angle <= Math.PI/4) {
+        } else if (angle > 3*Math.PI/4 || angle <= -3*Math.PI/4) {
+          // 朝左移动 → 翻转精灵（默认朝右）
           spriteIndex = charConfig.spriteIndex.front
           spriteNameArr = charConfig.spriteName?.front ?? ['']
           flipH = true
-        } else if (angle > 3*Math.PI/4 || angle <= -3*Math.PI/4) {
-          spriteIndex = charConfig.spriteIndex.front
-          spriteNameArr = charConfig.spriteName?.front ?? ['']
-        } else {
-          spriteIndex = charConfig.spriteIndex.front
-          spriteNameArr = charConfig.spriteName?.front ?? ['']
         }
+        // 其他角度（含朝右）→ 默认朝右，不翻转
       }
       // 从帧数组提取第一帧（完整帧名，用于查表和动画）
       const firstFrame = spriteNameArr[0] ?? ''
@@ -409,10 +405,22 @@ export function useGameRenderer(
       }
 
       const pAngle = player.angle ?? 0
+      const facingRight = pAngle > -Math.PI / 2 && pAngle <= Math.PI / 2
       const wSprite = WEAPON_SPRITE[player.characterType] || 'weapon_knight_sword'
       const isMelee = player.characterType === 'warrior'
+      const flashVal = isLocal ? (deps as any).attackFlashRef?.current || 0 : 0
       if (tileset2Atlas.complete) {
-        drawWeaponSprite(ctx, tileset2Atlas, wSprite, ppos.x, ppos.y, pAngle, 48, isLocal ? (deps as any).attackFlashRef?.current || 0 : 0, isMelee)
+        if (!facingRight) {
+          // 朝左：先平移到角色位置，水平翻转，再绘制武器（angle=0，位置0,0）
+          ctx.save()
+          ctx.translate(ppos.x, ppos.y)
+          ctx.scale(-1, 1)
+          drawWeaponSprite(ctx, tileset2Atlas, wSprite, 0, 0, 0, 48, flashVal, isMelee)
+          ctx.restore()
+        } else {
+          // 朝右：正常绘制
+          drawWeaponSprite(ctx, tileset2Atlas, wSprite, ppos.x, ppos.y, 0, 48, flashVal, isMelee)
+        }
       }
 
       drawHPBar(ctx, ppos.x - 24, ppos.y - 34, 48, 6, player.hp, player.hpMax, charConfig.color)

@@ -85,6 +85,8 @@ export default function RoomPage() {
     if (networkClient.isConnected()) {
       networkClient.emit('room:join', { roomId })
     } else {
+      // 页面刷新后需要重新连接
+      networkClient.connect()
       networkClient.getSocket()?.once('connect', () => {
         networkClient.emit('room:join', { roomId })
       })

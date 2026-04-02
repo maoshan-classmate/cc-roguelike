@@ -17,7 +17,9 @@ export class SocketServer {
   private lobbyManager: LobbyManager;
   private gameManager: GameManager;
   private sessions: Map<string, Session> = new Map();
+  private accountSessions: Map<string, { session: Session; socketId: string; disconnectTimer?: NodeJS.Timeout }> = new Map();
   private stateUpdateInterval: NodeJS.Timeout | null = null;
+  private static readonly RECONNECT_GRACE_MS = 30000; // 30s 宽限期
 
   constructor(io: Server, authManager: AuthManager, lobbyManager: LobbyManager, gameManager: GameManager) {
     this.io = io;
@@ -38,16 +40,42 @@ export class SocketServer {
       if (token) {
         const sessionData = this.authManager.verifyToken(token);
         if (sessionData) {
-          // Restore session from token
-          this.authManager.getCharacter(sessionData.accountId).then(character => {
-            const session: Session = {
-              accountId: sessionData.accountId,
-              username: sessionData.username,
-              characterId: character?.id || ''
-            };
-            this.sessions.set(socket.id, session);
-            console.log(`🔌 Session restored for ${sessionData.username}`);
-          });
+          // RECONNECT 优先：检查是否有等待断线的 session（同步恢复，不等 DB）
+          const existing = this.accountSessions.get(sessionData.accountId);
+          if (existing && existing.disconnectTimer) {
+            // 断线重连：同步恢复 session，取消宽限期
+            clearTimeout(existing.disconnectTimer);
+            this.sessions.delete(existing.socketId);
+            this.sessions.set(socket.id, existing.session);
+            this.accountSessions.set(sessionData.accountId, {
+              session: existing.session,
+              socketId: socket.id
+            });
+            // 重新加入 socket.io room
+            if (existing.session.currentRoom) {
+              socket.join(`room:${existing.session.currentRoom}`);
+            }
+            console.log(`🔌 Reconnect: ${sessionData.username}, session restored SYNCHRONOUSLY`);
+            // 后台刷新 characterId（不阻塞）
+            this.authManager.getCharacter(sessionData.accountId).then(ch => {
+              if (ch) existing.session.characterId = ch.id;
+            });
+          } else {
+            // 新连接：需要 DB 查询获取 characterId（异步）
+            this.authManager.getCharacter(sessionData.accountId).then(character => {
+              const session: Session = {
+                accountId: sessionData.accountId,
+                username: sessionData.username,
+                characterId: character?.id || ''
+              };
+              this.sessions.set(socket.id, session);
+              this.accountSessions.set(sessionData.accountId, {
+                session,
+                socketId: socket.id
+              });
+              console.log(`🔌 Session restored for ${sessionData.username}`);
+            });
+          }
         } else {
           // Token invalid or expired — notify client
           socket.emit('auth:error', { code: 'TOKEN_INVALID', message: '登录已失效，请重新登录' });
@@ -103,6 +131,7 @@ export class SocketServer {
         characterId: result.user!.character!.id
       };
       this.sessions.set(socket.id, session);
+      this.accountSessions.set(session.accountId, { session, socketId: socket.id });
       socket.emit(AuthMessages.RESULT, { success: true, user: result.user, token: result.token });
     } else {
       socket.emit(AuthMessages.RESULT, { success: false, error: result.error });
@@ -118,6 +147,7 @@ export class SocketServer {
         characterId: result.user!.character?.id || ''
       };
       this.sessions.set(socket.id, session);
+      this.accountSessions.set(result.user!.id, { session, socketId: socket.id });
       socket.emit(AuthMessages.RESULT, { success: true, user: result.user, token: result.token });
     } else {
       socket.emit(AuthMessages.RESULT, { success: false, error: result.error });
@@ -217,6 +247,13 @@ export class SocketServer {
       const room = this.lobbyManager.leaveRoom(session.currentRoom, session.accountId);
       socket.leave(`room:${session.currentRoom}`);
 
+      // Cancel any pending disconnect grace period (user intentionally left)
+      const acEntry = this.accountSessions.get(session.accountId);
+      if (acEntry?.disconnectTimer) {
+        clearTimeout(acEntry.disconnectTimer);
+        acEntry.disconnectTimer = undefined;
+      }
+
       if (room) {
         socket.to(`room:${room.id}`).emit(RoomMessages.LEAVE_PUSH, {
           playerId: session.accountId,
@@ -311,7 +348,8 @@ export class SocketServer {
         warrior: 'warrior',
         ranger: 'ranger',
         mage: 'mage',
-        healer: 'cleric'
+        healer: 'cleric',
+        cleric: 'cleric'
       };
       const serverType = validTypes[data.characterType];
       if (!serverType) return;
@@ -367,21 +405,41 @@ export class SocketServer {
 
   private handleDisconnect(socket: Socket): void {
     const session = this.sessions.get(socket.id);
-    if (session && session.currentRoom) {
-      const room = this.lobbyManager.leaveRoom(session.currentRoom, session.accountId);
-      // 如果房间正在游戏中，从 GameRoom 移除断线玩家
-      if (room && room.status === 'playing') {
-        const gameRoom = this.gameManager.getRoom(session.currentRoom);
-        if (gameRoom) {
-          gameRoom.removePlayer(session.accountId);
-          if (gameRoom.getPlayerCount() === 0) {
-            this.gameManager.removeRoom(session.currentRoom);
+    if (!session) {
+      console.log(`🔌 Client disconnected: ${socket.id} (no session)`);
+      return;
+    }
+
+    const accountId = session.accountId;
+    // Remove socket.id mapping immediately (socket is dead)
+    this.sessions.delete(socket.id);
+
+    // Start grace period — don't remove player immediately (handles page refresh)
+    const disconnectTimer = setTimeout(() => {
+      // Grace period expired: actually remove player from room/game
+      if (session.currentRoom) {
+        const room = this.lobbyManager.leaveRoom(session.currentRoom, accountId);
+        if (room && room.status === 'playing') {
+          const gameRoom = this.gameManager.getRoom(session.currentRoom);
+          if (gameRoom) {
+            gameRoom.removePlayer(accountId);
+            if (gameRoom.getPlayerCount() === 0) {
+              this.gameManager.removeRoom(session.currentRoom);
+            }
           }
         }
       }
+      this.accountSessions.delete(accountId);
+      console.log(`🔌 Grace period expired for ${session.username}, removed from room`);
+    }, SocketServer.RECONNECT_GRACE_MS);
+
+    // Update accountSessions with timer
+    const existing = this.accountSessions.get(accountId);
+    if (existing) {
+      existing.disconnectTimer = disconnectTimer;
     }
-    this.sessions.delete(socket.id);
-    console.log(`🔌 Client disconnected: ${socket.id}`);
+
+    console.log(`🔌 Client disconnected: ${socket.id} (${session.username}), ${SocketServer.RECONNECT_GRACE_MS / 1000}s grace period started`);
   }
 
   private startStateBroadcast(): void {

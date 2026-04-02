@@ -231,6 +231,10 @@ npx tsc --noEmit                                # TypeScript 编译检查
 
 **新资产引入流程**：解析→语义分类(CHARACTER/MONSTER/WEAPON/ITEM/SCENE/UI)→持久化(TS+MD)→替换
 
+**精灵朝向规则**（详见 [调试经验](docs/debugging.md) #11）：
+- 所有 0x72 精灵**默认朝右**，flipH=true 仅在向左移动时设置（angle ≈ ±π）
+- 武器/角色翻转用 `ctx.scale(-1,1)`，**禁止 `ctx.rotate(π)`**（180°旋转≠水平镜像）
+
 ## Playwright MCP 验证流程
 
 登录→创建房间→选择职业→准备→开始冒险（完整流程覆盖）
@@ -292,11 +296,12 @@ npx tsc --noEmit                                # TypeScript 编译检查
 
 - **地牢渲染**: collisionGrid 从服务端发给客户端，逐 tile 渲染（视觉=物理边界），不再用 room 矩形画墙框
 - **敌人碰撞半径** `ENEMY_RADIUS`: basic=16, fast=14, tank=20, boss=28（按 size 计算，不要硬编码固定值）
-- **角色精灵**: 只有 front/back 两个方向，左右用 Canvas `ctx.scale(-1,1)` 翻转，索引 2-5 是空白
+- **角色精灵**: 只有 front/back 两个方向，左右用 Canvas `ctx.scale(-1,1)` 翻转（不要用 `rotate(π)`），索引 2-5 是空白。0x72 精灵默认朝右，详见 [精灵文档](docs/sprites.md)
 - **怪物精灵**: roguelikeSheet perRow=56，最大索引 1679，超出即越界（如 1721/1725）
 - **地牢色系**: FLOOR=#3A2E2C, GRID=#504440, WALL=#5C4A3A, BG=#1A1210（网格线与底色色差须 >30 色阶才可见）
 - **职业速度** `CLASS_SPEED`: warrior=180, ranger=220, mage=180, cleric=190 (px/s)
 - **职业武器** class→weapon: warrior=sword(近战), ranger/mage=pistol(远程), cleric=staff(魔法杖)
+- **职业映射** SocketServer validTypes: warrior/ranger/mage 直传，healer→cleric 映射，cleric→cleric 直传（客户端两种都可能发）
 - **4 技能槽**: dash/shield/heal/speed_boost 按职业不同排列
 - **碰撞半径**: `isWalkableRadius(x,y,r)` 检查中心+4角共5点
 - **客户端插值**: lerp(prev, target, t) 平滑服务端 10Hz 同步
@@ -310,6 +315,7 @@ npx tsc --noEmit                                # TypeScript 编译检查
 - **异步竞态**：DB 写 + 内存写双保险，`handleRoomStart` 优先读内存
 - **Session refs 重置**：组件 unmount 时必须重置 `gameSessionRef`，否则旧状态污染新游戏
 - **Zustand + immer 渲染失效**：immer proxy 对象引用不变时不触发重渲染。本地玩家头像应优先用 React state（如 `selectedClass`）而非 Zustand store（如 `player.characterType`）
+- **更多模式详见** [调试经验 + Bug 模式](docs/debugging.md) — Canvas翻转/Socket重连/断线宽限期等
 
 删除文件前：`grep -r "文件名" src/ --include="*.ts" --include="*.tsx"`；特别注意 `ui-optimization.md` 可能引用 `PixelSprites.tsx`
 

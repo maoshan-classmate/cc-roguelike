@@ -47,10 +47,13 @@
 - [x] 贴图资产三文件里面要删除kenney相关贴图资产，项目里面Kenney的相关资源也都要删除。 — 2026-04-02 Kenney目录已物理删除，src/assets/kenney/不存在，sprites.ts无kenney导入，GamePage.tsx/priteLoader.ts残留引用已修复
 - [x] 贴图资产三文件里面的角色精灵图引用遗漏。举个例子：战士knight目前只引用了knight_m_idle_anim_f0、knight_m_idle_anim_f1，但是knight_m_idle_anim_f2、knight_m_idle_anim_f3、knight_f_idle_anim_f0未被引用，其他资源也是一样。 — 2026-04-02 28条registry条目已补全（idle f2/f3×8 + run f0-3×16 + hit×4），characters.ts spriteName改为4帧数组，useGameRenderer.ts适配，tsc零error
 - [x] 目前游戏是打完当前关卡的怪物就自动进入下一层，应该是进入floor_stairs才到达下一层 — 2026-04-02 GameRoom.checkFloorCompletion()改为exitPoint碰撞检测（exitRange=40px）触发下一层
-- [ ] 【**重新打开**】 房间中选择角色时，玩家左侧的职业图标与选择职业下面的职业图标不一致（底部选择器的图标要同步成玩家左侧的职业图标） — 2026-04-02 PixelPlayerSlot avatarComponents加入PixelStar，mage/cleric图标正确显示；2026-04-02 根因修复：PixelPlayerSlot传入selectedClass prop，本地玩家直接用selectedClass（响应式）而非player.characterType（Zustand异步），tsc零error，E2E验证通过
+- [x] 房间中选择角色时，玩家左侧的职业图标与选择职业下面的职业图标不一致（底部选择器的图标要同步成玩家左侧的职业图标） — 2026-04-02 PixelPlayerSlot avatarComponents加入PixelStar，mage/cleric图标正确显示；2026-04-02 根因修复：PixelPlayerSlot传入selectedClass prop，本地玩家直接用selectedClass（响应式）而非player.characterType（Zustand异步），tsc零error，E2E验证通过
 - [x] 房间中多次变更职业，但是进入游戏后职业变更没有生效。
 - [x] 游戏失败后选择返回房间，房间里面玩家信息丢失。
-- [ ] 
+- [x] 游戏中角色移动不会转向（往左移动角色朝向应该是左，往右应该是右），考虑是否存在没有使用的贴图。 — 2026-04-02 GamePage.tsx angle从鼠标方向改为移动方向，添加facingAngleRef保持静止朝向
+- [x] 角色的武器朝向不应该随着鼠标移动，而是随着角色的朝向移动。 — 2026-04-02 随Bug#53修复自动解决（weapon使用player.angle渲染）
+- [x] 在房间中或游戏中时，页面刷新后，游戏信息丢失。 — 2026-04-02 三层根因修复：①服务端accountSessions Map+30s宽限期+reconnect同步恢复(session不进异步.then) ②客户端socket.ts connect()防重连守卫(if this.socket return,避免StrictMode双渲染创建双socket) ③客户端emit()支持connecting态缓冲 ④RoomPage/GamePage挂载时确保connect()
+- [x] 牧师角色贴图使用错误（目前是战士的贴图）。 — 2026-04-02 SocketServer validTypes添加cleric键，修复客户端发'cleric'被静默丢弃的映射遗漏
 ## 中优先级
 
 - [x] 多人游戏结束后回到房间，其他玩家在大厅里面无法找到那个房间。 — 2026-04-01 根因：endGame()删除房间+getAllRooms()过滤waiting+endGame从未被调用；修复：LobbyManager新增resetRoom()方法将房间重置为waiting状态，SocketServer.startStateBroadcast在game:end时调用resetRoom并广播lobby:list更新；E2E验证：playerb返回大厅房间列表自动显示无需刷新
