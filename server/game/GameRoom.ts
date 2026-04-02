@@ -557,7 +557,24 @@ export class GameRoom {
       if (enemy.alive) aliveEnemies++;
     }
 
-    if (aliveEnemies === 0) {
+    if (aliveEnemies === 0 && this.currentDungeon?.exitPoint) {
+      // Check if any player is touching the floor_stairs (exitPoint)
+      const exitX = this.currentDungeon.exitPoint.x;
+      const exitY = this.currentDungeon.exitPoint.y;
+      const exitRange = 40; // 碰撞检测范围
+
+      let playerAtExit = false;
+      for (const player of this.players.values()) {
+        if (!player.alive) continue;
+        const dist = Math.hypot(player.x - exitX, player.y - exitY);
+        if (dist < exitRange) {
+          playerAtExit = true;
+          break;
+        }
+      }
+
+      if (!playerAtExit) return; // 玩家还没到楼梯，不触发
+
       if (this.currentFloor >= GAME_CONFIG.FLOOR_COUNT) {
         // Game complete!
         this.running = false;
@@ -693,6 +710,35 @@ export class GameRoom {
 
   getPlayerCount(): number {
     return this.players.size;
+  }
+
+  // 调试命令处理
+  handleDebugCommand(playerId: string, action: string, params?: any): void {
+    const player = this.players.get(playerId);
+    if (!player) return;
+
+    switch (action) {
+      case 'teleport':
+        // 跳转到指定楼层
+        if (params?.floor && params.floor >= 1 && params.floor <= 5) {
+          this.startFloor(params.floor);
+        }
+        break;
+      case 'killAll':
+        // 一键清怪：标记所有敌人死亡
+        for (const enemy of this.enemies.values()) {
+          enemy.state = 'dying';
+          enemy.deathTimer = 0;
+          enemy.alive = false;
+        }
+        break;
+      case 'setInvincible':
+        // 设置无敌状态
+        if (typeof params?.invincible === 'boolean') {
+          player.invincible = params.invincible ? 999 : 0;
+        }
+        break;
+    }
   }
 
   destroy(): void {

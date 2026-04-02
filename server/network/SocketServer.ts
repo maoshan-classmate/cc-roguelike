@@ -74,6 +74,7 @@ export class SocketServer {
       // Game handlers
       socket.on(GameMessages.INPUT, (data: any) => this.handleGameInput(socket, data));
       socket.on(GameMessages.CHAT, (data: { message: string }) => this.handleGameChat(socket, data));
+      socket.on(GameMessages.DEBUG, (data: { action: string; floor?: number; invincible?: boolean }) => this.handleGameDebug(socket, data));
 
       // Disconnect
       socket.on('disconnect', () => this.handleDisconnect(socket));
@@ -347,6 +348,20 @@ export class SocketServer {
         message: data.message,
         ts: Date.now()
       });
+    });
+  }
+
+  private handleGameDebug(socket: Socket, data: { action: string; floor?: number; invincible?: boolean }): void {
+    // 只在 DEV 模式处理调试命令
+    if (process.env.NODE_ENV === 'production') return;
+
+    this.requireAuth(socket, (session) => {
+      if (!session.currentRoom) return;
+
+      const gameRoom = this.gameManager.getRoom(session.currentRoom);
+      if (!gameRoom) return;
+
+      gameRoom.handleDebugCommand(session.accountId, data.action, data);
     });
   }
 

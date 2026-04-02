@@ -61,7 +61,8 @@ export const GameMessages = {
   BOSS_PHASE: 'game:boss:phase',
   END: 'game:end',
   CHAT: 'game:chat',
-  CHAT_PUSH: 'game:chat:push'
+  CHAT_PUSH: 'game:chat:push',
+  DEBUG: 'game:debug'
 } as const;
 
 // 聊天消息
