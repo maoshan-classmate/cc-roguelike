@@ -120,6 +120,6 @@ EOF
 
 # --- Output structured JSON ---
 escaped_context=$(escape_for_json "$CONTEXT")
-printf '{"systemMessage":" [✅ AI项目主权声明已注入]AI完全自主开发，人类请给出需求]","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$escaped_context"
+printf '{"systemMessage":" [✅ AI项目主权声明已注入]AI完全自主开发，人类请给出需求","hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext":"%s"}}\n' "$escaped_context"
 
 exit 0

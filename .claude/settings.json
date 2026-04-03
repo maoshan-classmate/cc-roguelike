@@ -32,6 +32,19 @@
           }
         ]
       }
+    ],
+"UserPromptSubmit": [
+      {
+        "matcher": "又错|还不行|怎么搞|原地打转|能不能靠谱|不行啊|为什么还不行|你怎么又|质量太差|重新做|换个方法|是不是有问题|到底能不能|什么意思|这不是bug吗|你确定|认真的|开玩笑|服了|逆天",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ${CLAUDE_PROJECT_DIR}/.claude/scripts/hook-pressure.sh",
+            "timeout": 5,
+            "statusMessage":"[开始施压]"
+          }
+        ]
+      }
     ]
   }
 }
