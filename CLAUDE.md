@@ -79,7 +79,7 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 **日常开发**：
 - `npm run dev` — 重启前后端
 - `taskkill //PID <pid> //F && sleep 2 && npm run dev` — 强制重启
-- DebugMenu 按 `D` 键 — 调出调试菜单（teleport/killAll/setInvincible）
+- DebugMenu 按 `Home` 键 — 调出调试菜单（teleport/killAll/setInvincible）
 
 **Commit 前必查**：
 - sprite 文件有变更？ → `/sprite-audit` 审查
@@ -188,7 +188,7 @@ npx tsc --noEmit                                # TypeScript 编译检查
 
 ## AI 调试工具
 
-**DebugMenu**（按 `D` 键，DEV模式专用，**非作弊工具**）：
+**DebugMenu**（按 `Home` 键，DEV模式专用，**非作弊工具**）：
 - 服务端：`GameRoom.handleDebugCommand()`，生产环境安全（`NODE_ENV !== 'production'`）
 - `teleport` → 跳关（floor 1-5）
 - `killAll` → 一键清怪

@@ -292,8 +292,8 @@ export default function GamePage() {
     const handleKeyDown = (e: KeyboardEvent) => {
       keysRef.current.add(e.key.toLowerCase())
       if (e.key === 'Escape') setPaused(!isPaused)
-      // 调试菜单快捷键 (D)
-      if (e.key === 'd' && import.meta.env.DEV) {
+      // 调试菜单快捷键 (Home)
+      if (e.key === 'Home' && import.meta.env.DEV) {
         setShowDebug(prev => !prev)
       }
       const skillKey = e.key
