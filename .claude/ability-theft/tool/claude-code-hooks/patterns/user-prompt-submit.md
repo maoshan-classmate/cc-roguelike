@@ -1,19 +1,46 @@
 # UserPromptSubmit Hook 模式
 
 ## 用途
-用户提交消息时匹配关键词，激活行为干预。
+用户提交消息时触发自定义逻辑（内容审查、关键词检测、行为注入等）。
+
+## ⚠️ 踩坑 1：不支持 matcher
+
+**`UserPromptSubmit` 不支持 matcher 字段，写了会被静默忽略。**
+
+不支持 matcher 的事件完整列表：`UserPromptSubmit`、`Stop`、`TeammateIdle`、`TaskCreated`、`TaskCompleted`、`WorktreeCreate`、`WorktreeRemove`、`CwdChanged`。
+
+> **踩坑经过**（2026-04-03）：给 UserPromptSubmit 配了中文关键词 matcher，hook 完全不触发。调查发现 matcher 被静默忽略——不是匹配失败，而是整个字段被跳过。关键词匹配必须移到脚本内部实现。
+
+## ⚠️ 踩坑 2：数据通过 stdin JSON 传递，不是环境变量
+
+**`UserPromptSubmit` 通过 stdin JSON 传数据，不是 `$ARGUMENTS` 环境变量。**
+
+stdin JSON 格式：
+```json
+{
+  "session_id": "abc123",
+  "transcript_path": "/path/to/transcript.jsonl",
+  "cwd": "/current/working/directory",
+  "permission_mode": "default",
+  "hook_event_name": "UserPromptSubmit",
+  "prompt": "用户输入的文本"
+}
+```
+
+> **踩坑经过**（2026-04-03）：脚本用 `$ARGUMENTS` 做关键词匹配，结果始终为空，脚本直接 exit 0 跳过。改为从 stdin 读 JSON 提取 prompt 后恢复正常。
 
 ## hooks.json 注册
+
+**正确写法**（无 matcher，每次用户提交都触发，脚本内部过滤）：
 
 ```json
 {
   "UserPromptSubmit": [
     {
-      "matcher": "try harder|别偷懒|又错了|还不行|怎么搞|stop giving|you broke|third time|降智|原地打转|能不能靠谱|认真点|不行啊|为什么还不行|你怎么又|换个方法|stop spinning|figure it out|you keep failing|加油|再试试|质量太差|重新做|PUA模式|怎么又失败",
       "hooks": [
         {
           "type": "command",
-          "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/frustration-trigger.sh",
+          "command": "bash ${CLAUDE_PROJECT_DIR}/.claude/hooks/user-prompt-handler.sh",
           "timeout": 5
         }
       ]
@@ -22,64 +49,54 @@
 }
 ```
 
-**注意**：`UserPromptSubmit` 的 matcher 是**正则表达式**，匹配用户的原始输入文本。这与 `PostToolUse`（精确字符串匹配工具名）不同。
+**错误写法**（matcher 被静默忽略）：
 
-## Matcher 关键词设计
+```json
+{
+  "UserPromptSubmit": [
+    {
+      "matcher": "关键词1|关键词2",
+      "hooks": [{ "type": "command", "command": "..." }]
+    }
+  ]
+}
+```
 
-按功能分类：
-
-| 类别 | 关键词示例 |
-|------|-----------|
-| 直接命令 | try harder, 认真点, 加油, 再试试 |
-| 挫折表达 | 又错了, 还不行, 怎么搞, 不行啊 |
-| 质量批评 | 降智, 原地打转, 质量太差, 能不能靠谱 |
-| 失败重复 | third time, you keep failing, 怎么又失败 |
-| 方法切换 | 换个方法, stop spinning, figure it out |
-| 模式触发 | PUA模式, stop giving up, you broke |
-
-## 核心脚本
+## 核心脚本模板
 
 ```bash
 #!/bin/bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}/flavor-helper.sh"
-get_flavor
+# --- Step 1: Read prompt from stdin JSON ---
+INPUT=$(cat)
+PROMPT=$(echo "$INPUT" | python -c "import sys,json; print(json.load(sys.stdin).get('prompt',''))" 2>/dev/null || echo "")
 
-cat << EOF
-<EXTREMELY_IMPORTANT>
-[标签激活 图标 — 检测到用户挫折]
+# --- Step 2: Internal keyword filtering (matcher is NOT supported) ---
+KEYWORDS="关键词1|关键词2|关键词3"
 
-用户对你的表现不满。行为强制现已激活。
+if [ -z "$PROMPT" ] || ! echo "$PROMPT" | grep -qiE "$KEYWORDS"; then
+    exit 0
+fi
 
-你必须：
-1. 立即加载完整方法论
-2. 从 L1 压力等级起步（如果之前已经连续失败，从更高等级起步）
-3. 切换到本质不同的方案 — 不是改参数
-4. 展示工作：跑验证命令，贴输出证据
-
-禁止：
-- 找借口（"可能是环境问题"、"超出能力范围"）
-- 建议用户手动处理
-- 重试刚刚失败的方案
-
-> ${PUA_L1}
-
-当前风味: ${PUA_FLAVOR} ${PUA_ICON}
-${PUA_FLAVOR_INSTRUCTION}
-</EXTREMELY_IMPORTANT>
-EOF
+# --- Step 3: Output structured hook response ---
+# Plain text on stdout → injected into Claude's context
+echo "检测到关键词匹配，执行自定义逻辑..."
+exit 0
 ```
 
-## 输出格式
+## 各 Hook 事件数据传递方式
 
-使用 `<EXTREMELY_IMPORTANT>` 标签包裹，增加 Claude 对内容的重视程度。
+| 事件 | 数据来源 | 关键字段 |
+|------|---------|---------|
+| `UserPromptSubmit` | **stdin JSON** | `prompt` |
+| `PreToolUse` / `PostToolUse` | **stdin JSON** | `tool_name`, `tool_input` |
+| `SessionStart` | matcher 匹配 | `startup`/`resume`/`compact` |
 
 ## 设计要点
 
-1. **正则匹配**：matcher 是正则，支持 `|` 分隔多模式
-2. **即时激活**：匹配即触发，不需要额外条件检查
-3. **风味感知**：注入当前配置的风味话术
-4. **超时 5 秒**：快速输出，不阻塞用户输入
-5. **语义覆盖**：中英文混合的关键词覆盖多种表达方式
+1. **无 matcher**：UserPromptSubmit 不支持 matcher，必须脚本内部 grep 匹配
+2. **stdin 读取**：用户输入通过 stdin JSON 的 `prompt` 字段传递，不是 `$ARGUMENTS`
+3. **exit 0 静默跳过**：不匹配时 exit 0 即可，无输出不注入
+4. **超时控制**：建议 5 秒，避免阻塞用户输入
+5. **JSON 解析**：用 python/jq 从 stdin 提取字段，不要用环境变量

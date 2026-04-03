@@ -39,19 +39,19 @@ ITERATION=$(echo "$FRONTMATTER" | grep '^iteration:' | sed 's/iteration: *//')
 [ "$ITERATION" = "3" ] && pass "TC-04: CRLF handled (iter=$ITERATION)" || fail "TC-04: CRLF fail (iter=$ITERATION)"
 rm -f /tmp/test-crlf-$$$.txt
 
-# --- TC-05: Flavor template source ---
+# --- TC-05: Style template source ---
 BASE_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 TEMPLATE="$BASE_DIR/scripts/flavor-helper-template.sh"
 if [ -f "$TEMPLATE" ]; then
-  HAS_GET_FLAVOR=$(grep -c "get_flavor()" "$TEMPLATE" || echo "0")
-  [ "$HAS_GET_FLAVOR" -ge 1 ] && pass "TC-05: Flavor template has get_flavor()" || fail "TC-05: get_flavor() not found"
+  HAS_LOAD_STYLE=$(grep -c "load_style()" "$TEMPLATE" || echo "0")
+  [ "$HAS_LOAD_STYLE" -ge 1 ] && pass "TC-05: Style template has load_style()" || fail "TC-05: load_style() not found"
 else
   fail "TC-05: Template file missing"
 fi
 
 # --- TC-06: State persistence (single-line python) ---
-STATEJSON='{"pressure_level":"L2","failure_count":3}'
-RESULT=$(echo "$STATEJSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print('ok' if d['pressure_level']=='L2' else 'fail')" 2>/dev/null || echo "fail")
+STATEJSON='{"intervention_level":"L2","failure_count":3}'
+RESULT=$(echo "$STATEJSON" | python3 -c "import sys,json; d=json.loads(sys.stdin.read()); print('ok' if d['intervention_level']=='L2' else 'fail')" 2>/dev/null || echo "fail")
 [ "$RESULT" = "ok" ] && pass "TC-06: State persistence JSON works" || fail "TC-06: State persistence failed"
 
 # --- Summary ---

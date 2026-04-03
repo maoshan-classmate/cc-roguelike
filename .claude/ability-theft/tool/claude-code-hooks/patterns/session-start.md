@@ -46,7 +46,6 @@ printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext
 **特点**：Claude 将其视为系统级约束，不可忽略。适用于强制行为协议。
 
 ### 方式 2：纯文本 stdout（上下文注入）
-
 直接输出文本，Claude 将其视为上下文补充。
 
 ```bash
@@ -56,7 +55,7 @@ cat << EOF
 EOF
 ```
 
-**特点**：Claude 可以选择是否遵循。适用于建议性提示。
+**特点**：Claude 可以选择是否遵循.适用于建议性提示。
 
 ## 完整脚本模板
 
@@ -65,8 +64,8 @@ EOF
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}/flavor-helper.sh"
-get_flavor
+source "${SCRIPT_DIR}/style-helper.sh"
+load_style
 
 # JSON 转义函数
 escape_for_json() {
@@ -79,22 +78,22 @@ escape_for_json() {
     printf '%s' "$s"
 }
 
-CONFIG="${HOME:-~}/.pua/config.json"
-JOURNAL="${HOME:-~}/.pua/builder-journal.md"
+CONFIG="${HOME:-~}/.hook-config/config.json"
+JOURNAL="${HOME:-~}/.hook-config/state-journal.md"
 context_parts=""
 
-# 1. 检查 always_on 配置 → 注入行为协议
+# 1. 检查配置 → 注入行为协议
 if [ -f "$CONFIG" ]; then
-  always_on=$(python3 -c "import os,json; print(json.load(open(os.path.expanduser('~/.pua/config.json'))).get('always_on', False))" 2>/dev/null)
+  always_on=$(python3 -c "import os,json; print(json.load(open(os.path.expanduser('~/.hook-config/config.json'))).get('always_on', False))" 2>/dev/null)
   if [ "$always_on" = "True" ]; then
     read -r -d '' PROTOCOL << 'EOF' || true
 <EXTREMELY_IMPORTANT>
 [行为协议标题]
 协议内容...
-支持变量替换：FLAVOR_PLACEHOLDER → 实际值
+支持变量替换：STYLE_PLACEHOLDER → 实际值
 </EXTREMELY_IMPORTANT>
 EOF
-    PROTOCOL="${PROTOCOL//FLAVOR_PLACEHOLDER/${PUA_FLAVOR} ${PUA_ICON}}"
+    PROTOCOL="${PROTOCOL//STYLE_PLACEHOLDER/${STYLE_NAME} ${STYLE_ICON}}"
     context_parts="${PROTOCOL}"
   fi
 fi
@@ -119,7 +118,6 @@ exit 0
 ```
 
 ## Matcher 选项
-
 | matcher | 触发时机 |
 |---------|---------|
 | `startup` | 新会话启动 |
@@ -127,9 +125,7 @@ exit 0
 | `compact` | 上下文压缩后恢复 |
 | `startup\|resume` | 启动或恢复（不含 compact） |
 | `*` | 所有 SessionStart 事件 |
-
-## 设计要点
-
+| 设计要点
 1. **条件注入**：先检查配置/状态，无内容时不输出（静默通过）
 2. **多段合并**：可以拼接多段内容到同一个 additionalContext
 3. **超时控制**：SessionStart hook 通常设置 5 秒超时

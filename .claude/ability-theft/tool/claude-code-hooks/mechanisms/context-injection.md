@@ -55,7 +55,7 @@ context_parts=""
 
 # 段落 1：always-on 行为协议
 if [ "$always_on" = "True" ]; then
-  context_parts="${PUA_PROTOCOL}"
+  context_parts="${PROTOCOL_TEXT}"
 fi
 
 # 段落 2：compaction 状态恢复
@@ -76,9 +76,9 @@ printf '{"hookSpecificOutput":{"hookEventName":"SessionStart","additionalContext
 注入内容可以由用户配置控制：
 
 ```bash
-CONFIG="${HOME:-~}/.pua/config.json"
+CONFIG="${HOME:-~}/.hook-config/config.json"
 if [ -f "$CONFIG" ]; then
-  always_on=$(python3 -c "import os,json; print(json.load(open(os.path.expanduser('~/.pua/config.json'))).get('always_on', False))" 2>/dev/null)
+  always_on=$(python3 -c "import os,json; print(json.load(open(os.path.expanduser('~/.hook-config/config.json'))).get('always_on', False))" 2>/dev/null)
   if [ "$always_on" = "True" ]; then
     # 注入行为协议
   fi

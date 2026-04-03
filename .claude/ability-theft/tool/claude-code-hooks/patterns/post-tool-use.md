@@ -4,7 +4,6 @@
 工具调用完成后检测失败，跟踪状态，升级干预等级。
 
 ## hooks.json 注册
-
 ```json
 {
   "PostToolUse": [
@@ -31,8 +30,8 @@
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-source "${SCRIPT_DIR}/flavor-helper.sh"
-get_flavor
+source "${SCRIPT_DIR}/style-helper.sh"
+load_style
 
 # 读取 hook 输入
 HOOK_INPUT=$(cat)
@@ -60,8 +59,8 @@ if echo "$TOOL_RESULT" | grep -qiE 'error|Error|ERROR|exit code [1-9]|FAILED|fat
 fi
 
 # 4. 会话隔离 + 计数器
-COUNTER_FILE="${HOME:-~}/.pua/.failure_count"
-SESSION_FILE="${HOME:-~}/.pua/.failure_session"
+COUNTER_FILE="${HOME:-~}/.hook-config/.failure_count"
+SESSION_FILE="${HOME:-~}/.hook-config/.failure_session"
 CURRENT_SESSION=$(echo "$HOOK_INPUT" | python3 -c "import sys,json; print(json.load(sys.stdin).get('session_id','unknown'))" 2>/dev/null || echo "unknown")
 STORED_SESSION=""
 [ -f "$SESSION_FILE" ] && STORED_SESSION=$(cat "$SESSION_FILE" 2>/dev/null || echo "")
@@ -91,11 +90,11 @@ if [ "$COUNT" -lt 2 ]; then exit 0; fi
 
 if [ "$COUNT" -eq 2 ]; then
   cat << EOF
-[标签 L1 ${PUA_ICON} — 检测到连续失败]
-> ${PUA_L1}
+[Intervention L1 ${STYLE_ICON} — 检测到连续失败]
+> ${INTERVENTION_L1}
 
 强制动作...
-当前风味: ${PUA_FLAVOR} ${PUA_ICON}
+当前配置: ${STYLE_NAME} ${STYLE_ICON}
 EOF
 elif [ "$COUNT" -eq 3 ]; then
   # L2 输出...
@@ -116,13 +115,13 @@ PostToolUse hook 的输出是**纯文本 stdout**（不是 JSON）。Claude Code
 ```
 [等级标签 图标 — 触发原因]
 
-> 风味话术（引用块格式）
+> 干预提示文本（引用块格式）
 
 强制动作：
 - [ ] 动作 1
 - [ ] 动作 2
 
-当前风味: flavor_name 图标
+当前配置: style_name 图标
 ```
 
 ## 设计要点

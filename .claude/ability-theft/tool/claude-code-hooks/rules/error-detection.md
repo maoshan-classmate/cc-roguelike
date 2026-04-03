@@ -67,38 +67,44 @@ if [ "$TOOL_NAME" != "Bash" ]; then
 fi
 ```
 
-## 用户挫折检测
+## 用户输入关键词检测
 
-UserPromptSubmit hook 通过正则匹配用户输入中的挫折信号。
+UserPromptSubmit hook 可用于检测用户输入中的特定信号（如挫折表达、紧急程度等）。
 
-### 关键词模式
+### ⚠️ 重要：UserPromptSubmit 不支持 matcher
 
-```json
-{
-  "matcher": "try harder|别偷懒|又错了|还不行|怎么搞|stop giving|you broke|third time|降智|原地打转|能不能靠谱|认真点|不行啊|为什么还不行|你怎么又|换个方法|stop spinning|figure it out|you keep failing|加油|再试试|质量太差|重新做|PUA模式|怎么又失败"
-}
+`UserPromptSubmit` 不支持 `matcher` 字段（会被静默忽略）。关键词匹配必须在脚本内部通过 stdin JSON 读取 `prompt` 字段实现：
+
+```bash
+INPUT=$(cat)
+PROMPT=$(echo "$INPUT" | python -c "import sys,json; print(json.load(sys.stdin).get('prompt',''))" 2>/dev/null || echo "")
+
+KEYWORDS="<关键词1>|<关键词2>|<关键词3>"
+
+if [ -z "$PROMPT" ] || ! echo "$PROMPT" | grep -qiE "$KEYWORDS"; then
+    exit 0
+fi
 ```
 
-**分类**：
-- 中英文混合的挫折表达
-- 包含"再次/重复"语义的词
-- 包含"不满/命令"语义的词
-- 包含质量批评的词
+### 关键词分类建议
 
-### Matcher 工作原理
+| 类别 | 示例模式 |
+|------|---------|
+| 重复失败信号 | 包含"再次/重复"语义的词 |
+| 不满信号 | 包含"不满/命令"语义的词 |
+| 质量批评 | 包含质量评价的词 |
+| 方法切换请求 | 包含"换方案/换个方法"语义的词 |
 
-`UserPromptSubmit` 的 `matcher` 字段是正则表达式，**匹配用户输入的文本**。匹配成功时，对应的 hooks 才会执行。
-
-这与 `PostToolUse` 的 matcher 不同——后者匹配的是**工具名称**（精确字符串），不是正则。
+> 关键词列表应按实际需求配置，支持正则 `|` 分隔多模式。
 
 ## 安全过滤
 
-检测到匹配后，必须验证 PUA 确实在本会话中触发过（通过扫描 transcript）：
+检测到匹配后，可验证 hook 确实在本会话中触发过（通过扫描 transcript）：
 
 ```bash
-if ! grep -qE 'PUA生效|\[Auto-select:|\[PIP-REPORT\]|\[PUA-REPORT\]' "$TRANSCRIPT_PATH" 2>/dev/null; then
+if ! grep -qE '<HOOK_ACTIVE_TAG>' "$TRANSCRIPT_PATH" 2>/dev/null; then
   exit 0
 fi
 ```
 
-这防止在无关会话中误触发。
+> `<HOOK_ACTIVE_TAG>` 应替换为你的 hook 实际输出的标记字符串。这防止在无关会话中误触发。

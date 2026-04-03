@@ -9,13 +9,46 @@
 | `CLAUDE_PLUGIN_DATA` | 插件持久数据目录 |
 | `CLAUDE_CODE_REMOTE` | 远程 Web 环境时为 `"true"` |
 
+## Hook 数据传递方式
+
+**不同 hook 事件的数据来源不同**，这是常见踩坑点：
+
+| 事件 | 数据来源 | 关键字段 | 读取方式 |
+|------|---------|---------|---------|
+| `UserPromptSubmit` | **stdin JSON** | `prompt` | `INPUT=$(cat)` → python/jq 解析 |
+| `PreToolUse` / `PostToolUse` | **stdin JSON** | `tool_name`, `tool_input` | `INPUT=$(cat)` → python/jq 解析 |
+| `SessionStart` | matcher 匹配 | `startup`/`resume`/`compact` | matcher 自动匹配 |
+| `PermissionRequest` | **stdin JSON** | `tool_name`, `tool_input` | `INPUT=$(cat)` → python/jq 解析 |
+
+**stdin JSON 通用格式**：
+```json
+{
+  "session_id": "...",
+  "transcript_path": "...",
+  "cwd": "...",
+  "permission_mode": "...",
+  "hook_event_name": "...",
+  "prompt": "用户输入（仅 UserPromptSubmit）",
+  "tool_name": "工具名（仅工具事件）",
+  "tool_input": { ... }
+}
+```
+
+**读取模板**：
+```bash
+INPUT=$(cat)
+PROMPT=$(echo "$INPUT" | python -c "import sys,json; print(json.load(sys.stdin).get('prompt',''))" 2>/dev/null || echo "")
+```
+
+> ⚠️ **踩坑**：`UserPromptSubmit` 不通过 `$ARGUMENTS` 传数据。用 `$ARGUMENTS` 读取会始终为空，脚本静默跳过。
+
 ## 用户级路径
 
 | 路径 | 用途 |
 |------|------|
 | `~/.claude/settings.json` | 用户全局 Claude Code 设置 |
 | `~/.claude/hooks/` | 用户全局 hook 脚本 |
-| `~/.pua/config.json` | PUA 行为配置（自定义） |
+| `~/.hook-config/config.json` | 自定义 hook 配置 |
 
 ## 项目级路径
 

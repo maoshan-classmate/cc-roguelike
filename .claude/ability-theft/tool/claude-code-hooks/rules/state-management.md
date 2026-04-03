@@ -1,15 +1,15 @@
 # 状态管理规则
 
-## 状态文件约定
+## 狀態文件约定
 
 | 文件路径 | 用途 | 生命周期 |
 |---------|------|---------|
-| `~/.pua/.failure_count` | 连续失败计数器 | 单次连续失败期间，成功后重置为 0 |
-| `~/.pua/.failure_session` | 当前会话 ID | 跨调用持久，新会话时更新 |
-| `~/.pua/.stop_counter` | Stop 触发计数（控制反馈频率） | 永久累加 |
-| `~/.pua/config.json` | 用户配置（风味、always_on 等） | 用户手动管理 |
-| `~/.pua/builder-journal.md` | 运行时状态快照（compaction 前保存） | compaction 后恢复，2 小时过期 |
-| `.claude/pua-loop.local.md` | Loop 控制状态文件 | 项目级，loop 结束时删除 |
+| `~/.hook-config/.failure_count` | 连续失败计数器 | 单次连续失败期间，成功后重置为 0 |
+| `~/.hook-config/.failure_session` | 当前会话 ID | 跨调用持久，新会话时更新 |
+| `~/.hook-config/.stop_counter` | Stop 触发计数（控制反馈频率） | 永久累加 |
+| `~/.hook-config/config.json` | 用户配置（风格、always_on 等） | 用户手动管理 |
+| `~/.hook-config/state-journal.md` | 运行时状态快照（compaction 前保存） | compaction 后恢复，2 小时过期 |
+| `.claude/loop-state.local.md` | Loop 控制状态文件 | 项目级，loop 结束时删除 |
 
 ## 会话隔离规则
 
@@ -28,7 +28,7 @@ if [ "$CURRENT_SESSION" != "$STORED_SESSION" ]; then
 fi
 ```
 
-**关键**：状态文件路径在 `~/.pua/` 下，跨所有项目共享。如果需要项目级隔离，改用项目目录下的路径。
+**关键**：状态文件路径在 `~/.hook-config/` 下，跨所有项目共享。如果需要项目级隔离，改用项目目录下的路径。
 
 ## 计数器模式
 
@@ -63,7 +63,7 @@ echo "$count" > "$COUNTER"
 
 ## Loop 状态文件格式
 
-Loop 控制使用项目级的 `.claude/pua-loop.local.md`，格式为 YAML frontmatter + prompt 正文：
+Loop 控制使用项目级的 `.claude/loop-state.local.md`，格式为 YAML frontmatter + prompt 正文：
 
 ```markdown
 ---

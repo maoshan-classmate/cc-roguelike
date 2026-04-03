@@ -20,7 +20,7 @@
 # jq 检查
 command -v jq &>/dev/null || { echo "jq not found, skipping" >&2; exit 0; }
 
-# perl 检查（在 pua-loop-hook.sh 中隐式依赖）
+# perl 检查（在 loop-control hook 中隐式依赖）
 # perl 不可用时，TAG_TEXT 变量为空，匹配失败，循环继续直到 max_iterations
 ```
 

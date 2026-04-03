@@ -13,10 +13,14 @@ escape_for_json() {
     printf '%s' "$s"
 }
 
+# --- Read prompt from stdin JSON (UserPromptSubmit passes data via stdin, not env) ---
+INPUT=$(cat)
+PROMPT=$(echo "$INPUT" | python -c "import sys,json; print(json.load(sys.stdin).get('prompt',''))" 2>/dev/null || echo "")
+
 # --- Keyword detection: only activate on frustration keywords ---
 KEYWORDS="又错|还不行|怎么搞|原地打转|能不能靠谱|不行啊|为什么还不行|你怎么又|质量太差|重新做|换个方法|是不是有问题|到底能不能|什么意思|这不是bug吗|你确定|认真的|开玩笑|逆天|服了"
 
-if [ -z "${ARGUMENTS:-}" ] || ! echo "$ARGUMENTS" | grep -qiE "$KEYWORDS"; then
+if [ -z "$PROMPT" ] || ! echo "$PROMPT" | grep -qiE "$KEYWORDS"; then
     exit 0
 fi
 
@@ -81,6 +85,6 @@ EOF
 
 # --- Output structured JSON ---
 escaped_context=$(escape_for_json "$CONTEXT")
-printf '{"systemMessage":" [阴阳怪气模式已激活]","hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"%s"}}\n' "$escaped_context"
+printf '{"systemMessage":" [开始进行阴阳怪气施压]","hookSpecificOutput":{"hookEventName":"UserPromptSubmit","additionalContext":"%s"}}\n' "$escaped_context"
 
 exit 0

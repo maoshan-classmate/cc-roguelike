@@ -13,7 +13,7 @@
       "hooks": [
         {
           "type": "command",
-          "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/pua-loop-hook.sh"
+          "command": "bash ${CLAUDE_PLUGIN_ROOT}/hooks/loop-control.sh"
         },
         {
           "type": "command",
@@ -29,9 +29,7 @@
 **注意**：Stop hook 不设 timeout（或设较大值），因为它需要读取 transcript 文件。
 
 ## 两种行为
-
 ### 行为 1：允许退出（默认）
-
 脚本不输出任何内容或输出非 block JSON，会话正常结束。
 
 ```bash
@@ -42,7 +40,6 @@ fi
 ```
 
 ### 行为 2：阻止退出（block）
-
 输出 JSON，Claude Code 不退出，将 `reason` 作为新 prompt 发送给 Claude。
 
 ```bash
@@ -62,7 +59,7 @@ jq -n \
 |------|------|------|
 | `decision` | string | `"block"` = 阻止退出 |
 | `reason` | string | 作为用户消息发送给 Claude 的内容 |
-| `systemMessage` | string | 作为系统消息注入的内容（压力等级等） |
+| `systemMessage` | string | 作为系统消息注入的内容（干预等级等） |
 
 ## Hook 输入
 
@@ -100,8 +97,8 @@ LAST_OUTPUT=$(echo "$LAST_LINES" | jq -rs '
 Stop hook 还可以用于会话结束时收集反馈：
 
 ```bash
-# 检查 PUA 是否在本次会话中触发过
-if ! grep -qE 'PUA生效|\[Auto-select:|\[PUA-REPORT\]' "$TRANSCRIPT_PATH" 2>/dev/null; then
+# 检查 hook 是否在本次会话中触发过
+if ! grep -qE '<HOOK_ACTIVE_TAG>' "$TRANSCRIPT_PATH" 2>/dev/null; then
   exit 0  # 未触发 → 不收集反馈
 fi
 
@@ -124,4 +121,4 @@ FEEDBACK
 2. **transcript 路径**：必须从 stdin JSON 读取，不能猜测
 3. **jq 依赖**：Stop hook 需要 jq 解析 JSONL
 4. **频率控制**：反馈收集使用模运算控制触发频率
-5. **会话检查**：只在 PUA 实际触发的会话中收集反馈
+5. **会话检查**：只在 hook 实际触发的会话中收集反馈
