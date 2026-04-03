@@ -15,8 +15,19 @@ fp = data.get("tool_input", {}).get("file_path", "")
 PATTERNS = [r"\.env$", r"\.env\.", r"credentials", r"secret"]
 
 if any(re.search(p, fp) for p in PATTERNS):
-    # exit 2 = 阻止操作；stderr 显示给用户
-    print("[HOOK] 敏感文件拦截 — 禁止编辑 .env / credentials / secret 文件", file=sys.stderr)
-    sys.exit(2)
+    # 输出结构化 JSON: systemMessage(用户可见) + reason(阻塞原因)
+    msg = f"╔══ [HOOK] 敏感文件拦截 ══╗ — 禁止编辑: {fp}"
+    output = json.dumps({
+        "systemMessage": msg,
+        "continue": False,
+        "reason": f"敏感文件拦截: {fp} 匹配 .env / credentials / secret 模式",
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "permissionDecision": "deny",
+            "permissionDecisionReason": f"文件 {fp} 匹配敏感文件模式 (.env / credentials / secret)"
+        }
+    }, ensure_ascii=False)
+    print(output)
+    sys.exit(0)
 
 sys.exit(0)
