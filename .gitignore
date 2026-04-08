@@ -9,4 +9,6 @@ assets/inbox/
 
 # Claude Code 团队共享规则（.claude/ 整体 git 追踪）
 # 个人规范（如个人 skill/agent/hooks）请放在 ~/.claude/（系统级），不要放在项目里
-.claude/settings.local.json   # 用户权限（API key等），请勿提交
+# 用户权限（API key等），请勿提交
+.claude/settings.local.json   
+.superpowers/

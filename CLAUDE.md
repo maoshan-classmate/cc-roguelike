@@ -331,3 +331,5 @@ npx tsc --noEmit                                # TypeScript 编译检查
 
 删除文件前：`grep -r "文件名" src/ --include="*.ts" --include="*.tsx"`；特别注意 `ui-optimization.md` 可能引用 `PixelSprites.tsx`
 
+- **[前端动画与自适应规范](docs/frontend-animation.md)** — framer-motion/tsparticles 踩坑、组件库索引、自适应原则、登录页分层架构
+
