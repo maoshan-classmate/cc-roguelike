@@ -16,6 +16,12 @@
 - **像素风格**：所有游戏内绘制使用 `imageRendering: 'pixelated'`
 - **UI保持可读性**：HUD 和信息面板使用明亮强调色
 
+### 页面容器宽度对齐
+- 同一页面内的 header / divider / content panel 必须共享相同的 maxWidth 约束（要么都有，要么都没有）
+- **LoginPage 模式**：单卡片居中 `maxWidth: 360px`
+- **LobbyPage/RoomPage 模式**：全宽 + padding，无 maxWidth
+- **禁止混用**：header 全宽 + content panel 有 maxWidth → 视觉不对齐
+
 ## 资源使用规范
 
 **优先使用现有资源**：在创建或修改任何图片、图标、精灵之前，**必须**先检查：

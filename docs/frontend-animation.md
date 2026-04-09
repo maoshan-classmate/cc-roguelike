@@ -26,6 +26,12 @@
 - DPR 缩放：`canvas.width = w * dpr`，`ctx.scale(dpr, dpr)`
 - 绘制逻辑抽成纯函数 `drawScene()`，resize 回调直接调用
 
+## 背景层栈定位策略
+
+- **固定页面**（LoginPage：100vh 不滚动）：背景层 `position: absolute`，外层 `overflow: hidden`
+- **可滚动页面**（LobbyPage/RoomPage：minHeight:100vh 可溢出）：背景层必须用 `position: fixed, inset: 0`，UI 层 `position: relative, zIndex: 10` 独立滚动
+- 错误做法：可滚动页面用 `position: absolute` 背景 → 滚动后背景消失
+
 ## 登录页分层架构（z-index 顺序）
 
 | z-index | 层 | 组件/实现 |
