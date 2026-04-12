@@ -37,6 +37,7 @@ export function PixelRoomCard({ room, onJoin, index = 0 }: PixelRoomCardProps) {
         borderColor: 'rgba(255,215,0,0.35)',
       }}
       whileTap={{ scale: 0.98 }}
+      exit={{ opacity: 0, x: 20, transition: { duration: 0.2 } }}
       onClick={() => isWaiting && onJoin(room.id)}
       style={{
         display: 'flex', alignItems: 'center', justifyContent: 'space-between',

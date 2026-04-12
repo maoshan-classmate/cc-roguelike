@@ -4,6 +4,7 @@ import { useAuthStore } from '../store/useAuthStore'
 import { useGameStore } from '../store/useGameStore'
 import { networkClient } from '../network/socket'
 import { mainAtlasPath } from '../assets/0x72'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useParticleSystem } from '../hooks/useParticleSystem'
 import { useDamageTexts } from '../hooks/useDamageTexts'
 import { useGameRenderer, getAnimSprite, lerp } from '../hooks/useGameRenderer'
@@ -30,6 +31,26 @@ const SKILL_ICONS = [
   { name: '技能4', color: '#9B59B6' },
 ]
 const SkillIconComponents = [PixelSword, PixelShield, PixelBow, PixelStar]
+
+// ── UI 动画 variants ──
+const hudItemVariant = (i: number) => ({
+  hidden: { opacity: 0, y: -20, scale: 0.85 },
+  visible: { opacity: 1, y: 0, scale: 1, transition: { type: 'spring' as const, stiffness: 260, damping: 20, delay: 0.3 + i * 0.08 } },
+})
+const skillVariant = (i: number) => ({
+  hidden: { opacity: 0, x: 40, scale: 0.7 },
+  visible: { opacity: 1, x: 0, scale: 1, transition: { type: 'spring' as const, stiffness: 220, damping: 18, delay: 0.5 + i * 0.1 } },
+})
+const overlayVariant = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { duration: 0.2 } },
+  exit: { opacity: 0, transition: { duration: 0.15 } },
+}
+const overlayPanelVariant = {
+  hidden: { opacity: 0, scale: 0.85, y: 20 },
+  visible: { opacity: 1, scale: 1, y: 0, transition: { type: 'spring' as const, stiffness: 200, damping: 22, delay: 0.1 } },
+  exit: { opacity: 0, scale: 0.9, transition: { duration: 0.12 } },
+}
 
 // 调试菜单组件
 function DebugMenu({
@@ -425,58 +446,60 @@ export default function GamePage() {
 
   return (
     <div style={{ position: 'relative', width: '100vw', height: '100vh' }}>
-      {/* HUD */}
+      {/* HUD — 交错入场 */}
       <div style={{
         position: 'absolute', top: 10, left: 10, right: 10, zIndex: 10,
         display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
       }}>
         <div style={{ display: 'flex', gap: 8 }}>
-          <div className="card-pixel" style={{ padding: '6px 12px', borderColor: 'var(--pixel-gold)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <motion.div variants={hudItemVariant(0)} initial="hidden" animate="visible" className="card-pixel" style={{ padding: '6px 12px', borderColor: 'var(--pixel-gold)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <PixelCastle size={16} color="#8B4513" />
             <span style={{ color: 'var(--pixel-gold)', fontFamily: 'Courier New', fontSize: 14, fontWeight: 'bold' }}>{floor}/5</span>
-          </div>
-          <div className="card-pixel" style={{ padding: '6px 12px', borderColor: 'var(--player-1)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          </motion.div>
+          <motion.div variants={hudItemVariant(1)} initial="hidden" animate="visible" className="card-pixel" style={{ padding: '6px 12px', borderColor: 'var(--player-1)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <PixelSword size={16} color="#C0C0C0" />
             <span style={{ color: 'var(--success)', fontFamily: 'Courier New', fontSize: 14, fontWeight: 'bold' }}>{players.filter(p => p.alive).length}/{players.length}</span>
-          </div>
-          <div className="card-pixel" style={{ padding: '6px 12px', borderColor: 'var(--pixel-red)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          </motion.div>
+          <motion.div variants={hudItemVariant(2)} initial="hidden" animate="visible" className="card-pixel" style={{ padding: '6px 12px', borderColor: 'var(--pixel-red)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <PixelSkull size={16} color="#FFFFFF" />
             <span style={{ color: 'var(--danger)', fontFamily: 'Courier New', fontSize: 14, fontWeight: 'bold' }}>{enemies.filter(e => e.alive).length}</span>
-          </div>
+          </motion.div>
         </div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <div className="card-pixel" style={{ padding: '6px 12px', borderColor: 'var(--pixel-gold)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <motion.div variants={hudItemVariant(3)} initial="hidden" animate="visible" className="card-pixel" style={{ padding: '6px 12px', borderColor: 'var(--pixel-gold)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <PixelGem size={16} color="#FFD700" />
             <span style={{ color: 'var(--pixel-gold)', fontFamily: 'Courier New', fontSize: 14, fontWeight: 'bold' }}>{gold}</span>
-          </div>
-          <div className="card-pixel" style={{ padding: '6px 12px', borderColor: 'var(--pixel-gold)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          </motion.div>
+          <motion.div variants={hudItemVariant(4)} initial="hidden" animate="visible" className="card-pixel" style={{ padding: '6px 12px', borderColor: 'var(--pixel-gold)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <PixelKey size={16} color="#FFD700" />
             <span style={{ color: 'var(--pixel-gold)', fontFamily: 'Courier New', fontSize: 14, fontWeight: 'bold' }}>{keys}</span>
-          </div>
+          </motion.div>
         </div>
       </div>
 
-      {/* 技能栏 */}
+      {/* 技能栏 — 交错入场 + 弹簧交互 */}
       <div style={{
         position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
         display: 'flex', flexDirection: 'column', gap: 6, zIndex: 10,
       }}>
         {SKILL_ICONS.map((skill, i) => (
-          <div
+          <motion.div
             key={i}
+            variants={skillVariant(i)}
+            initial="hidden"
+            animate="visible"
+            whileHover={{ scale: 1.15, boxShadow: `0 0 16px ${skill.color}66` }}
+            whileTap={{ scale: 0.9 }}
             style={{
               width: 48, height: 48,
               background: `linear-gradient(135deg, ${skill.color} 0%, ${skill.color}88 100%)`,
               border: '3px solid #FFFFFF', borderRadius: 4,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               fontSize: 24, boxShadow: '2px 2px 0 rgba(0,0,0,0.5)', cursor: 'pointer',
-              transition: 'transform 0.1s',
             }}
-            onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-            onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
           >
             {React.createElement(SkillIconComponents[i], { size: 24, color: skill.color })}
-          </div>
+          </motion.div>
         ))}
       </div>
 
@@ -492,46 +515,90 @@ export default function GamePage() {
         }}
       />
 
-      {/* Controls hint */}
-      <div style={{
-        position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
-        color: 'var(--pixel-brown)', fontSize: 11, fontFamily: 'Courier New, monospace',
-        textShadow: '2px 2px 0 rgba(0,0,0,0.5)', padding: '5px 15px',
-        background: 'rgba(0,0,0,0.5)', zIndex: 10,
-      }}>
+      {/* Controls hint — 淡入 */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.0, duration: 0.4 }}
+        style={{
+          position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
+          color: 'var(--pixel-brown)', fontSize: 11, fontFamily: 'Courier New, monospace',
+          textShadow: '2px 2px 0 rgba(0,0,0,0.5)', padding: '5px 15px',
+          background: 'rgba(0,0,0,0.5)', zIndex: 10,
+        }}
+      >
         [ WASD移动 | 鼠标瞄准 | 左键射击 | 1-4技能 | ESC暂停 ]
-      </div>
+      </motion.div>
 
-      {/* Pause overlay */}
-      {isPaused && (
-        <div style={{
-          position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 100
-        }}>
-          <h2 style={{ fontSize: 48, marginBottom: 30, color: 'var(--pixel-gold)', fontFamily: 'Courier New, monospace', textShadow: '4px 4px 0 rgba(0,0,0,0.5)' }}>[ 暂停 ]</h2>
-          <button onClick={() => setPaused(false)} className="btn-pixel btn-success" style={{ marginBottom: 10, minWidth: 200 }}>[ 继续游戏 ]</button>
-          <button onClick={handleExit} className="btn-pixel btn-danger" style={{ minWidth: 200 }}>[ 退出游戏 ]</button>
-        </div>
-      )}
+      {/* Pause overlay — 弹簧缩放进出 */}
+      <AnimatePresence>
+        {isPaused && (
+          <motion.div
+            key="pause-overlay"
+            variants={overlayVariant}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            style={{
+              position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.85)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 100
+            }}
+          >
+            <motion.div variants={overlayPanelVariant} initial="hidden" animate="visible" exit="exit"
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10 }}
+            >
+              <h2 style={{ fontSize: 48, marginBottom: 20, color: 'var(--pixel-gold)', fontFamily: 'Courier New, monospace', textShadow: '4px 4px 0 rgba(0,0,0,0.5)' }}>[ 暂停 ]</h2>
+              <motion.button onClick={() => setPaused(false)} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn-pixel btn-success" style={{ marginBottom: 10, minWidth: 200 }}>[ 继续游戏 ]</motion.button>
+              <motion.button onClick={handleExit} whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} className="btn-pixel btn-danger" style={{ minWidth: 200 }}>[ 退出游戏 ]</motion.button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Game over overlay */}
-      {isGameOver && (
-        <div style={{
-          position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.9)',
-          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 100
-        }}>
-          <h2 style={{ fontSize: 48, marginBottom: 20, color: isVictory ? 'var(--pixel-gold)' : 'var(--danger)', fontFamily: 'Courier New, monospace', textShadow: '4px 4px 0 rgba(0,0,0,0.5)' }}>
-            {isVictory ? '[ 胜利! ]' : '[ 失败 ]'}
-          </h2>
-          <p style={{ marginBottom: 30, color: 'var(--pixel-brown)', fontFamily: 'Courier New, monospace' }}>
-            {isVictory ? '恭喜你通关了地牢！' : '下次再接再厉！'}
-          </p>
-          <div style={{ display: 'flex', gap: 16 }}>
-            <button onClick={handleReturnToRoom} className="btn-pixel" style={{ background: 'var(--pixel-green)', minWidth: 160 }}>[ 返回房间 ]</button>
-            <button onClick={handleExit} className="btn-pixel" style={{ background: 'var(--pixel-brown)', minWidth: 160 }}>[ 返回大厅 ]</button>
-          </div>
-        </div>
-      )}
+      {/* Game over overlay — 戏剧性弹簧动画 */}
+      <AnimatePresence>
+        {isGameOver && (
+          <motion.div
+            key="gameover-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3 }}
+            style={{
+              position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.9)',
+              display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', zIndex: 100
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.5, y: 30 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              transition={{ type: 'spring', stiffness: 180, damping: 18, delay: 0.15 }}
+              style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}
+            >
+              <motion.h2
+                initial={{ scale: 0.3 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 150, damping: 12, delay: 0.25 }}
+                style={{ fontSize: 48, marginBottom: 20, color: isVictory ? 'var(--pixel-gold)' : 'var(--danger)', fontFamily: 'Courier New, monospace', textShadow: '4px 4px 0 rgba(0,0,0,0.5)' }}
+              >
+                {isVictory ? '[ 胜利! ]' : '[ 失败 ]'}
+              </motion.h2>
+              <p style={{ marginBottom: 20, color: 'var(--pixel-brown)', fontFamily: 'Courier New, monospace' }}>
+                {isVictory ? '恭喜你通关了地牢！' : '下次再接再厉！'}
+              </p>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5, duration: 0.3 }}
+                style={{ display: 'flex', gap: 16 }}
+              >
+                <motion.button onClick={handleReturnToRoom} whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }} className="btn-pixel" style={{ background: 'var(--pixel-green)', minWidth: 160 }}>[ 返回房间 ]</motion.button>
+                <motion.button onClick={handleExit} whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.94 }} className="btn-pixel" style={{ background: 'var(--pixel-brown)', minWidth: 160 }}>[ 返回大厅 ]</motion.button>
+              </motion.div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* 调试菜单 (仅 DEV 模式) */}
       {import.meta.env.DEV && showDebug && (

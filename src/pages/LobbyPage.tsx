@@ -268,9 +268,11 @@ export default function LobbyPage() {
             </motion.div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10, position: 'relative', zIndex: 1 }}>
-              {rooms.map((room, i) => (
-                <PixelRoomCard key={room.id} room={room} onJoin={handleJoinRoom} index={i} />
-              ))}
+              <AnimatePresence>
+                {rooms.map((room, i) => (
+                  <PixelRoomCard key={room.id} room={room} onJoin={handleJoinRoom} index={i} />
+                ))}
+              </AnimatePresence>
             </div>
           )}
         </motion.div>

@@ -13,6 +13,9 @@ import {
   getSpriteEntry,
   is0x72Sprite,
 } from '../config/sprites'
+import { spring } from '../utils/animation/spring'
+import { interpolate } from '../utils/animation/interpolate'
+import { Easing } from '../utils/animation/easing'
 
 // 动画帧辅助：每~150ms切换一帧
 const ANIM_INTERVAL = 150
@@ -81,6 +84,14 @@ export function useGameRenderer(
   gameStateRef: React.MutableRefObject<GameState>,
   deps: RenderDeps
 ) {
+  // ── 动画状态（帧驱动）──
+  const frameCountRef = useRef(0)
+  const hitAnimRef = useRef<Map<string, number>>(new Map())    // entityId → hit start frame
+  const deathAnimRef = useRef<Map<string, number>>(new Map())  // entityId → death start frame
+  const displayHpRef = useRef<Map<string, number>>(new Map())  // entityId → displayed HP
+  const itemSpawnRef = useRef<Map<string, number>>(new Map())  // itemId → spawn frame
+  const prevItemIdsRef = useRef<Set<string>>(new Set())         // 上一帧的道具ID集合
+
   const render = useCallback(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -105,6 +116,24 @@ export function useGameRenderer(
     } = deps
 
     const { players, enemies, bullets, healWaves, items, dungeon } = gameStateRef.current
+
+    // ── 帧计数 ──
+    frameCountRef.current++
+    const frame = frameCountRef.current
+    const FPS = 60
+
+    // ── 检测新道具出现 ──
+    const currentItemIds = new Set(items.map((it: any) => it.id))
+    for (const item of items) {
+      if (!prevItemIdsRef.current.has(item.id)) {
+        itemSpawnRef.current.set(item.id, frame)
+      }
+    }
+    // 清理已消失道具的状态
+    for (const id of itemSpawnRef.current.keys()) {
+      if (!currentItemIds.has(id)) itemSpawnRef.current.delete(id)
+    }
+    prevItemIdsRef.current = currentItemIds
 
     // 计算插值 t (0~1)
     const stateInterval = 100
@@ -227,10 +256,26 @@ export function useGameRenderer(
       }
     }
 
-    // 绘制道具
+    // 绘制道具（弹簧出现动画）
     for (const item of items) {
       const itemConfig = ITEMS[item.type] || ITEMS.health
       const itemSize = getSpriteEntry(itemConfig.spriteName ?? '')?.size ?? 28
+
+      // 道具出现弹簧缩放
+      const spawnFrame = itemSpawnRef.current.get(item.id) ?? 0
+      const itemScale = spring({
+        frame: frame - spawnFrame,
+        fps: FPS,
+        from: 0,
+        to: 1,
+        config: { damping: 10, stiffness: 300, overshootClamping: false }
+      })
+
+      ctx.save()
+      ctx.translate(item.x, item.y)
+      ctx.scale(itemScale, itemScale)
+      ctx.translate(-item.x, -item.y)
+
       if (spritesLoaded && tileset2Atlas.complete && is0x72Sprite(itemConfig.spriteName ?? '')) {
         const animSprite = getAnimSprite(itemConfig.spriteName ?? '', performance.now() - lastAnimTime.current)
         draw0x72Sprite(ctx, tileset2Atlas, animSprite, item.x, item.y, itemSize)
@@ -241,9 +286,10 @@ export function useGameRenderer(
         ctx.lineWidth = 1
         ctx.strokeRect(item.x - 14, item.y - 14, 28, 28)
       }
+      ctx.restore()
     }
 
-    // 绘制敌人
+    // 绘制敌人（弹簧受击 + 弹簧死亡）
     for (const enemy of enemies) {
       if (!enemy.alive) continue
 
@@ -254,15 +300,65 @@ export function useGameRenderer(
       const isDying = enemy.state === 'dying'
       if (isDying && !prevDyingRef.current.has(enemy.id)) {
         prevDyingRef.current.add(enemy.id)
+        deathAnimRef.current.set(enemy.id, frame)
         spawnDeathParticles(enemy.x, enemy.y, enemyConfig.color)
       } else if (!isDying && prevDyingRef.current.has(enemy.id)) {
         prevDyingRef.current.delete(enemy.id)
+        deathAnimRef.current.delete(enemy.id)
       }
 
+      // ── 受击检测 ──
+      const prevHp = prevHpRef.current.get(enemy.id)
+      if (prevHp !== undefined && enemy.hp < prevHp && !isDying) {
+        hitAnimRef.current.set(enemy.id, frame)
+      }
+
+      ctx.save()
+
+      // ── 弹簧死亡动画 ──
       if (isDying) {
-        const deathProgress = 1 - (enemy.deathTimer || 0) / 500
-        const flash = Math.sin(performance.now() / 50) * 0.3 + 0.7
-        ctx.globalAlpha = Math.max(0, 1 - deathProgress) * flash
+        const deathStart = deathAnimRef.current.get(enemy.id) ?? frame
+        const deathFrame = frame - deathStart
+        const deathScale = spring({
+          frame: deathFrame,
+          fps: FPS,
+          from: 1.0,
+          to: 0.3,
+          config: { damping: 8, stiffness: 150, overshootClamping: true }
+        })
+        const deathOpacity = interpolate(deathFrame, [0, 15, 30], [1, 0.6, 0], {
+          extrapolateRight: 'clamp'
+        })
+        ctx.globalAlpha = Math.max(0, deathOpacity)
+        ctx.translate(epos.x, epos.y)
+        ctx.scale(deathScale, deathScale)
+        ctx.translate(-epos.x, -epos.y)
+      }
+
+      // ── 受击闪红+缩放 ──
+      let redOverlay = 0
+      const hitStart = hitAnimRef.current.get(enemy.id)
+      if (hitStart !== undefined) {
+        const hitFrame = frame - hitStart
+        if (hitFrame > 20) {
+          hitAnimRef.current.delete(enemy.id)
+        } else {
+          const hitScale = spring({
+            frame: hitFrame,
+            fps: FPS,
+            from: 1.2,
+            to: 1.0,
+            config: { damping: 12, stiffness: 200, overshootClamping: true }
+          })
+          redOverlay = interpolate(hitFrame, [0, 5, 15], [0.5, 0.2, 0], {
+            extrapolateRight: 'clamp'
+          })
+          if (!isDying) {
+            ctx.translate(epos.x, epos.y)
+            ctx.scale(hitScale, hitScale)
+            ctx.translate(-epos.x, -epos.y)
+          }
+        }
       }
 
       if (spritesLoaded) {
@@ -284,19 +380,28 @@ export function useGameRenderer(
         ctx.strokeRect(epos.x - size/2, epos.y - size/2, size, size)
       }
 
-      if (isDying) {
-        ctx.globalAlpha = 0.3
+      // 红色受击覆盖层
+      if (redOverlay > 0) {
+        ctx.globalAlpha = redOverlay
         ctx.fillStyle = '#FF0000'
         ctx.fillRect(epos.x - size/2, epos.y - size/2, size, size)
       }
 
+      ctx.restore()
       ctx.globalAlpha = 1
 
-      if (enemyConfig.isBoss) {
+      if (enemyConfig.isBoss && !isDying) {
         drawBossCrown(ctx, epos.x, epos.y - size/2 - 10, 16)
       }
 
       if (!isDying) {
+        // ── 血条平滑过渡 ──
+        const hpKey = `e_${enemy.id}`
+        const displayHp = displayHpRef.current.get(hpKey) ?? enemy.hp
+        const hpDiff = enemy.hp - displayHp
+        const smoothHp = Math.abs(hpDiff) < 0.5 ? enemy.hp : displayHp + hpDiff * 0.15
+        displayHpRef.current.set(hpKey, smoothHp)
+
         const hpBarWidth = enemyConfig.isBoss ? 64 : size * 1.5
         const hpBarHeight = enemyConfig.isBoss ? 8 : 6
         drawHPBar(
@@ -305,7 +410,7 @@ export function useGameRenderer(
           epos.y - size/2 - (enemyConfig.isBoss ? 20 : 14),
           hpBarWidth,
           hpBarHeight,
-          enemy.hp,
+          smoothHp,
           enemy.hpMax,
           enemyConfig.isBoss ? '#FFD700' : '#DC143C'
         )
@@ -366,18 +471,22 @@ export function useGameRenderer(
       ctx.restore()
     }
 
-    // 绘制治疗波（牧师 AoE，从牧师位置扩散的绿色波纹）
+    // 绘制治疗波（弹簧扩散 + easing 淡出）
     for (const wave of (healWaves || [])) {
-      const progress = wave.age / 400 // 0→1 over 400ms
+      const rawProgress = wave.age / 400
+      const progress = Easing.out(Easing.cubic)(Math.min(rawProgress, 1))
       const r = wave.radius || progress * wave.maxRadius
-      const alpha = 1 - progress
+      const alpha = interpolate(rawProgress, [0, 0.6, 1], [1, 0.7, 0], {
+        extrapolateRight: 'clamp',
+        easing: Easing.out(Easing.quad)
+      })
       ctx.save()
       // 外层波纹
       ctx.globalAlpha = alpha * 0.6
       ctx.strokeStyle = '#32CD32'
-      ctx.lineWidth = 4
+      ctx.lineWidth = interpolate(progress, [0, 1], [6, 2], { extrapolateRight: 'clamp' })
       ctx.shadowColor = '#32CD32'
-      ctx.shadowBlur = 12
+      ctx.shadowBlur = interpolate(progress, [0, 1], [16, 4], { extrapolateRight: 'clamp' })
       ctx.beginPath()
       ctx.arc(wave.x, wave.y, r, 0, Math.PI * 2)
       ctx.stroke()
@@ -391,7 +500,7 @@ export function useGameRenderer(
       ctx.restore()
     }
 
-    // 绘制玩家
+    // 绘制玩家（受击闪红+血条平滑）
     for (const player of players) {
       const isLocal = player.id === user?.id
       const charConfig = CHARACTERS[player.characterType] || CHARACTERS.warrior
@@ -418,6 +527,37 @@ export function useGameRenderer(
         continue
       }
 
+      // ── 玩家受击检测 ──
+      const prevHp = prevHpRef.current.get(player.id)
+      if (prevHp !== undefined && player.hp < prevHp) {
+        hitAnimRef.current.set(player.id, frame)
+      }
+
+      // ── 受击缩放 ──
+      const hitStart = hitAnimRef.current.get(player.id)
+      let playerRedOverlay = 0
+      if (hitStart !== undefined) {
+        const hitFrame = frame - hitStart
+        if (hitFrame > 20) {
+          hitAnimRef.current.delete(player.id)
+        } else {
+          const hitScale = spring({
+            frame: hitFrame,
+            fps: FPS,
+            from: 1.15,
+            to: 1.0,
+            config: { damping: 12, stiffness: 200, overshootClamping: true }
+          })
+          playerRedOverlay = interpolate(hitFrame, [0, 5, 15], [0.4, 0.15, 0], {
+            extrapolateRight: 'clamp'
+          })
+          ctx.save()
+          ctx.translate(ppos.x, ppos.y)
+          ctx.scale(hitScale, hitScale)
+          ctx.translate(-ppos.x, -ppos.y)
+        }
+      }
+
       let spriteIndex = charConfig.spriteIndex.front
       let spriteNameArr = charConfig.spriteName?.front ?? ['']
       let flipH = false
@@ -427,14 +567,11 @@ export function useGameRenderer(
           spriteIndex = charConfig.spriteIndex.back
           spriteNameArr = charConfig.spriteName?.back ?? ['']
         } else if (angle > 3*Math.PI/4 || angle <= -3*Math.PI/4) {
-          // 朝左移动 → 翻转精灵（默认朝右）
           spriteIndex = charConfig.spriteIndex.front
           spriteNameArr = charConfig.spriteName?.front ?? ['']
           flipH = true
         }
-        // 其他角度（含朝右）→ 默认朝右，不翻转
       }
-      // 从帧数组提取第一帧（完整帧名，用于查表和动画）
       const firstFrame = spriteNameArr[0] ?? ''
 
       if (spritesLoaded && tileset2Atlas.complete && is0x72Sprite(firstFrame)) {
@@ -455,6 +592,15 @@ export function useGameRenderer(
         ctx.strokeRect(ppos.x - size/2, ppos.y - size/2, size, size)
       }
 
+      // 红色受击覆盖层
+      if (playerRedOverlay > 0) {
+        ctx.globalAlpha = playerRedOverlay
+        ctx.fillStyle = '#FF0000'
+        ctx.fillRect(ppos.x - size/2, ppos.y - size/2, size, size)
+        ctx.globalAlpha = 1
+        ctx.restore()
+      }
+
       const pAngle = player.angle ?? 0
       const facingRight = pAngle > -Math.PI / 2 && pAngle <= Math.PI / 2
       const wSprite = WEAPON_SPRITE[player.characterType] || 'weapon_knight_sword'
@@ -462,19 +608,24 @@ export function useGameRenderer(
       const flashVal = isLocal ? (deps as any).attackFlashRef?.current || 0 : 0
       if (tileset2Atlas.complete) {
         if (!facingRight) {
-          // 朝左：先平移到角色位置，水平翻转，再绘制武器（angle=0，位置0,0）
           ctx.save()
           ctx.translate(ppos.x, ppos.y)
           ctx.scale(-1, 1)
           drawWeaponSprite(ctx, tileset2Atlas, wSprite, 0, 0, 0, 48, flashVal, isMelee)
           ctx.restore()
         } else {
-          // 朝右：正常绘制
           drawWeaponSprite(ctx, tileset2Atlas, wSprite, ppos.x, ppos.y, 0, 48, flashVal, isMelee)
         }
       }
 
-      drawHPBar(ctx, ppos.x - 24, ppos.y - 34, 48, 6, player.hp, player.hpMax, charConfig.color)
+      // ── 血条平滑过渡 ──
+      const hpKey = `p_${player.id}`
+      const displayHp = displayHpRef.current.get(hpKey) ?? player.hp
+      const hpDiff = player.hp - displayHp
+      const smoothHp = Math.abs(hpDiff) < 0.5 ? player.hp : displayHp + hpDiff * 0.15
+      displayHpRef.current.set(hpKey, smoothHp)
+
+      drawHPBar(ctx, ppos.x - 24, ppos.y - 34, 48, 6, smoothHp, player.hpMax, charConfig.color)
       drawNameTag(ctx, ppos.x, ppos.y - 40, player.name, charConfig.color)
     }
   }, [canvasRef, gameStateRef, deps])
