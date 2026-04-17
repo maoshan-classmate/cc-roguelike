@@ -202,6 +202,15 @@ npx tsc --noEmit                                # TypeScript 编译检查
 - 墙壁 tiles (9-16) 有深色边框，与地板相邻会产生双重边框接缝
 - **推荐**：墙壁/地板用 `fillRect` 像素风格绘制，消除接缝；只用地牢精灵渲染特殊物体（楼梯、宝箱）
 
+**0x72 墙壁精灵区分（铁律）**：
+- `wall_top_*`（atlas y=0）= 墙壁顶部装饰条，不是墙壁主体，不能单独用作墙壁贴图
+- `wall_mid/right/left`（atlas y=16）= 墙壁主体贴图，但有顶部2源像素亮边高光
+- 墙壁亮边修复：对朝向房间的墙壁使用 `drawWallTileCropped` 裁掉顶部2源像素
+
+**出口坐标对齐**：服务端 `exitPoint` 是房间中心（浮点坐标如 933.3），不是瓦片对齐的。客户端渲染出口效果必须先对齐：`Math.floor(exitPoint.x / 32) * 32`
+
+**killAll 后敌人检查**：服务端 `killAll` 设 `enemy.alive = false` 但不删除。判断"无活怪"必须用 `enemies.filter((e: any) => e.alive !== false).length === 0`，不能直接用 `enemies.length === 0`
+
 **碰撞网格**：
 - `isWalkable()` 在 `collisionGrid` 为空时**必须返回 `false`**（不能返回 `true` 会导致穿墙）
 - 生成后验证：`collisionGrid.flat().filter(Boolean).length`
