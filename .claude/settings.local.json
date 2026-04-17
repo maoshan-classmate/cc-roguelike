@@ -165,7 +165,21 @@
       "Bash(rm -rf D:/work/cc-roguelike/.claude/scripts/__pycache__)",
       "Bash(bash -n D:/work/cc-roguelike/.claude/scripts/hook-ai-mission.sh)",
       "Bash(bash D:/work/cc-roguelike/.claude/scripts/hook-ai-mission.sh)",
-      "Bash(echo \"EXIT=$?\")"
+      "Bash(echo \"EXIT=$?\")",
+      "Bash(bash \"C:\\\\Users\\\\45230\\\\.claude\\\\plugins\\\\cache\\\\claude-plugins-official\\\\superpowers\\\\5.0.7\\\\skills\\\\brainstorming\\\\scripts\\\\start-server.sh\" --project-dir \"D:\\\\work\\\\cc-roguelike\")",
+      "Bash(cat \"D:\\\\work\\\\cc-roguelike\\\\.superpowers\\\\brainstorm\"/**/server-info)",
+      "Bash(find \"D:\\\\work\\\\cc-roguelike\\\\.superpowers\" -name \"server-info\" -exec cat {} \\\\;)",
+      "Read(//d/tmp/**)",
+      "Bash(elf_m)",
+      "Bash(wizzard_m)",
+      "Bash(dwarf_m\" | grep \"idle_anim_f0\")",
+      "mcp__calicat__get_meta_data",
+      "mcp__calicat__get_prd_list",
+      "mcp__calicat__create_document",
+      "Bash(find node_modules/@tsparticles/react -name \"*.d.ts\" -exec head -30 {} \\\\;)",
+      "WebSearch",
+      "mcp__web-search-prime__web_search_prime",
+      "mcp__plugin_playwright_playwright__browser_resize"
     ]
   },
   "enableAllProjectMcpServers": true,

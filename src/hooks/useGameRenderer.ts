@@ -16,6 +16,7 @@ import {
 import { spring } from '../utils/animation/spring'
 import { interpolate } from '../utils/animation/interpolate'
 import { Easing } from '../utils/animation/easing'
+import { renderDungeonTiles, renderDungeonFromRooms } from '../utils/dungeonTileRenderer'
 
 // 动画帧辅助：每~150ms切换一帧
 const ANIM_INTERVAL = 150
@@ -91,6 +92,7 @@ export function useGameRenderer(
   const displayHpRef = useRef<Map<string, number>>(new Map())  // entityId → displayed HP
   const itemSpawnRef = useRef<Map<string, number>>(new Map())  // itemId → spawn frame
   const prevItemIdsRef = useRef<Set<string>>(new Set())         // 上一帧的道具ID集合
+  const dungeonCacheRef = useRef<{ canvas: HTMLCanvasElement; gridKey: string } | null>(null)
 
   const render = useCallback(() => {
     const canvas = canvasRef.current
@@ -154,97 +156,33 @@ export function useGameRenderer(
     ctx.fillStyle = '#1A1210'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
 
-    // 绘制地牢
+    // 绘制地牢（离屏缓存 + 精灵贴图）
     if (dungeon && dungeon.collisionGrid && spritesLoaded && tileset2Atlas.complete) {
-      const tileSize = 32
       const grid = dungeon.collisionGrid
-      const rows = grid.length
-      const cols = grid[0]?.length || 0
+      const exitKey = dungeon.exitPoint ? `${dungeon.exitPoint.x},${dungeon.exitPoint.y}` : 'noExit'
+      const gridKey = grid.map((row: boolean[]) => row.join('')).join('|') + '|' + exitKey
 
-      const FLOOR_BASE = '#3A2E2C'
-      const FLOOR_GRID = '#504440'
-      const WALL_FACE = '#5C4A3A'
-      const WALL_EDGE = '#7A6652'
-      const WALL_DARK = '#2A1E16'
-      const BG_COLOR = '#1A1210'
-
-      ctx.fillStyle = BG_COLOR
-      ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-      for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-          const x = col * tileSize
-          const y = row * tileSize
-
-          if (grid[row][col]) {
-            ctx.fillStyle = FLOOR_BASE
-            ctx.fillRect(x, y, tileSize, tileSize)
-            ctx.strokeStyle = FLOOR_GRID
-            ctx.lineWidth = 1
-            ctx.strokeRect(x + 0.5, y + 0.5, tileSize - 1, tileSize - 1)
-          } else {
-            const adjFloor =
-              (row > 0 && grid[row - 1][col]) ||
-              (row < rows - 1 && grid[row + 1][col]) ||
-              (col > 0 && grid[row][col - 1]) ||
-              (col < cols - 1 && grid[row][col + 1])
-
-            if (adjFloor) {
-              ctx.fillStyle = WALL_FACE
-              ctx.fillRect(x, y, tileSize, tileSize)
-              ctx.fillStyle = WALL_EDGE
-              ctx.fillRect(x, y, tileSize, 2)
-              ctx.fillStyle = WALL_DARK
-              ctx.fillRect(x, y + tileSize - 2, tileSize, 2)
-              ctx.fillStyle = WALL_DARK
-              ctx.fillRect(x + tileSize - 2, y, 2, tileSize)
-              ctx.fillStyle = WALL_EDGE
-              ctx.fillRect(x, y, 2, tileSize)
-            }
-          }
-        }
+      if (!dungeonCacheRef.current || dungeonCacheRef.current.gridKey !== gridKey) {
+        const offscreen = document.createElement('canvas')
+        offscreen.width = (grid[0]?.length || 0) * 32
+        offscreen.height = grid.length * 32
+        const offCtx = offscreen.getContext('2d')!
+        renderDungeonTiles(offCtx, grid, tileset2Atlas, dungeon.exitPoint)
+        dungeonCacheRef.current = { canvas: offscreen, gridKey }
       }
-
-      if (dungeon.exitPoint) {
-        const exitSprite = getSpriteEntry('floor_stairs')
-        if (exitSprite?.source === '0x72' && tileset2Atlas.complete) {
-          draw0x72Sprite(ctx, tileset2Atlas, exitSprite.atlasKey as string, dungeon.exitPoint.x, dungeon.exitPoint.y, tileSize)
-        }
-        // 无 Kenney fallback：0x72 不可用时直接跳过（占位符）
-      }
+      ctx.drawImage(dungeonCacheRef.current.canvas, 0, 0)
     } else if (dungeon && dungeon.rooms) {
-      const tileSize = 32
-      const FLOOR_COLOR = '#3A2E2C'
-      const FLOOR_GRID = '#504440'
+      const roomsKey = 'rooms-' + dungeon.rooms.map((r: any) => `${r.x},${r.y},${r.width},${r.height}`).join('|')
 
-      for (const room of dungeon.rooms) {
-        ctx.fillStyle = FLOOR_COLOR
-        ctx.fillRect(room.x, room.y, room.width, room.height)
-        ctx.strokeStyle = FLOOR_GRID
-        ctx.lineWidth = 1
-        for (let x = room.x; x <= room.x + room.width; x += tileSize) {
-          ctx.beginPath(); ctx.moveTo(x, room.y); ctx.lineTo(x, room.y + room.height); ctx.stroke()
-        }
-        for (let y = room.y; y <= room.y + room.height; y += tileSize) {
-          ctx.beginPath(); ctx.moveTo(room.x, y); ctx.lineTo(room.x + room.width, y); ctx.stroke()
-        }
+      if (!dungeonCacheRef.current || dungeonCacheRef.current.gridKey !== roomsKey) {
+        const offscreen = document.createElement('canvas')
+        offscreen.width = canvas.width
+        offscreen.height = canvas.height
+        const offCtx = offscreen.getContext('2d')!
+        renderDungeonFromRooms(offCtx, dungeon.rooms, dungeon.corridorTiles, tileset2Atlas, canvas.width, canvas.height, dungeon.exitPoint)
+        dungeonCacheRef.current = { canvas: offscreen, gridKey: roomsKey }
       }
-      if (dungeon.corridorTiles) {
-        for (const tile of dungeon.corridorTiles) {
-          ctx.fillStyle = FLOOR_COLOR
-          ctx.fillRect(tile.x - tileSize / 2, tile.y - tileSize / 2, tileSize, tileSize)
-          ctx.strokeStyle = FLOOR_GRID
-          ctx.lineWidth = 1
-          ctx.strokeRect(tile.x - tileSize / 2, tile.y - tileSize / 2, tileSize, tileSize)
-        }
-      }
-      if (dungeon.exitPoint) {
-        const exitSprite = getSpriteEntry('floor_stairs')
-        if (exitSprite?.source === '0x72' && tileset2Atlas.complete) {
-          draw0x72Sprite(ctx, tileset2Atlas, exitSprite.atlasKey as string, dungeon.exitPoint.x, dungeon.exitPoint.y, tileSize)
-        }
-        // 无 Kenney fallback：0x72 不可用时直接跳过（占位符）
-      }
+      ctx.drawImage(dungeonCacheRef.current.canvas, 0, 0)
     } else {
       ctx.strokeStyle = '#3D2B3E'
       ctx.lineWidth = 1
