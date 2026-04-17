@@ -74,3 +74,7 @@ class NetworkClient {
 }
 
 export const networkClient = new NetworkClient()
+
+if (typeof window !== 'undefined') {
+  (window as any).__networkClient = networkClient
+}

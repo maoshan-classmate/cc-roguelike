@@ -32,6 +32,26 @@ function drawFloorTiles(
   }
 }
 
+function drawWallTileCropped(
+  ctx: CanvasRenderingContext2D,
+  atlas: HTMLImageElement,
+  spriteName: string,
+  col: number,
+  row: number,
+  cropTop: number,
+) {
+  const entry = SPRITE_ATLAS[spriteName]
+  if (!entry) return
+  // 裁掉顶部 cropTop 个源像素，目标 y 下移对应像素，高度减少
+  const scale = TILE / entry.h
+  const destCrop = cropTop * scale
+  // 先用背景色填充裁掉的区域
+  ctx.fillStyle = '#1A1210'
+  ctx.fillRect(col * TILE, row * TILE, TILE, destCrop)
+  ctx.drawImage(atlas, entry.x, entry.y + cropTop, entry.w, entry.h - cropTop,
+    col * TILE, row * TILE + destCrop, TILE, TILE - destCrop)
+}
+
 function drawWallTiles(
   ctx: CanvasRenderingContext2D,
   atlas: HTMLImageElement,
@@ -52,20 +72,15 @@ function drawWallTiles(
 
       if (!adjFloor) continue
 
-      drawTile(ctx, atlas, 'wall_mid', c, r)
+      const hasLeftWall = c > 0 && !grid[r][c - 1]
+      const sprite = hasLeftWall ? 'wall_right' : 'wall_mid'
 
-      if (above) {
-        if (left && !right) drawTile(ctx, atlas, 'wall_edge_bottom_left', c, r)
-        else if (right && !left) drawTile(ctx, atlas, 'wall_edge_bottom_right', c, r)
-        else drawTile(ctx, atlas, 'wall_edge_bottom_left', c, r)
+      // 朝向房间内部的面有亮边（地板上方/下方的墙壁），裁掉顶部2源像素的亮边
+      if (above || below) {
+        drawWallTileCropped(ctx, atlas, sprite, c, r, 2)
+      } else {
+        drawTile(ctx, atlas, sprite, c, r)
       }
-      if (below) {
-        if (left && !right) drawTile(ctx, atlas, 'wall_edge_top_left', c, r)
-        else if (right && !left) drawTile(ctx, atlas, 'wall_edge_top_right', c, r)
-        else drawTile(ctx, atlas, 'wall_edge_top_left', c, r)
-      }
-      if (left) drawTile(ctx, atlas, 'wall_edge_left', c, r)
-      if (right) drawTile(ctx, atlas, 'wall_edge_right', c, r)
     }
   }
 }

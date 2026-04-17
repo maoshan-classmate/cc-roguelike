@@ -171,6 +171,34 @@ export function useGameRenderer(
         dungeonCacheRef.current = { canvas: offscreen, gridKey }
       }
       ctx.drawImage(dungeonCacheRef.current.canvas, 0, 0)
+
+      // 出口引导：清怪后入口处淡蓝色光线
+      if (dungeon.exitPoint && enemies.filter((e: any) => e.alive !== false).length === 0) {
+        const tileX = Math.floor(dungeon.exitPoint.x / 32) * 32
+        const tileY = Math.floor(dungeon.exitPoint.y / 32) * 32
+        const cx = tileX + 16
+        const cy = tileY + 16
+        const pulse = 0.5 + 0.5 * Math.sin(frame * 0.04)
+
+        ctx.save()
+        ctx.globalCompositeOperation = 'lighter'
+        // 8条放射光线
+        for (let i = 0; i < 8; i++) {
+          const angle = (Math.PI * 2 / 8) * i + frame * 0.01
+          const len = 14 + pulse * 8
+          const grad = ctx.createLinearGradient(cx, cy,
+            cx + Math.cos(angle) * len, cy + Math.sin(angle) * len)
+          grad.addColorStop(0, `rgba(140, 200, 255, ${0.4 + pulse * 0.2})`)
+          grad.addColorStop(1, 'rgba(100, 170, 240, 0)')
+          ctx.strokeStyle = grad
+          ctx.lineWidth = 1.5
+          ctx.beginPath()
+          ctx.moveTo(cx, cy)
+          ctx.lineTo(cx + Math.cos(angle) * len, cy + Math.sin(angle) * len)
+          ctx.stroke()
+        }
+        ctx.restore()
+      }
     } else if (dungeon && dungeon.rooms) {
       const roomsKey = 'rooms-' + dungeon.rooms.map((r: any) => `${r.x},${r.y},${r.width},${r.height}`).join('|')
 
@@ -183,6 +211,33 @@ export function useGameRenderer(
         dungeonCacheRef.current = { canvas: offscreen, gridKey: roomsKey }
       }
       ctx.drawImage(dungeonCacheRef.current.canvas, 0, 0)
+
+      // 出口引导：清怪后入口处淡蓝色光线（rooms 路径）
+      if (dungeon.exitPoint && enemies.filter((e: any) => e.alive !== false).length === 0) {
+        const tileX = Math.floor(dungeon.exitPoint.x / 32) * 32
+        const tileY = Math.floor(dungeon.exitPoint.y / 32) * 32
+        const cx = tileX + 16
+        const cy = tileY + 16
+        const pulse = 0.5 + 0.5 * Math.sin(frame * 0.04)
+
+        ctx.save()
+        ctx.globalCompositeOperation = 'lighter'
+        for (let i = 0; i < 8; i++) {
+          const angle = (Math.PI * 2 / 8) * i + frame * 0.01
+          const len = 14 + pulse * 8
+          const grad = ctx.createLinearGradient(cx, cy,
+            cx + Math.cos(angle) * len, cy + Math.sin(angle) * len)
+          grad.addColorStop(0, `rgba(140, 200, 255, ${0.4 + pulse * 0.2})`)
+          grad.addColorStop(1, 'rgba(100, 170, 240, 0)')
+          ctx.strokeStyle = grad
+          ctx.lineWidth = 1.5
+          ctx.beginPath()
+          ctx.moveTo(cx, cy)
+          ctx.lineTo(cx + Math.cos(angle) * len, cy + Math.sin(angle) * len)
+          ctx.stroke()
+        }
+        ctx.restore()
+      }
     } else {
       ctx.strokeStyle = '#3D2B3E'
       ctx.lineWidth = 1
