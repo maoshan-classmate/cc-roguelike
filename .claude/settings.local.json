@@ -179,7 +179,9 @@
       "Bash(find node_modules/@tsparticles/react -name \"*.d.ts\" -exec head -30 {} \\\\;)",
       "WebSearch",
       "mcp__web-search-prime__web_search_prime",
-      "mcp__plugin_playwright_playwright__browser_resize"
+      "mcp__plugin_playwright_playwright__browser_resize",
+      "Bash(awk '{print $5}')",
+      "Bash(npx playwright *)"
     ]
   },
   "enableAllProjectMcpServers": true,

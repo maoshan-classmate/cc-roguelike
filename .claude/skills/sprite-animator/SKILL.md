@@ -10,6 +10,22 @@ description: Generate animated pixel art sprites from any image using Gemini API
 
 **核心原则：脚本是通用模板，不需要为每个怪物修改。** 所有怪物特定的内容（prompt、参考图）都通过 CLI 参数传入。
 
+## ⚠️ API 调用确认（强制）
+
+**在执行任何调用 Gemini API 的命令（`generate_sprite.py`）之前，必须先向用户确认。**
+
+确认内容必须包含：
+1. **预估调用**：说明即将调用 Gemini API（通过 yunwu.ai 代理）
+2. **参数摘要**：精灵名称、是否使用参考图、prompt 摘要（前50字）
+3. **费用提醒**：明确告知用户"此 API 调用会产生费用"
+
+**禁止行为**：
+- ❌ 不经确认直接执行 `generate_sprite.py`
+- ❌ 在用户未回复确认时自动执行
+- ❌ 将确认步骤视为可选
+
+**唯一例外**：用户明确说"直接生成"、"不需要确认"等授权语句时，可跳过确认。
+
 ## API Configuration
 
 Credentials are stored in project root `.env` (not committed to Git):
