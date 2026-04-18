@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sprite Inventory — 0x72 + Kenney CC0</title>
+<title>Sprite Inventory — 0x72 + Generated</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: #1a1a2e; color: #e0e0e0; font-family: 'Segoe UI', system-ui, sans-serif; padding: 24px; }
@@ -22,14 +22,14 @@
   .tab .count { background: #444; color: #bbb; font-size: 10px; padding: 1px 5px; border-radius: 8px; margin-left: 4px; }
   .tab.active .count { background: #555; }
 
-  /* Source tabs — 0x72 vs Kenney */
+  /* Source tabs — 0x72 vs Generated */
   .src-tabs { margin-bottom: 4px; }
   .src-tab { border-color: #3a3a5a; }
   .src-tab.active0x72 { background: #1a3a5a; border-color: #4a7aaa; }
-  .src-tab.activeKenney { background: #3a2a1a; border-color: #8a6a2a; }
+  .src-tab.activeGenerated { background: #3a1a3a; border-color: #8a4a9a; }
   .src-tab .badge { font-size: 10px; padding: 1px 6px; border-radius: 8px; margin-left: 4px; }
   .badge-0x72 { background: #1a3a5a; color: #6a9fd4; }
-  .badge-Kenney { background: #3a2a1a; color: #d4a855; }
+  .badge-Generated { background: #3a1a3a; color: #c87fd4; }
 
   /* Cat tabs — sub-filter */
   .cat-tabs { margin-bottom: 16px; }
@@ -68,6 +68,7 @@
   .badge-src { font-size: 9px; padding: 1px 5px; border-radius: 6px; font-weight: 600; }
   .badge-src.s0x72 { background: #1a3a5a; color: #6a9fd4; }
   .badge-src.sKenney { background: #3a2a1a; color: #d4a855; }
+  .badge-src.sGenerated { background: #3a1a3a; color: #c87fd4; }
   .usage { font-size: 9px; color: #666; margin-top: 2px; text-align: center; }
 
   .section-title { font-size: 11px; color: #666; margin-bottom: 10px; }
@@ -80,14 +81,14 @@
 <p class="meta">
   共 <span id="total-count">0</span> 个精灵 |
   0x72: <code>src/assets/0x72/frames/</code> |
-  Kenney: <code>src/assets/kenney/Spritesheet/</code>
+  Generated: <code>src/assets/generated/</code>
 </p>
 
 <!-- 来源 tabs -->
 <div class="tabs src-tabs">
   <div class="tab src-tab active" id="tab-all" onclick="setSource('all', this)">全部<span class="count" id="cnt-all">0</span></div>
   <div class="tab src-tab" id="tab-0x72" onclick="setSource('0x72', this)"><span class="badge badge-0x72">0x72</span><span class="count" id="cnt-0x72">0</span></div>
-  <div class="tab src-tab" id="tab-Kenney" onclick="setSource('Kenney', this)"><span class="badge badge-Kenney">Kenney</span><span class="count" id="cnt-Kenney">0</span></div>
+  <div class="tab src-tab" id="tab-generated" onclick="setSource('generated', this)"><span class="badge badge-Generated">Generated</span><span class="count" id="cnt-generated">0</span></div>
 </div>
 
 <!-- 分类 tabs (filtered by source) -->
@@ -137,7 +138,7 @@ const SPRITES = [
   { n:'lizard_f_idle_anim_f0',c:'CHARACTER',x:128,y:196,w:16,h:28,u:false, g:'',                        s:'0x72' },
 
   // ── 0x72 MONSTER (22) ─────────────────────────────────────
-  { n:'goblin_idle_anim_f0',     c:'MONSTER',x:368,y:40, w:16,h:16,u:true, g:'basic/fast 敌人',         s:'0x72', ref:'src/config/enemies.ts:28' },
+  { n:'goblin_idle_anim_f0',     c:'MONSTER',x:368,y:40, w:16,h:16,u:false,g:'⚠️ 已被 generated 替代',  s:'0x72' },
   { n:'skelet_idle_anim_f0',    c:'MONSTER',x:368,y:88, w:16,h:16,u:true, g:'tank 敌人',               s:'0x72', ref:'src/config/enemies.ts:58' },
   { n:'big_demon_idle_anim_f0',  c:'MONSTER',x:16, y:428,w:32,h:36,u:true, g:'boss 敌人',               s:'0x72', ref:'src/config/enemies.ts:74' },
   { n:'angel_idle_anim_f0',      c:'MONSTER',x:368,y:304,w:16,h:16,u:false,g:'',                        s:'0x72' },
@@ -159,6 +160,10 @@ const SPRITES = [
   { n:'big_zombie_idle_anim_f0',  c:'MONSTER',x:16, y:332,w:32,h:36,u:false,g:'',                        s:'0x72' },
   { n:'ogre_idle_anim_f0',        c:'MONSTER',x:16, y:380,w:32,h:36,u:false,g:'',                        s:'0x72' },
   { n:'doc_idle_anim_f0',         c:'MONSTER',x:368,y:345,w:16,h:23,u:false,g:'',                        s:'0x72' },
+
+  // ── Generated MONSTER (2) ──────────────────────────────────
+  { n:'slime_idle',  c:'MONSTER',x:0,y:0,w:256,h:256,u:true, g:'basic 敌人 (AI生成)',s:'generated', ref:'src/config/enemies.ts:28', genBase:'slime', frames:16 },
+  { n:'bat_idle',    c:'MONSTER',x:0,y:0,w:256,h:256,u:true, g:'fast 敌人 (AI生成)', s:'generated', ref:'src/config/enemies.ts:43', genBase:'bat', frames:16 },
 
   // ── 0x72 WEAPON (25) ──────────────────────────────────────
   { n:'weapon_knight_sword',     c:'WEAPON',x:339,y:98, w:10,h:29,u:true, g:'战士武器',                s:'0x72', ref:'src/pages/GamePage.tsx:548' },
@@ -229,12 +234,11 @@ const SPRITES = [
 ];
 
 // ══════════════════════════════════════════════════════════════════
-// Kenney spritesheet 预加载
+// Generated spritesheet 预加载
 // ══════════════════════════════════════════════════════════════════
 const SHEETS = {
-  kenney_char:    { el: new Image(), src: '../src/assets/kenney/Spritesheet/roguelikeChar_transparent.png' },
-  kenney_dungeon: { el: new Image(), src: '../src/assets/kenney/Spritesheet/roguelikeDungeon_transparent.png' },
-  kenney_sheet:   { el: new Image(), src: '../src/assets/kenney/Spritesheet/roguelikeSheet_transparent.png' },
+  gen_slime_idle: { el: new Image(), src: '../src/assets/generated/slime_sheet.png' },
+  gen_bat_idle:   { el: new Image(), src: '../src/assets/generated/bat_sheet.png' },
 };
 let sheetsReady = false;
 
@@ -257,7 +261,7 @@ function preload(cb) {
 // ══════════════════════════════════════════════════════════════════
 // 状态
 // ══════════════════════════════════════════════════════════════════
-let curSource = 'all';   // 'all' | '0x72' | 'Kenney'
+let curSource = 'all';   // 'all' | '0x72' | 'generated'
 let curCat    = 'all';   // 'all' | 'CHARACTER' | ...
 let showUsed  = false;
 
@@ -267,7 +271,7 @@ const CATS = ['CHARACTER','MONSTER','WEAPON','ITEM','SCENE','UI'];
 // 计数
 // ══════════════════════════════════════════════════════════════════
 function buildCounts() {
-  const src = { all: SPRITES.length, '0x72': 0, Kenney: 0 };
+  const src = { all: SPRITES.length, '0x72': 0, generated: 0 };
   const cat = { all: SPRITES.length };
   CATS.forEach(c => cat[c] = 0);
   // source×category 交叉计数
@@ -293,7 +297,7 @@ function updateCounts() {
   document.getElementById('total-count').textContent = SPRITES.length;
   document.getElementById('cnt-all').textContent    = src.all;
   document.getElementById('cnt-0x72').textContent   = src['0x72'];
-  document.getElementById('cnt-Kenney').textContent = src.Kenney;
+  document.getElementById('cnt-generated').textContent = src.generated;
 
   // 分类 tab 数量：ccnt-all 为 source 过滤后的总数，各分类为 filtered 总数
   const ccntAllEl = document.getElementById('ccnt-all');
@@ -321,27 +325,26 @@ function getDir(cat) { return cat; }
 function renderCard(sp) {
   const usedCls = sp.u ? 'card used' : 'card unused';
   const badgeU   = sp.u ? '已使用' : '未使用';
-  const srcCls  = sp.s === 'Kenney' ? 'badge-src sKenney' : 'badge-src s0x72';
-  const srcLbl  = sp.s === 'Kenney' ? 'Kenney' : '0x72';
+  const srcCls  = sp.s === 'generated' ? 'badge-src sGenerated' : 'badge-src s0x72';
+  const srcLbl  = sp.s === 'generated' ? 'Generated' : '0x72';
   const usage   = sp.g ? `<div class="usage">${sp.g}</div>` : '';
 
   let spriteHtml = '';
-  if (sp.s === '0x72') {
-    spriteHtml = `<img src="${BASE}/${sp.c}/${sp.n}.png" alt="${sp.n}" onerror="this.style.display='none';this.parentElement.style.background='#333'">`;
+  if (sp.s === 'generated') {
+    const frameDir = sp.genBase ? `../src/assets/generated/${sp.genBase}_frames` : '';
+    spriteHtml = `<img src="${frameDir}/frame_00.png" alt="${sp.n}" style="max-width:72px;max-height:72px;image-rendering:pixelated" onerror="this.style.display='none';this.parentElement.style.background='#333'">`;
   } else {
-    const sheetKey = sp.c === 'CHARACTER' ? 'kenney_char'
-                  : sp.c === 'ITEM' ? 'kenney_dungeon'
-                  : 'kenney_sheet';
-    spriteHtml = `<canvas width="72" height="72" data-sheet="${sheetKey}" data-idx="${sp.idx}" data-w="${sp.w}" data-h="${sp.h}" data-sw="${sp.sw}" style="image-rendering:pixelated;"></canvas>`;
+    spriteHtml = `<img src="${BASE}/${sp.c}/${sp.n}.png" alt="${sp.n}" onerror="this.style.display='none';this.parentElement.style.background='#333'">`;
   }
 
-  const coordsStr = sp.s === '0x72' ? `@${sp.x},${sp.y}` : `idx=${sp.idx} sw=${sp.sw}`;
+  const coordsStr = sp.s === 'generated' ? `${sp.frames||16}帧` : `@${sp.x},${sp.y}`;
+  const sizeStr = sp.s === 'generated' ? `${sp.frames||16}帧动画` : `${sp.w}×${sp.h}`;
   const refStr   = sp.ref ? `<div class="ref">→ ${sp.ref}</div>` : '';
   return `<div class="${usedCls}">
     <div class="sprite-wrap">${spriteHtml}</div>
     <div class="name">${sp.n}</div>
     <div class="coords">${coordsStr}</div>
-    <div class="size">${sp.s==='0x72'?sp.w:sp.w}×${sp.s==='0x72'?sp.h:sp.h}</div>
+    <div class="size">${sizeStr}</div>
     <span class="badge ${sp.u?'used':'unused'}">${badgeU}</span>
     <span class="${srcCls}">${srcLbl}</span>
     ${usage}${refStr}
@@ -366,25 +369,7 @@ function render() {
   html += '</div>';
   document.getElementById('content').innerHTML = html;
 
-  preload(renderCanvases);
-}
-
-function renderCanvases() {
-  document.querySelectorAll('.sprite-wrap canvas').forEach(cv => {
-    const sk = cv.dataset.sheet;
-    const idx = parseInt(cv.dataset.idx);
-    const w   = parseInt(cv.dataset.w);
-    const h   = parseInt(cv.dataset.h);
-    const sw  = parseInt(cv.dataset.sw);
-    const sh  = SHEETS[sk];
-    if (!sh) return;
-    const pos = getPos(idx, sw, 16, 1);
-    const scale = Math.min(72 / w, 72 / h);
-    cv.width = w * scale; cv.height = h * scale;
-    const ctx = cv.getContext('2d');
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(sh.el, pos.x, pos.y, w, h, 0, 0, cv.width, cv.height);
-  });
+  preload(() => {});
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -396,10 +381,10 @@ function setSource(src, el) {
     const isActive = t === el;
     t.className = 'tab src-tab' + (isActive ? ' active' : '');
     // 清除旧的 active 颜色 class
-    t.classList.remove('active0x72', 'activeKenney');
+    t.classList.remove('active0x72', 'activeGenerated');
     if (isActive) {
       if (src === '0x72') t.classList.add('active0x72');
-      if (src === 'Kenney') t.classList.add('activeKenney');
+      if (src === 'generated') t.classList.add('activeGenerated');
     }
   });
   // 切换 source 时重置 category 为"全部"

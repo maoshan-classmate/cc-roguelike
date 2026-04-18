@@ -7,20 +7,20 @@
           {
             "type": "command",
             "command": "bash .claude/scripts/hook-ai-mission.sh",
-            "statusMessage":"[AI项目主权声明已注入]"
+            "statusMessage": "[AI项目主权声明已注入]"
           }
         ]
       },
-       {
-               "matcher": "compact",
-               "hooks": [
-                 {
-                   "type": "command",
-                   "command": "bash .claude/scripts/hook-ai-mission.sh",
-                   "statusMessage":"[AI项目主权声明已注入]"
-                 }
-               ]
-             }
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/scripts/hook-ai-mission.sh",
+            "statusMessage": "[AI项目主权声明已注入]"
+          }
+        ]
+      }
     ],
     "PreToolUse": [
       {
@@ -33,17 +33,20 @@
         ]
       }
     ],
-"UserPromptSubmit": [
+    "UserPromptSubmit": [
       {
         "hooks": [
           {
             "type": "command",
             "command": "bash ${CLAUDE_PROJECT_DIR}/.claude/scripts/hook-pressure.sh",
             "timeout": 5,
-            "statusMessage":"[开始施压]"
+            "statusMessage": "[开始施压]"
           }
         ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "andrej-karpathy-skills@karpathy-skills": true
   }
 }

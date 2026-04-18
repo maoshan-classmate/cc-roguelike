@@ -13,6 +13,7 @@ import {
   getSpriteEntry,
   is0x72Sprite,
 } from '../config/sprites'
+import { isGeneratedSprite, drawGeneratedSprite } from '../config/generatedSprites'
 import { spring } from '../utils/animation/spring'
 import { interpolate } from '../utils/animation/interpolate'
 import { Easing } from '../utils/animation/easing'
@@ -66,6 +67,7 @@ interface RenderDeps {
   user: any
   spritesLoaded: boolean
   tileset2Atlas: HTMLImageElement
+  generatedSheets: Record<string, HTMLImageElement>
   lastAnimTime: React.MutableRefObject<number>
   prevPositions: React.MutableRefObject<Map<string, { x: number; y: number }>>
   targetPositions: React.MutableRefObject<Map<string, { x: number; y: number }>>
@@ -105,6 +107,7 @@ export function useGameRenderer(
       user,
       spritesLoaded,
       tileset2Atlas,
+      generatedSheets,
       lastAnimTime,
       prevPositions,
       targetPositions,
@@ -355,8 +358,18 @@ export function useGameRenderer(
       }
 
       if (spritesLoaded) {
-        if (tileset2Atlas.complete && is0x72Sprite(enemyConfig.spriteName ?? '')) {
-          const animSprite = getAnimSprite(enemyConfig.spriteName ?? '', performance.now() - lastAnimTime.current)
+        const sName = enemyConfig.spriteName ?? ''
+        if (isGeneratedSprite(sName)) {
+          const base = sName.replace(/_f\d+$/, '')
+          const sheet = generatedSheets[base]
+          if (sheet && sheet.complete) {
+            drawGeneratedSprite(ctx, sheet, sName, epos.x, epos.y, size, performance.now() - lastAnimTime.current)
+          } else {
+            ctx.fillStyle = enemyConfig.color
+            ctx.fillRect(epos.x - size/2, epos.y - size/2, size, size)
+          }
+        } else if (tileset2Atlas.complete && is0x72Sprite(sName)) {
+          const animSprite = getAnimSprite(sName, performance.now() - lastAnimTime.current)
           draw0x72Sprite(ctx, tileset2Atlas, animSprite, epos.x, epos.y, size)
         } else {
           ctx.fillStyle = enemyConfig.color

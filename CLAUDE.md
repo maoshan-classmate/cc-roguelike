@@ -211,6 +211,8 @@ npx tsc --noEmit                                # TypeScript 编译检查
 
 **killAll 后敌人检查**：服务端 `killAll` 设 `enemy.alive = false` 但不删除。判断"无活怪"必须用 `enemies.filter((e: any) => e.alive !== false).length === 0`，不能直接用 `enemies.length === 0`
 
+**生成精灵背景透明化（铁律）**：AI 生成的 sprite sheet（Gemini）背景不是透明——是深色像素（RGB≈25,17,14），渲染时产生黑框。生成后必须执行逐帧主导色检测 + 阈值透明化：对每帧统计最高频色（=背景），tolerance=30 以内的像素全部设 alpha=0。简单 flood-fill 不够——背景色不均匀时帧间会漏处理。处理脚本在 `.claude/skills/sprite-animator/scripts/generate_sprite.py`，每次调用 `generate_sprite()` 后自动执行去背景。
+
 **碰撞网格**：
 - `isWalkable()` 在 `collisionGrid` 为空时**必须返回 `false`**（不能返回 `true` 会导致穿墙）
 - 生成后验证：`collisionGrid.flat().filter(Boolean).length`

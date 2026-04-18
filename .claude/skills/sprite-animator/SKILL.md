@@ -1,58 +1,127 @@
 ---
 name: sprite-animator
-description: Generate animated pixel art sprites from any image using AI. Send a photo, get a 16-frame animated GIF.
+description: Generate animated pixel art sprites from any image using Gemini API via yunwu.ai proxy. Send a source image, get a 16-frame sprite sheet + GIF.
 
 ---
 
 # Sprite Animator
 
-Generate animated pixel art sprites from any image. Uses nano-banana-pro (Gemini) to create a 16-frame sprite sheet in a single request, then assembles it into an animated GIF.
+Turn any image into an animated pixel art sprite GIF. Uses Gemini API (yunwu.ai proxy) to create a 16-frame sprite sheet in a single request, then assembles it into an animated GIF.
 
-## Quick Start
+## API Configuration
 
-```bash
-# Wave animation (default 16 frames)
-uv run --with sprite-animator sprite-animator -i photo.png -o sprite.gif -a wave
+Credentials are stored in project root `.env` (not committed to Git):
 
-# Bounce animation with larger sprites
-uv run --with sprite-animator sprite-animator -i avatar.png -o bounce.gif -a bounce -s 256
-
-# Keep the raw sprite sheet and individual frames
-uv run --with sprite-animator sprite-animator -i pet.jpg -o dance.gif -a dance --keep-sheet --keep-frames
+```
+GEMINI_PROXY_BASE_URL=https://yunwu.ai
+GEMINI_API_KEY=<your-key-here>
+GEMINI_MODEL=gemini-3-pro-image-preview
 ```
 
-## Animations
+The script auto-loads `.env` — no manual export needed.
+
+## Prerequisites
+
+```bash
+uv run --with google-genai --with Pillow --with numpy python -c "from google import genai; print('OK')"
+```
+
+## Usage
+
+三种模式：预设快捷 / 自定义图片 + 动画类型 / 混合模式
+
+```bash
+# 1. 预设快捷 — 内置 prompt + 参考图
+PYTHONIOENCODING=utf-8 uv run --with google-genai --with Pillow --with numpy \
+  python .claude/skills/sprite-animator/scripts/generate_sprite.py --name slime
+
+# 2. 自定义图片 — 传入任意图片 + 选择动画类型
+PYTHONIOENCODING=utf-8 uv run --with google-genai --with Pillow --with numpy \
+  python .claude/skills/sprite-animator/scripts/generate_sprite.py \
+  --input assets/inbox/my_character.png --animation idle --name my_char
+
+# 3. 混合 — 自定义图片 + 预设 prompt
+PYTHONIOENCODING=utf-8 uv run --with google-genai --with Pillow --with numpy \
+  python .claude/skills/sprite-animator/scripts/generate_sprite.py \
+  --input photo.png --preset slime --name my_slime
+```
+
+## CLI Options
+
+| Flag | Description | Default |
+|------|-------------|---------|
+| `--name` | Output sprite name (required) | — |
+| `-i, --input` | Input reference image path | 预设图片 |
+| `-a, --animation` | Animation type: idle, bounce, wave, dance | idle |
+| `-s, --cell-size` | Cell size in px | 256 |
+| `-d, --frame-duration` | GIF frame duration in ms | 150 |
+| `-r, --resolution` | Generation resolution: 1K, 2K | 1K |
+| `--two-step` | Pixelate first, then animate (better for photos) | off |
+| `--preset` | Use built-in preset (slime, bat) | — |
+| `--output` | Output directory | src/assets/generated |
+
+## Animation Types
 
 | Type | Description |
 |------|-------------|
 | `idle` | Subtle breathing + blinking loop |
-| `wave` | Arm raises, waves back and forth, lowers |
 | `bounce` | Crouch → jump → land → recover |
-| `dance` | Lean, spin, jump — fun and energetic |
+| `wave` | Arm raise → wave back and forth → lower |
+| `dance` | Lean, spin, jump — full party mode |
 
-## Options
+## Tips
 
-| Flag | Description |
-|------|-------------|
-| `-i, --input` | Input image (photo, drawing, etc.) |
-| `-o, --output` | Output GIF path |
-| `-a, --animation` | Animation type: idle, wave, bounce, dance (default: idle) |
-| `-d, --duration` | Frame duration in ms (default: 100) |
-| `-s, --size` | Output sprite size in px (default: 128) |
-| `-r, --resolution` | Generation resolution: 1K or 2K (default: 1K) |
-| `--keep-sheet` | Save the raw sprite sheet |
-| `--keep-frames` | Save individual frame PNGs |
-| `-v, --verbose` | Verbose output |
+- Use `--two-step` for photos of real people — Gemini loses likeness otherwise
+- Use `-r 2K` for noticeably better quality
+- Use `-d 180` for more natural playback speed (default 150ms is slightly fast)
+- Save good base pixel art sprites and reuse them for different animations
 
-## How It Works
+## Adding New Presets
 
-1. Creates a labeled 4x4 grid template (16 cells)
-2. Sends the template + source image to Gemini in ONE request
-3. AI fills each cell with a pixel art frame following the animation sequence
-4. Frames are extracted from the sheet and assembled into a looping GIF
+在 `scripts/generate_sprite.py` 的 `PRESETS` 字典中添加：
 
-Single-request generation ensures consistent style across all frames.
+```python
+PRESETS["golem"] = {
+    "input": "src/assets/0x72/frames/MONSTER/ogre_idle_anim_f0.png",
+    "prompt": GOLEM_PROMPT,  # 自定义 prompt
+}
+```
+
+## Output
+
+所有生成结果输出到 `src/assets/generated/`：
+
+| 文件 | 说明 |
+|------|------|
+| `{name}_sheet.png` | 4x4 sprite sheet (1024x1024)，背景已自动透明化 |
+| `{name}.gif` | 16帧 GIF (32x32) |
+| `{name}_frames/` | 16 个独立帧 PNG |
+
+脚本内置了**逐帧背景透明化**（per-frame dominant color detection + threshold alpha=0），生成后无需手动去背景。
+
+## Game Integration (Optional)
+
+生成的精灵**不一定需要立即集成到游戏**。可以先作为备用素材存储在 `src/assets/generated/`。
+
+需要集成时，按顺序执行：
+
+1. **`src/config/generatedSprites.ts`** — 在 `GENERATED_SPRITES` 中注册新精灵
+2. **`src/config/sprites.ts`** — 在 `SPRITE_REGISTRY` 中添加条目（`source: 'generated'`）
+3. **`src/config/enemies.ts`**（如果是敌人）— 设置 `spriteName` 指向注册名
+4. **`npx tsc --noEmit`** — 编译验证零 error
+5. **`/sprite-audit`** — 三文件同步审查
+6. **`npm run dev`** — 运行时验证精灵渲染正确
+
+## Skill Structure
+
+```
+.claude/skills/sprite-animator/
+├── SKILL.md                  # 本文档
+└── scripts/
+    └── generate_sprite.py    # 生成脚本（API调用 + 去背景 + 帧提取 + GIF）
+```
 
 ## Source
 
-https://github.com/Olafs-World/sprite-animator
+Original tool: https://github.com/Olafs-World/sprite-animator
+Modified: yunwu.ai proxy, per-frame bg removal, game integration workflow.

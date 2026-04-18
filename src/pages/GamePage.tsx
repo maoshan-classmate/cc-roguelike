@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useParticleSystem } from '../hooks/useParticleSystem'
 import { useDamageTexts } from '../hooks/useDamageTexts'
 import { useGameRenderer, getAnimSprite, lerp } from '../hooks/useGameRenderer'
+import { GENERATED_SPRITES } from '../config/generatedSprites'
 import {
   PixelCastle,
   PixelGem,
@@ -22,6 +23,14 @@ import {
 // 加载精灵图（仅 0x72 TilesetII，Kenney 已废弃）
 const tileset2Atlas = new Image()
 tileset2Atlas.src = mainAtlasPath
+
+// 加载 AI 生成精灵 sheet
+const generatedSheets: Record<string, HTMLImageElement> = {}
+for (const [name, def] of Object.entries(GENERATED_SPRITES)) {
+  const img = new Image()
+  img.src = def.sheetPath
+  generatedSheets[name] = img
+}
 
 // 技能图标
 const SKILL_ICONS = [
@@ -201,6 +210,7 @@ export default function GamePage() {
     user,
     spritesLoaded,
     tileset2Atlas,
+    generatedSheets,
     lastAnimTime,
     prevPositions,
     targetPositions,

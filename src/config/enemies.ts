@@ -25,7 +25,7 @@ export const ENEMIES: Record<string, EnemyConfig> = {
     name: '史莱姆',
     spriteIndex: 1671,     // Kenney roguelikeSheet fallback
     sheet: 'sheet',
-    spriteName: 'goblin_idle_anim_f0',  // 0x72 TilesetII (⚠️ slime不在atlas，用goblin代替)
+    spriteName: 'slime_idle',  // AI 生成精灵 (Gemini sprite-animator)
     size: 40,
     hp: 30,
     attack: 5,
@@ -40,7 +40,7 @@ export const ENEMIES: Record<string, EnemyConfig> = {
     name: '蝙蝠',
     spriteIndex: 1665,     // Kenney roguelikeSheet fallback
     sheet: 'sheet',
-    spriteName: 'goblin_idle_anim_f0',  // 0x72 TilesetII - 哥布林(快速)
+    spriteName: 'bat_idle',  // AI 生成精灵 (Gemini sprite-animator)
     size: 36,
     hp: 20,
     attack: 8,

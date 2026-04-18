@@ -74,13 +74,13 @@ src/assets/
 
 ---
 
-### 2.2 怪物 (MONSTER) — 22 0x72 + 3 Kenney
+### 2.2 怪物 (MONSTER) — 22 0x72 + 2 generated + 3 Kenney
 
 #### 0x72（22个）
 
 | 贴图名称 | Atlas坐标 | 尺寸 | 游戏用途 | 状态 | 代码引用 |
 |---------|----------|------|---------|------|---------|
-| `goblin_idle_anim_f0` | (368,40) | 16×16 | basic/fast 敌人 | ✅ | `enemies.ts:28` |
+| `goblin_idle_anim_f0` | (368,40) | 16×16 | ⚠️ 已被 generated 替代 | ❌ | |
 | `skelet_idle_anim_f0` | (368,88) | 16×16 | tank 敌人 | ✅ | `enemies.ts:58` |
 | `big_demon_idle_anim_f0` | (16,428) | 32×36 | boss 敌人 | ✅ | `enemies.ts:74` |
 | `angel_idle_anim_f0` | (368,304) | 16×16 | — | ❌ | |
@@ -103,12 +103,19 @@ src/assets/
 | `ogre_idle_anim_f0` | (16,380) | 32×36 | — | ❌ | |
 | `doc_idle_anim_f0` | (368,345) | 16×23 | — | ❌ | |
 
+#### Generated（2个）预览路径：`src/assets/generated/{name}_sheet.png`
+
+| 贴图名称 | 来源 | 帧数 | 游戏用途 | 状态 | 代码引用 |
+|---------|------|------|---------|------|---------|
+| `slime_idle` | Gemini AI | 16帧 | basic 敌人 | ✅ | `enemies.ts:28` |
+| `bat_idle` | Gemini AI | 16帧 | fast 敌人 | ✅ | `enemies.ts:43` |
+
 #### 敌人→精灵映射
 
 | 敌人 | 精灵 | 尺寸 | 颜色 |
 |------|-----|------|------|
-| basic | `goblin_idle_anim_f0` | 40px | #40B0B0 |
-| fast | `goblin_idle_anim_f0` | 36px | #80C040 |
+| basic | `slime_idle` | 40px | #40B0B0 |
+| fast | `bat_idle` | 36px | #80C040 |
 | tank | `skelet_idle_anim_f0` | 48px | #C0C0C0 |
 | boss | `big_demon_idle_anim_f0` | 64px | #E08040 |
 
