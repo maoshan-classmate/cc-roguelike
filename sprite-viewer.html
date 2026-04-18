@@ -161,9 +161,10 @@ const SPRITES = [
   { n:'ogre_idle_anim_f0',        c:'MONSTER',x:16, y:380,w:32,h:36,u:false,g:'',                        s:'0x72' },
   { n:'doc_idle_anim_f0',         c:'MONSTER',x:368,y:345,w:16,h:23,u:false,g:'',                        s:'0x72' },
 
-  // ── Generated MONSTER (2) ──────────────────────────────────
+  // ── Generated MONSTER (3) ──────────────────────────────────
   { n:'slime_idle',  c:'MONSTER',x:0,y:0,w:256,h:256,u:true, g:'basic 敌人 (AI生成)',s:'generated', ref:'src/config/enemies.ts:28', genBase:'slime', frames:16 },
   { n:'bat_idle',    c:'MONSTER',x:0,y:0,w:256,h:256,u:true, g:'fast 敌人 (AI生成)', s:'generated', ref:'src/config/enemies.ts:43', genBase:'bat', frames:16 },
+  { n:'ghost_idle',  c:'MONSTER',x:0,y:0,w:256,h:256,u:true, g:'ghost 敌人 (AI生成)',s:'generated', ref:'src/config/enemies.ts:55', genBase:'ghost', frames:16 },
 
   // ── 0x72 WEAPON (25) ──────────────────────────────────────
   { n:'weapon_knight_sword',     c:'WEAPON',x:339,y:98, w:10,h:29,u:true, g:'战士武器',                s:'0x72', ref:'src/pages/GamePage.tsx:548' },
@@ -239,6 +240,7 @@ const SPRITES = [
 const SHEETS = {
   gen_slime_idle: { el: new Image(), src: '../src/assets/generated/slime_sheet.png' },
   gen_bat_idle:   { el: new Image(), src: '../src/assets/generated/bat_sheet.png' },
+  gen_ghost_idle: { el: new Image(), src: '../src/assets/generated/ghost_sheet.png' },
 };
 let sheetsReady = false;
 

@@ -100,6 +100,7 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
   // AI 生成精灵（Gemini sprite-animator，独立 sheet 渲染）
   slime_idle:  { category: 'MONSTER', source: 'generated', atlasKey: 'slime_idle',  size: 40, animated: true, frameCount: 16 },
   bat_idle:    { category: 'MONSTER', source: 'generated', atlasKey: 'bat_idle',    size: 36, animated: true, frameCount: 16 },
+  ghost_idle:  { category: 'MONSTER', source: 'generated', atlasKey: 'ghost_idle',  size: 42, animated: true, frameCount: 16 },
 
   // ── WEAPON ────────────────────────────────────────────────────────────────
   weapon_knight_sword:    { category: 'WEAPON', source: '0x72', atlasKey: 'weapon_knight_sword',   size: 32, animated: false, frameCount: 1 },

@@ -8,6 +8,7 @@ import { Vec2 } from '../utils/Vec2';
 const ENEMY_BASE_HP: Record<string, number> = {
   basic: 30,
   fast: 20,
+  ghost: 40,
   tank: 80,
   boss: 200
 };
@@ -236,6 +237,7 @@ export class GameRoom {
     const ENEMY_BASE_ATTACK: Record<string, number> = {
       basic: 8,
       fast: 10,
+      ghost: 12,
       tank: 15,
       boss: 25
     };
@@ -434,14 +436,14 @@ export class GameRoom {
 
     if (dist > 30) {
       const ENEMY_SPEED: Record<string, number> = {
-        basic: 60, fast: 100, tank: 40, boss: 50
+        basic: 60, fast: 100, ghost: 70, tank: 40, boss: 50
       };
       const speed = (ENEMY_SPEED[enemy.type] || 60) * dt;
       const dirX = dx / dist;
       const dirY = dy / dist;
 
       const ENEMY_RADIUS: Record<string, number> = {
-        basic: 16, fast: 14, tank: 20, boss: 28
+        basic: 16, fast: 14, ghost: 16, tank: 20, boss: 28
       };
       const radius = ENEMY_RADIUS[enemy.type] || 16;
       const newEX = enemy.x + dirX * speed;
@@ -493,7 +495,7 @@ export class GameRoom {
    */
   private separateEnemies(): void {
     const ENEMY_RADIUS: Record<string, number> = {
-      basic: 16, fast: 14, tank: 20, boss: 28
+      basic: 16, fast: 14, ghost: 16, tank: 20, boss: 28
     };
 
     const enemies = Array.from(this.enemies.values()).filter(e => e.alive);

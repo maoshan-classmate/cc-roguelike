@@ -47,9 +47,9 @@ export const FLOOR_CONFIG: Record<number, {
 }> = {
   1: { enemyCount: [3, 5], eliteChance: 0.1, bossType: 'boss', enemyTypes: ['basic', 'basic'] },
   2: { enemyCount: [4, 7], eliteChance: 0.15, bossType: 'boss', enemyTypes: ['basic', 'fast'] },
-  3: { enemyCount: [5, 8], eliteChance: 0.2, bossType: 'boss', enemyTypes: ['fast', 'tank'] },
-  4: { enemyCount: [6, 10], eliteChance: 0.25, bossType: 'boss', enemyTypes: ['fast', 'tank', 'tank'] },
-  5: { enemyCount: [8, 12], eliteChance: 0.3, bossType: 'boss', enemyTypes: ['tank', 'tank', 'tank'] }
+  3: { enemyCount: [5, 8], eliteChance: 0.2, bossType: 'boss', enemyTypes: ['fast', 'ghost', 'tank'] },
+  4: { enemyCount: [6, 10], eliteChance: 0.25, bossType: 'boss', enemyTypes: ['fast', 'ghost', 'tank', 'tank'] },
+  5: { enemyCount: [8, 12], eliteChance: 0.3, bossType: 'boss', enemyTypes: ['ghost', 'tank', 'tank', 'tank'] }
 };
 
 // 敌人基础属性

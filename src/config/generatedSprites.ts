@@ -26,6 +26,13 @@ export const GENERATED_SPRITES: Record<string, GeneratedSpriteDef> = {
     totalFrames: 16,
     frameDuration: 150,
   },
+  ghost_idle: {
+    sheetPath: '/src/assets/generated/ghost_sheet.png',
+    cols: 4,
+    rows: 4,
+    totalFrames: 16,
+    frameDuration: 150,
+  },
 }
 
 export function isGeneratedSprite(spriteName: string): boolean {

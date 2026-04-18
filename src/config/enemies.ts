@@ -50,6 +50,22 @@ export const ENEMIES: Record<string, EnemyConfig> = {
       { itemId: 'coin', chance: 0.4 }
     ]
   },
+  ghost: {
+    id: 'ghost',
+    name: '幽灵',
+    spriteIndex: 1648,
+    sheet: 'sheet',
+    spriteName: 'ghost_idle',
+    size: 42,
+    hp: 40,
+    attack: 12,
+    speed: 1.2,
+    color: '#8060C0',
+    dropTable: [
+      { itemId: 'coin', chance: 0.4 },
+      { itemId: 'health', chance: 0.3 }
+    ]
+  },
   tank: {
     id: 'tank',
     name: '骷髅兵',

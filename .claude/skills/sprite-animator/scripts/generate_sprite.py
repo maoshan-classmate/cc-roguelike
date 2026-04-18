@@ -310,7 +310,7 @@ def load_dotenv():
                     os.environ.setdefault(key.strip(), val.strip())
 
 
-# Preset definitions: name -> (input_path, prompt)
+# Example presets — 仅供演示，生成新怪物请用 --prompt 参数
 PRESETS = {
     "slime": {
         "input": "src/assets/0x72/frames/MONSTER/swampy_anim_f0.png",
@@ -362,6 +362,8 @@ Examples:
                         help="Pixelate first, then animate (better for photos)")
     parser.add_argument("--preset", default=None, choices=list(PRESETS.keys()),
                         help="Use a built-in preset (prompt + input image)")
+    parser.add_argument("--prompt", "-p", default=None,
+                        help="Custom prompt string (no need to modify script)")
     args = parser.parse_args()
 
     os.environ["PYTHONIOENCODING"] = "utf-8"
@@ -370,7 +372,14 @@ Examples:
     input_path = None
     prompt = None
 
-    if args.preset:
+    if args.prompt:
+        # Custom prompt from CLI — no script modification needed
+        if not args.input:
+            print("  ERROR: --prompt requires --input to specify reference image")
+            sys.exit(1)
+        input_path = args.input
+        prompt = args.prompt
+    elif args.preset:
         p = PRESETS[args.preset]
         input_path = p["input"]
         prompt = p["prompt"]

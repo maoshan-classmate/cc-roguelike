@@ -1,12 +1,14 @@
 ---
 name: sprite-animator
-description: Generate animated pixel art sprites from any image using Gemini API via yunwu.ai proxy. Send a source image, get a 16-frame sprite sheet + GIF.
+description: Generate animated pixel art sprites from any image using Gemini API via yunwu.ai proxy. Send a source image + prompt, get a 16-frame sprite sheet + GIF.
 
 ---
 
 # Sprite Animator
 
-Turn any image into an animated pixel art sprite GIF. Uses Gemini API (yunwu.ai proxy) to create a 16-frame sprite sheet in a single request, then assembles it into an animated GIF.
+通用像素动画精灵生成工具。传入任意参考图片 + prompt，输出 16 帧 sprite sheet + GIF。
+
+**核心原则：脚本是通用模板，不需要为每个怪物修改。** 所有怪物特定的内容（prompt、参考图）都通过 CLI 参数传入。
 
 ## API Configuration
 
@@ -28,37 +30,73 @@ uv run --with google-genai --with Pillow --with numpy python -c "from google imp
 
 ## Usage
 
-三种模式：预设快捷 / 自定义图片 + 动画类型 / 混合模式
+### 标准用法：`--input` + `--prompt` + `--name`（推荐）
 
 ```bash
-# 1. 预设快捷 — 内置 prompt + 参考图
+PYTHONIOENCODING=utf-8 uv run --with google-genai --with Pillow --with numpy \
+  python .claude/skills/sprite-animator/scripts/generate_sprite.py \
+  --input src/assets/0x72/frames/MONSTER/necromancer_anim_f0.png \
+  --prompt "Fill this EXACT 4x4 sprite sheet grid (16 cells, read left-to-right, top-to-bottom). Each cell must be a PERFECT SQUARE. The output image MUST be square (1024x1024). Draw a pixel art GHOST WRAITH monster. 16x16 pixel art style, retro game aesthetic, dark dungeon theme. The ghost is a floating spectral figure: translucent deep purple body (#8060C0 core, lighter edges), two glowing white eyes, tattered dark robes trailing into mist at the bottom, NO legs. The ghost MUST fill at least 80% of each cell. This is an IDLE animation loop: Row 1: hovering -> float up -> center -> float down. Row 2: sway left -> center -> sway right -> center. Row 3: body pulse expand -> contract -> rest -> rest. Row 4: eye glow brighten -> dim -> bob -> rest. CRITICAL: Same colors, size, position across ALL 16 frames. ONLY the specified movement changes. Solid dark background (#1A1210) in ALL cells. OUTPUT MUST BE A SQUARE IMAGE." \
+  --name ghost
+```
+
+### 快捷用法：`--animation`（通用动画 prompt）
+
+```bash
+PYTHONIOENCODING=utf-8 uv run --with google-genai --with Pillow --with numpy \
+  python .claude/skills/sprite-animator/scripts/generate_sprite.py \
+  --input photo.png --animation idle --name my_char
+```
+
+### 内置预设（示例，仅 slime/bat）
+
+```bash
 PYTHONIOENCODING=utf-8 uv run --with google-genai --with Pillow --with numpy \
   python .claude/skills/sprite-animator/scripts/generate_sprite.py --name slime
-
-# 2. 自定义图片 — 传入任意图片 + 选择动画类型
-PYTHONIOENCODING=utf-8 uv run --with google-genai --with Pillow --with numpy \
-  python .claude/skills/sprite-animator/scripts/generate_sprite.py \
-  --input assets/inbox/my_character.png --animation idle --name my_char
-
-# 3. 混合 — 自定义图片 + 预设 prompt
-PYTHONIOENCODING=utf-8 uv run --with google-genai --with Pillow --with numpy \
-  python .claude/skills/sprite-animator/scripts/generate_sprite.py \
-  --input photo.png --preset slime --name my_slime
 ```
+
+> `slime` 和 `bat` 是项目初期创建的示例预设，展示脚本能力。**生成新怪物不需要添加预设，直接用 `--prompt`。**
 
 ## CLI Options
 
 | Flag | Description | Default |
 |------|-------------|---------|
 | `--name` | Output sprite name (required) | — |
-| `-i, --input` | Input reference image path | 预设图片 |
+| `-i, --input` | Input reference image path | — |
+| **`-p, --prompt`** | **Custom prompt string — 生成新精灵的主要方式** | — |
 | `-a, --animation` | Animation type: idle, bounce, wave, dance | idle |
 | `-s, --cell-size` | Cell size in px | 256 |
 | `-d, --frame-duration` | GIF frame duration in ms | 150 |
 | `-r, --resolution` | Generation resolution: 1K, 2K | 1K |
 | `--two-step` | Pixelate first, then animate (better for photos) | off |
-| `--preset` | Use built-in preset (slime, bat) | — |
+| `--preset` | Built-in preset (slime, bat — 示例用) | — |
 | `--output` | Output directory | src/assets/generated |
+
+## Prompt 撰写指南
+
+写一个好的 prompt 是生成质量的关键。必须包含以下要素：
+
+1. **Grid 约束** — "Fill this EXACT 4x4 sprite sheet grid... Each cell must be a PERFECT SQUARE. Output MUST be square (1024x1024)."
+2. **怪物外观** — 形状、颜色（给 hex 值）、特征（眼睛/角/尾巴等）
+3. **填充率** — "MUST fill at least 80% of each cell"（防止生成太小）
+4. **逐帧动画描述** — 4 行 × 4 帧，描述每帧动作
+5. **一致性约束** — "Same colors, size, position across ALL 16 frames"
+6. **背景色** — "Solid dark background (#1A1210) in ALL cells"
+
+### 参考：0x72 可用参考图
+
+| 参考图 | 适合生成的怪物类型 |
+|--------|-----------------|
+| `MONSTER/necromancer_anim_f0.png` | 法师/幽灵/亡灵类 |
+| `MONSTER/masked_orc_idle_anim_f0.png` | 兽人/战士/盔甲类 |
+| `MONSTER/orc_warrior_idle_anim_f0.png` | 近战格斗类 |
+| `MONSTER/wogol_idle_anim_f0.png` | 两栖/毒物类 |
+| `MONSTER/chort_idle_anim_f0.png` | 恶魔/火焰类 |
+| `MONSTER/ogre_idle_anim_f0.png` | 巨型/重型类 |
+| `MONSTER/tiny_zombie_idle_anim_f0.png` | 亡灵/群体系 |
+| `MONSTER/imp_idle_anim_f0.png` | 飞行/小型类 |
+
+路径前缀：`src/assets/0x72/frames/`
 
 ## Animation Types
 
@@ -71,21 +109,11 @@ PYTHONIOENCODING=utf-8 uv run --with google-genai --with Pillow --with numpy \
 
 ## Tips
 
+- **`--prompt` 是推荐方式**，不需要修改脚本文件
 - Use `--two-step` for photos of real people — Gemini loses likeness otherwise
 - Use `-r 2K` for noticeably better quality
 - Use `-d 180` for more natural playback speed (default 150ms is slightly fast)
-- Save good base pixel art sprites and reuse them for different animations
-
-## Adding New Presets
-
-在 `scripts/generate_sprite.py` 的 `PRESETS` 字典中添加：
-
-```python
-PRESETS["golem"] = {
-    "input": "src/assets/0x72/frames/MONSTER/ogre_idle_anim_f0.png",
-    "prompt": GOLEM_PROMPT,  # 自定义 prompt
-}
-```
+- Prompt 里强调 "SQUARE" 和 "80% fill" 可以避免尺寸/填充率问题
 
 ## Output
 
@@ -116,12 +144,14 @@ PRESETS["golem"] = {
 
 ```
 .claude/skills/sprite-animator/
-├── SKILL.md                  # 本文档
+├── SKILL.md                  # 本文档（通用工具说明）
 └── scripts/
-    └── generate_sprite.py    # 生成脚本（API调用 + 去背景 + 帧提取 + GIF）
+    └── generate_sprite.py    # 通用生成模板（API调用 + 去背景 + 帧提取 + GIF）
 ```
+
+> 脚本中的 `slime`/`bat` 预设仅作示例参考。生成新怪物使用 `--prompt` 参数，脚本无需修改。
 
 ## Source
 
 Original tool: https://github.com/Olafs-World/sprite-animator
-Modified: yunwu.ai proxy, per-frame bg removal, game integration workflow.
+Modified: yunwu.ai proxy, per-frame bg removal, `--prompt` CLI support, game integration workflow.
