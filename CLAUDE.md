@@ -120,46 +120,25 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 
 ## 铁律（最高优先级 ⚠️）
 
-> **所有 AI teammate 开工前必须读完此节。违反即为 3.25 绩效。**
-
-### 贴图资产三文件同步（铁律）
-
-```
-sprite-viewer.html  ←→  docs/sprite-inventory.md  ←→  src/config/sprites.ts
-   交互预览                   静态文档                   运行时数据源
-```
-
-**规则**：三个文件**必须完全一致**。任一改动必须同步更新其他两处，缺一不可。
-
-**违禁行为**：
-- ❌ 只改 sprite-viewer.html 不改 MD/TS
-- ❌ 只改 sprites.ts 不改 HTML/MD
-- ❌ 假设"运行时不被引用就忽略"（`floor_stairs` 就是 Kenney 渲染但 sprites.ts 标记为 0x72）
-- ❌ 手动标记"已使用"而不验证代码引用
-
-**验证命令**（每次修改后必跑）：
-```bash
-grep "目标sprite名" sprite-viewer.html docs/sprite-inventory.md src/config/sprites.ts
-# 三处必须同时出现且 source/atlasKey 完全一致
-```
+> 贴图三文件同步铁律详见 `.claude/rules/sprite-sync.md`（条件加载）。
+> 以下为 agent 局限性和已知同步历史
 
 **已知同步历史**：
-- `floor_stairs` → source=0x72, atlasKey=23, category=SCENE；三文件一致，但**渲染路径硬编码** drawDungeonSprite(23) 绕过 SPRITE_REGISTRY（见下方架构风险）
-- `bullet_kenney` → ⚠️ 已废弃，代码无引用
-- `weapon_anime_sword` → sprites.ts有注册，代码有引用，但HTML/MD标记u:false（需人工确认）
-- `weapon_mace` / `weapon_hammer` → sprites.ts曾缺失，已补齐
+- `floor_stairs` → source=0x72, atlasKey=23, category=SCENE；三文件一致，但渲染路径硬编码 `drawDungeonSprite(23)` 绕过 SPRITE_REGISTRY
+- `bullet_kenney` → 已废弃，代码无引用
+- `weapon_anime_sword` → sprites.ts 有注册，代码有引用，但 HTML/MD 标记 u:false（需人工确认）
+- `weapon_mace` / `weapon_hammer` → sprites.ts 曾缺失，已补齐
 
-**sprite-audit agent 局限性（需人工补充核查）**：
-- 只检查 registry 是否有缺失条目，不检查 `u:false` 标记准确性
-- 不自动验证 HTML vs MD 的 x/y/w/h 坐标一致性
-- weapon_anime_sword 漏标事件：HTML/MD标记未使用但代码有引用
-- 修复后需手动 `grep` 核对关键条目的坐标一致性
+**sprite-audit agent 局限性**：
+- 只检查 registry 缺失条目，不检查 `u:false` 标记准确性
+- 不自动验证 HTML vs MD 坐标一致性
+- 修复后需手动 `grep` 核对关键条目坐标
 
-**sprite-fix 局限性（需人工补枪）**：
-- 只补缺失条目（registry有→无），不修复已存在条目间的坐标/尺寸不一致
-- WEAPON 类 HTML vs MD 坐标差异需人工确认实际 atlas 坐标后手动同步
+**sprite-fix 局限性**：
+- 只补缺失条目，不修复已存在条目间的坐标/尺寸不一致
+- WEAPON 类坐标差异需人工确认后手动同步
 
-**red-team 深度发现（架构风险）**：详见 [架构问题](docs/todo/architecture.md)
+**架构风险**：详见 [架构问题](docs/todo/architecture.md)
 
 ## 索引
 
@@ -197,57 +176,13 @@ npx tsc --noEmit                                # TypeScript 编译检查
 
 ## Sprite 关键发现
 
-**Kenney 地牢精灵图 (roguelikeDungeon)**：
-- 地板 tiles (0-8) 是**相同室内地板**，不是边缘感知瓦片——不要按位置选择不同索引
-- 墙壁 tiles (9-16) 有深色边框，与地板相邻会产生双重边框接缝
-- **推荐**：墙壁/地板用 `fillRect` 像素风格绘制，消除接缝；只用地牢精灵渲染特殊物体（楼梯、宝箱）
+> 精灵渲染规范、三文件同步铁律、角色种族分配等规则详见 `.claude/rules/rendering.md` 和 `.claude/rules/sprite-sync.md`。
 
-**0x72 墙壁精灵区分（铁律）**：
-- `wall_top_*`（atlas y=0）= 墙壁顶部装饰条，不是墙壁主体，不能单独用作墙壁贴图
-- `wall_mid/right/left`（atlas y=16）= 墙壁主体贴图，但有顶部2源像素亮边高光
-- 墙壁亮边修复：对朝向房间的墙壁使用 `drawWallTileCropped` 裁掉顶部2源像素
+**出口坐标对齐**：服务端 `exitPoint` 是房间中心（浮点坐标如 933.3），客户端渲染出口效果必须先对齐：`Math.floor(exitPoint.x / 32) * 32`
 
-**出口坐标对齐**：服务端 `exitPoint` 是房间中心（浮点坐标如 933.3），不是瓦片对齐的。客户端渲染出口效果必须先对齐：`Math.floor(exitPoint.x / 32) * 32`
-
-**killAll 后敌人检查**：服务端 `killAll` 设 `enemy.alive = false` 但不删除。判断"无活怪"必须用 `enemies.filter((e: any) => e.alive !== false).length === 0`，不能直接用 `enemies.length === 0`
-
-**生成精灵背景透明化（铁律）**：AI 生成的 sprite sheet（Gemini）背景不是透明——是深色像素（RGB≈25,17,14），渲染时产生黑框。生成后必须执行逐帧主导色检测 + 阈值透明化：对每帧统计最高频色（=背景），tolerance=30 以内的像素全部设 alpha=0。简单 flood-fill 不够——背景色不均匀时帧间会漏处理。处理脚本在 `.claude/skills/sprite-animator/scripts/generate_sprite.py`，每次调用 `generate_sprite()` 后自动执行去背景。
-
-**碰撞网格**：
-- `isWalkable()` 在 `collisionGrid` 为空时**必须返回 `false`**（不能返回 `true` 会导致穿墙）
-- 生成后验证：`collisionGrid.flat().filter(Boolean).length`
-
-## 0x72 Dungeon Tileset II 集成规范
-
-**Atlas vs Kenney 区别**：
-- Kenney: 网格索引式 (`spriteIndex: 0`)，按行切 spritesheet
-- 0x72: atlas 坐标式 (`spriteName: 'knight_m_idle_anim_f0'`)，直接 `ctx.drawImage(img, sx, sy, sw, sh, ...)`
-
-**精灵命名规范**：
-- `_anim_f{n}` 后缀 = 4帧动画（如 `knight_m_idle_anim_f0`）
-- `_f{n}` 无 `_anim` = 3帧动画（如 `chest_full_open_anim_f0`）
-- 无后缀 = 静态（如 `flask_big_blue`、`skull`）
-- `getAnimSprite()` 对静态项**不追加**帧号，非静态才替换帧后缀
+**killAll 后敌人检查**：服务端 `killAll` 设 `enemy.alive = false` 但不删除。判断"无活怪"必须用 `enemies.filter((e: any) => e.alive !== false).length === 0`
 
 **已知缺失**：`slime_idle_anim_f0` 不存在于 atlas，basic 敌人 fallback 到 `goblin_idle_anim_f0`
-
-**统一 Sprite Registry** (`src/config/sprites.ts`)：
-- `SPRITE_REGISTRY` = 全局单一数据源，key = spriteName 值
-- `getSpriteEntry(spriteName)` → 查 size/animated/frameCount
-- `is0x72Sprite(spriteName)` → source 检测，替代 `spriteName !== undefined`
-- 渲染优先级：0x72 (`is0x72Sprite()?→draw0x72Sprite`) → Kenney fallback
-
-**新资产引入流程**：解析→语义分类(CHARACTER/MONSTER/WEAPON/ITEM/SCENE/UI)→持久化(TS+MD)→替换
-
-**精灵朝向规则**（详见 [调试经验](docs/debugging.md) #11）：
-- 所有 0x72 精灵**默认朝右**，flipH=true 仅在向左移动时设置（angle ≈ ±π）
-- 武器/角色翻转用 `ctx.scale(-1,1)`，**禁止 `ctx.rotate(π)`**（180°旋转≠水平镜像）
-
-**角色种族视觉辨识度规则**（铁律）：
-- 0x72 atlas 有5大种族系列：knight（骑士）、elf（精灵）、wizzard（法师）、dwarf（矮人）、lizard（蜥蜴人）
-- 同系列内男女变体（如 `wizzard_m` vs `wizzard_f`）在 16×28px → 48px 放大后**视觉几乎无法区分**
-- **分配角色贴图时必须跨种族**，禁止同系列重复：warrior=knight_m, ranger=elf_m, mage=wizzard_m, **cleric=dwarf_m**
-- 未用种族变体（lizard_m/f, knight_f, elf_f, dwarf_f）可分配给未来新职业
 
 ## Playwright MCP 验证流程
 
@@ -308,39 +243,17 @@ npx tsc --noEmit                                # TypeScript 编译检查
 
 ## 游戏系统关键常量
 
-- **地牢渲染**: collisionGrid 从服务端发给客户端，逐 tile 渲染（视觉=物理边界），不再用 room 矩形画墙框
-- **敌人碰撞半径** `ENEMY_RADIUS`: basic=16, fast=14, tank=20, boss=28（按 size 计算，不要硬编码固定值）
-- **角色精灵**: 只有 front/back 两个方向，左右用 Canvas `ctx.scale(-1,1)` 翻转（不要用 `rotate(π)`），索引 2-5 是空白。0x72 精灵默认朝右
-- **角色种族**: warrior=knight_m, ranger=elf_m, mage=wizzard_m, cleric=dwarf_m（⚠️同种族男女变体在游戏尺度下视觉不可区分，必须跨种族分配）
-- **怪物精灵**: roguelikeSheet perRow=56，最大索引 1679，超出即越界（如 1721/1725）
-- **地牢色系**: FLOOR=#3A2E2C, GRID=#504440, WALL=#5C4A3A, BG=#1A1210（网格线与底色色差须 >30 色阶才可见）
-- **职业速度** `CLASS_SPEED`: warrior=180, ranger=220, mage=180, cleric=190 (px/s)
-- **职业武器** class→weapon: warrior=sword(近战挥砍), ranger=pistol(远程箭矢), mage=pistol(远程魔法弹), cleric=pistol(AoE治疗波)
-- **职业攻击系统（五条独立路径，不可混用）**:
-  - warrior: 服务端 sword 类型，不产生子弹，客户端 drawWeaponSprite(isMelee=true)
-  - ranger: 箭矢精灵贴图 drawBulletSprite('weapon_arrow')
-  - mage: Canvas 生成紫色能量弹 drawMagicOrb()，不依赖精灵贴图
-  - cleric: AoE 治疗波，服务端 spawnHealWave() 即时范围治疗(maxRadius=80px)，客户端渲染 healWaves 扩散波纹
-  - enemy: Canvas 生成红色能量弹，独立于所有职业路径
-- **职业贴图分配** (必须跨种族): warrior=knight_m(骑士), ranger=elf_m(精灵), mage=wizzard_m(法师), cleric=dwarf_m(矮人)
-- **职业武器贴图**: warrior=weapon_knight_sword, ranger=weapon_bow, mage=weapon_red_magic_staff, cleric=weapon_green_magic_staff
-- **职业映射** SocketServer validTypes: warrior/ranger/mage 直传，healer→cleric 映射，cleric→cleric 直传（客户端两种都可能发）
+> 职业属性、敌人配置、攻击路径、色系、地牢尺寸等常量详见 `.claude/rules/game-constants.md`。
+
+- **职业映射** SocketServer validTypes: warrior/ranger/mage 直传，healer→cleric 映射，cleric→cleric 直传
 - **4 技能槽**: dash/shield/heal/speed_boost 按职业不同排列
 - **碰撞半径**: `isWalkableRadius(x,y,r)` 检查中心+4角共5点
-- **客户端插值**: lerp(prev, target, t) 平滑服务端 10Hz 同步
-- **地牢尺寸**: 1024×768 (32×24 tiles, tile=32px)
 
 ## 常见 Bug 模式
 
-- **白色箭头**：`drawDirectionArrow` 在本地玩家头顶绘制，删除 GamePage.tsx 中调用即可
-- **UI 状态 bug**：`setSource`/`setCategory` 类逻辑，先读源码确认 `t===el`，不要查 className
+> 19 个反模式详见 `.claude/rules/bug-patterns.md`，完整调试经验详见 [调试经验 + Bug 模式](docs/debugging.md)。
+
 - **弃用文件**：`src/assets/0x72/index.ts` 和 `spriteRegistry.ts` 为弃用，运行时代码只读 `src/config/sprites.ts`
-- **异步竞态**：DB 写 + 内存写双保险，`handleRoomStart` 优先读内存
-- **Session refs 重置**：组件 unmount 时必须重置 `gameSessionRef`，否则旧状态污染新游戏
-- **Zustand + immer 渲染失效**：immer proxy 对象引用不变时不触发重渲染。本地玩家头像应优先用 React state（如 `selectedClass`）而非 Zustand store（如 `player.characterType`）
-- **更多模式详见** [调试经验 + Bug 模式](docs/debugging.md) — Canvas翻转/Socket重连/断线宽限期等
-
-删除文件前：`grep -r "文件名" src/ --include="*.ts" --include="*.tsx"`；特别注意 `ui-optimization.md` 可能引用 `PixelSprites.tsx`
-
-- **[前端动画与自适应规范](docs/frontend-animation.md)** — framer-motion/tsparticles 踩坑、组件库索引、自适应原则、登录页分层架构
+- **Zustand + immer 渲染失效**：immer proxy 对象引用不变时不触发重渲染，本地玩家头像用 React state 而非 Zustand store
+- **[前端动画与自适应规范](docs/frontend-animation.md)** — framer-motion/tsparticles 踩坑、自适应原则
 
