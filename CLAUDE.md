@@ -149,6 +149,13 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 - **[Pencil UI 设计架构](pencil/docs/architecture.md)** — 三层架构（Tokens/Components/Pages），组件索引+目录结构
 - **[贴图资产清单（交互）](sprite-viewer.html)** — 109个精灵可视化，0x72+Kenney双源，代码引用可点击
 - **[贴图资产清单（文档）](docs/sprite-inventory.md)** — 与上方HTML 1:1 对应，静态检索
+- **[音效系统概述](docs/audio/README.md)** — 55个音效按系统分类，jsfxr生成+Howler.js播放
+- **[音效清单](docs/audio/sfx-inventory.md)** — 55个音效完整列表，按8大系统分类
+- **[音效风格指南](docs/audio/style-guide.md)** — Chiptune + Dark Ambient 混合风格规范，打击感设计
+- **[音效技术实现](docs/audio/implementation.md)** — 架构设计、触发点映射、扩展指南
+- **[音效使用状态](docs/audio/usage-status.md)** — 55个音效接入状态（已接入/待接入/不适用）
+- **[音效接入方案](docs/audio/implementation-plan.md)** — 分三阶段实施，按优先级排序
+- **[音效质量问题](docs/audio/sfx-quality-issues.md)** — 55个音效逐个风格评估，P0/P1/P2分级+修复方案
 - [Playwright MCP](docs/playwright.md)
 - [Bug 记录（按系统）](docs/bugs/)
 - [用户需求原始记录](docs/requirements.md)

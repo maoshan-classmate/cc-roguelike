@@ -9,6 +9,9 @@ import { useParticleSystem } from '../hooks/useParticleSystem'
 import { useDamageTexts } from '../hooks/useDamageTexts'
 import { useGameRenderer, getAnimSprite, lerp } from '../hooks/useGameRenderer'
 import { GENERATED_SPRITES } from '../config/generatedSprites'
+import { useSound } from '../audio/useSound'
+import { SFX_IDS } from '../audio/sfx'
+import { useHitEffect } from '../hooks/useHitEffect'
 import {
   PixelCastle,
   PixelGem,
@@ -169,6 +172,8 @@ export default function GamePage() {
     reset
   } = useGameStore()
   const navigate = useNavigate()
+  const { play, playAttack, playHurt, playEnemyDie, playPickup, playFloorTransition, playVictory, playGameOver, playDash, playShield, playSpeed, playDie } = useSound()
+  const { triggerHitEffect, updateShake, isHitlagging, updateHitlag } = useHitEffect()
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const keysRef = useRef<Set<string>>(new Set())
@@ -191,6 +196,7 @@ export default function GamePage() {
 
   const prevDyingRef = useRef<Set<string>>(new Set())
   const prevHpRef = useRef<Map<string, number>>(new Map())
+  const prevAliveRef = useRef<Map<string, boolean>>(new Map())
   const prevPositions = useRef<Map<string, { x: number; y: number }>>(new Map())
   const targetPositions = useRef<Map<string, { x: number; y: number }>>(new Map())
   const lastStateTime = useRef(performance.now())
@@ -277,10 +283,59 @@ export default function GamePage() {
           const damage = prevHp - e.hp
           const isPlayer = state.players?.some((p: any) => p.id === key)
           spawnDamageText(e.x, e.y - 20, damage, isPlayer)
+
+          // 音效：受伤
+          if (isPlayer && e.id === user?.id) {
+            playHurt()
+            // 打击感：玩家受伤（顿帧 2 帧 + 震动 2px）
+            triggerHitEffect(2, 2, 100)
+          } else if (!isPlayer) {
+            play(SFX_IDS.ENEMY_HIT)
+            // 打击感：敌人受击（顿帧 3 帧 + 震动 3px）
+            triggerHitEffect(3, 3, 150)
+          }
         }
+
+        // 音效：敌人死亡
+        if (!state.players?.some((p: any) => p.id === key) && e.hp <= 0 && prevHp !== undefined && prevHp > 0) {
+          playEnemyDie(e.type || 'basic')
+          // 打击感：敌人死亡（顿帧 5 帧 + 震动 5px）
+          triggerHitEffect(5, 5, 200)
+        }
+
+        // 音效：玩家死亡
+        const prevAlive = prevAliveRef.current.get(key)
+        if (prevAlive !== undefined && e.alive === false && prevAlive === true) {
+          const isPlayer = state.players?.some((p: any) => p.id === key)
+          if (isPlayer && e.id === user?.id) {
+            playDie()
+            // 打击感：玩家死亡（顿帧 8 帧 + 震动 6px）
+            triggerHitEffect(8, 6, 300)
+          }
+        }
+        prevAliveRef.current.set(key, e.alive)
+
         prevHpRef.current.set(key, e.hp)
       }
       lastStateTime.current = performance.now()
+
+      // 音效：道具拾取
+      const prevItems = gameStateRef.current.items || []
+      const newItems = state.items || []
+      if (newItems.length < prevItems.length) {
+        // 检测到道具被拾取（数量减少）
+        const removedItems = prevItems.filter((item: any) => !newItems.some((newItem: any) => newItem.id === item.id))
+        for (const item of removedItems) {
+          // 检查是否是本地玩家拾取的（通过距离判断）
+          const localPlayer = state.players?.find((p: any) => p.id === user?.id)
+          if (localPlayer) {
+            const dist = Math.sqrt((localPlayer.x - item.x) ** 2 + (localPlayer.y - item.y) ** 2)
+            if (dist < 50) { // 50px 内认为是本地玩家拾取
+              playPickup(item.type || 'gold')
+            }
+          }
+        }
+      }
 
       gameStateRef.current = {
         players: state.players || [],
@@ -303,9 +358,21 @@ export default function GamePage() {
       gameSessionRef.current = data.gameSession
       lastStateTime.current = performance.now()
       setFloor(data.floor)
+
+      // 音效：楼层切换
+      playFloorTransition()
     })
 
-    networkClient.on('game:end', (data: any) => setGameOver(true, data.win))
+    networkClient.on('game:end', (data: any) => {
+      setGameOver(true, data.win)
+
+      // 音效：游戏结束/胜利
+      if (data.win) {
+        playVictory()
+      } else {
+        playGameOver()
+      }
+    })
 
     return () => {
       networkClient.off('game:state')
@@ -331,6 +398,14 @@ export default function GamePage() {
       if (['1', '2', '3', '4'].includes(skillKey) && !skillKeysDown.has(skillKey)) {
         skillKeysDown.add(skillKey)
         networkClient.emit('game:input', { skill: parseInt(skillKey) - 1 })
+
+        // 播放技能音效
+        switch (skillKey) {
+          case '1': playDash(); break
+          case '2': playShield(); break
+          case '3': play(SFX_IDS.SKILL_HEAL); break
+          case '4': playSpeed(); break
+        }
       }
     }
 
@@ -405,11 +480,40 @@ export default function GamePage() {
       }
 
       const isAttacking = mouseRef.current.down
-      if (isAttacking && !prevAttackRef.current) attackFlashRef.current = 1.0
+      if (isAttacking && !prevAttackRef.current) {
+        attackFlashRef.current = 1.0
+        // 播放攻击音效
+        const localPlayer = gameStateRef.current.players.find((p: any) => p.id === user?.id)
+        if (localPlayer) {
+          playAttack(localPlayer.characterType || 'warrior')
+        }
+      }
       prevAttackRef.current = isAttacking
       attackFlashRef.current = isAttacking ? Math.max(attackFlashRef.current, 0.5) : Math.max(0, attackFlashRef.current - 0.08)
 
-      render()
+      // 打击感：顿帧处理
+      updateHitlag()
+      if (isHitlagging()) {
+        // 顿帧中，跳过渲染但继续请求下一帧
+        animationRef.current = requestAnimationFrame(gameLoop)
+        return
+      }
+
+      // 打击感：屏幕震动
+      const shake = updateShake()
+      const canvas = canvasRef.current
+      if (canvas && (shake.x !== 0 || shake.y !== 0)) {
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          ctx.save()
+          ctx.translate(shake.x, shake.y)
+          render()
+          ctx.restore()
+        }
+      } else {
+        render()
+      }
+
       animationRef.current = requestAnimationFrame(gameLoop)
     }
 

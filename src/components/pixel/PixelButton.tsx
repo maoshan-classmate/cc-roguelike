@@ -1,4 +1,5 @@
-import React from 'react'
+import React, { useCallback } from 'react'
+import { useSound } from '../../audio/useSound'
 
 interface PixelButtonProps {
   children: React.ReactNode
@@ -35,10 +36,18 @@ export function PixelButton({
   className = '',
   style,
 }: PixelButtonProps) {
+  const { playClick } = useSound()
+
+  const handleClick = useCallback(() => {
+    if (disabled) return
+    playClick()
+    onClick?.()
+  }, [disabled, onClick, playClick])
+
   return (
     <button
       type={type}
-      onClick={onClick}
+      onClick={handleClick}
       disabled={disabled}
       className={`${variantClass[variant]} ${glow !== 'none' ? glowClass[glow] : ''} ${className}`}
       style={style}
