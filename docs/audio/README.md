@@ -63,7 +63,4 @@ src/
 - [技术实现](implementation.md) — 架构设计、触发点映射、扩展指南
 - [使用状态](usage-status.md) — 55 个音效接入状态（已接入/待接入/不适用），含代码证据
 - [接入方案](implementation-plan.md) — 分三阶段实施，按优先级排序
-
-## 已知问题
-
-- [音效质量问题追踪](sfx-quality-issues.md) — 55 个音效逐个评估，含修复方案
+- [质量问题追踪](sfx-quality-issues.md) — 55 个音效逐个风格评估，P0/P1/P2 分级+修复记录（已修复）

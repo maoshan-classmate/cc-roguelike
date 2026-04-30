@@ -1,19 +1,20 @@
 # 音效使用状态文档
 
 > 记录 55 个音效的接入状态，每个条目附带**具体代码证据**。
-> 最后更新：2026-04-29
+> 最后更新：2026-04-30
 
 ## 统计
 
 | 状态 | 数量 | 说明 |
 |------|------|------|
-| **已接入** | 15 | 已在代码中调用，有代码证据 |
-| **待接入** | 33 | 有对应游戏事件，待实现 |
+| **已接入** | 22 | 已在代码中调用，有代码证据（14 主线程 + 4 技能 + 4 攻击） |
+| **待接入 P1** | 8 | 应该接入，有明确触发位置 |
+| **待接入 P2** | 18 | 锦上添花，需服务端支持或新机制 |
 | **不适用** | 7 | 无对应游戏机制 |
 
 ---
 
-## 已接入（15个）
+## 已接入（22个）
 
 ### 016. enemy_hit — 敌人受击
 
@@ -350,6 +351,8 @@ if (isAttacking && !prevAttackRef.current) {
 
 **音效路由**: `playAttack('warrior')` → `playSfx(SFX_IDS.WARRIOR_SLASH)` (`sfx.ts:184`)
 
+**音效来源**: CC0 外部素材 — `blade_01.ogg`（80 CC0 RPG SFX by rubberduck），真实金属剑刃音效
+
 ---
 
 ### 004. ranger_shoot — 游侠攻击
@@ -430,16 +433,14 @@ if (canvas && (shake.x !== 0 || shake.y !== 0)) {
 
 ---
 
-## 待接入 - P1 应该接入（14个）
+## 待接入 - P1 应该接入（8个）
 
 | ID | 音效 | 预期触发位置 | 预期触发条件 | 修改文件 |
 |----|------|---------|---------|---------|
-| 002 | warrior_hit | GamePage.tsx:293 | 战士命中敌人（需按职业区分命中音效） | GamePage.tsx |
+| 002 | warrior_hit | GamePage.tsx:293 | 战士命中敌人（需按职业区分命中音效）CC0: hammer_02.ogg | GamePage.tsx |
 | 005 | ranger_hit | GamePage.tsx:293 | 游侠命中敌人 | GamePage.tsx |
 | 008 | mage_hit | GamePage.tsx:293 | 法师命中敌人 | GamePage.tsx |
 | 010 | cleric_heal | GamePage.tsx:293 | 牧师治疗命中 | GamePage.tsx |
-| 033 | pickup_potion_hp | GamePage.tsx:334 | 拾取血瓶 (type=health) | ✅ 已接入 |
-| 034 | pickup_potion_mp | GamePage.tsx:334 | 拾取蓝瓶 (type=energy) | ✅ 已接入 |
 | 040 | stairs_down | GamePage.tsx | 接近出口 + 敌人全灭 | GamePage.tsx |
 | 041 | ambient_drip | GamePage.tsx | 进入地牢循环播放 | GamePage.tsx |
 | 042 | ambient_chain | GamePage.tsx | 进入地牢循环播放 | GamePage.tsx |
@@ -447,7 +448,7 @@ if (canvas && (shake.x !== 0 || shake.y !== 0)) {
 
 ---
 
-## 待接入 - P2 锦上添花（19个）
+## 待接入 - P2 锦上添花（18个）
 
 | ID | 音效 | 预期触发位置 | 预期触发条件 | 修改文件 |
 |----|------|---------|---------|---------|
@@ -460,11 +461,6 @@ if (canvas && (shake.x !== 0 || shake.y !== 0)) {
 | 015 | enemy_boss_special | GameRoom.ts | Boss 技能 | 服务端+客户端 |
 | 021 | player_heal | GamePage.tsx | 被治疗（healWaves 检测） | GamePage.tsx |
 | 023 | player_respawn | GamePage.tsx | 楼层切换复活 | GamePage.tsx |
-| 027 | skill_shield_off | GamePage.tsx | 护盾结束 | 需服务端事件 |
-| 030 | skill_speed_off | GamePage.tsx | 加速结束 | 需服务端事件 |
-| 031 | skill_cooldown | GamePage.tsx | 技能冷却完成 | 需服务端事件 |
-| 036 | pickup_weapon | GamePage.tsx | 拾取武器 | 需服务端 weapon 类型 |
-| 037 | pickup_treasure | GamePage.tsx | 拾取宝箱 | 需服务端 treasure 类型 |
 | 045 | ui_hover | 全部页面 | 鼠标悬停按钮 | 全部页面 |
 | 046 | ui_select | RoomPage.tsx | 职业选择 | RoomPage.tsx |
 | 047 | ui_back | GamePage.tsx | 退出游戏 | GamePage.tsx |
@@ -489,25 +485,7 @@ if (canvas && (shake.x !== 0 || shake.y !== 0)) {
 | 037 | pickup_treasure | 服务端无 treasure 道具类型 | 同上 |
 | 039 | door_open | 无门机制 | `GameRoom.ts` 无门/开关逻辑 |
 
----
 
-## 已修复 Bug
-
-### WAV 文件为空（2026-04-29 已修复）
-
-**问题**: `scripts/generate-sfx.js` 使用 `sfxr.toBuffer(customParams)` 生成 .wav 文件，但 `toBuffer()` 对自定义参数对象返回空数组，导致 55 个 .wav 文件全部 0 字节。
-
-**修复**: 改用 `sfxr.generate(preset)` → 修改参数 → `sfxr.toWave(sound).wav`。
-
-**验证**: Playwright 浏览器测试确认 `Howl({src: '/src/assets/sfx/ui_click.wav'}).play()` 成功加载（state=loaded, duration=0.007s）。
-
-### 道具类型映射（2026-04-29 已修复）
-
-**问题**: `sfx.ts` 的 `playPickupSfx` 使用 `health_pack`/`energy_pack`，但服务端发送 `health`/`energy`。
-
-**修复**: 已将 switch case 改为 `health`/`energy`。
-
----
 
 ## 更新日志
 
@@ -517,3 +495,5 @@ if (canvas && (shake.x !== 0 || shake.y !== 0)) {
 | 2026-04-29 | 添加具体代码证据（文件:行号 + 代码片段） |
 | 2026-04-29 | 修复 WAV 文件为空 bug（jsfxr API 修正） |
 | 2026-04-29 | 修复道具类型映射 bug（health_pack→health） |
+| 2026-04-30 | warrior_slash/warrior_hit 替换为 CC0 外部素材（OpenGameArt rubberduck） |
+| 2026-04-30 | 修正统计数据：移除 P1 中已接入的 033/034，移除 P2 中不适用的 027/030/031/036/037 |

@@ -91,8 +91,8 @@ export type SfxId = typeof SFX_IDS[keyof typeof SFX_IDS]
  */
 const SFX_DEFINITIONS = [
   // 1. 战斗 - 玩家攻击
-  { id: SFX_IDS.WARRIOR_SLASH, src: `${SFX_BASE}/warrior_slash.wav` },
-  { id: SFX_IDS.WARRIOR_HIT, src: `${SFX_BASE}/warrior_hit.wav` },
+  { id: SFX_IDS.WARRIOR_SLASH, src: `${SFX_BASE}/warrior_slash.ogg` },
+  { id: SFX_IDS.WARRIOR_HIT, src: `${SFX_BASE}/warrior_hit.ogg` },
   { id: SFX_IDS.RANGER_DRAW, src: `${SFX_BASE}/ranger_draw.wav` },
   { id: SFX_IDS.RANGER_SHOOT, src: `${SFX_BASE}/ranger_shoot.wav` },
   { id: SFX_IDS.RANGER_HIT, src: `${SFX_BASE}/ranger_hit.wav` },

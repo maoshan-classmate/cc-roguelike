@@ -120,6 +120,53 @@
 1. 选择波形类型
 2. 调整包络参数（Attack/Sustain/Decay）
 3. 调整频率参数（Start Frequency/Frequency Slide）
-4. 点击 "Serialize" 获取参数 JSON
-5. 将参数添加到 `scripts/generate-sfx.js`
-6. 运行 `node scripts/generate-sfx.js` 生成 .wav 文件
+4. 按需添加高级参数（相位/滤波/颤音/琶音 — 见下表）
+5. 设置 `sound_vol` 按分类音量标准
+6. 将参数添加到 `scripts/generate-sfx.js`
+7. 运行 `node scripts/generate-sfx.js` 生成 .wav 文件
+
+### 高级参数（用于质感调优）
+
+| 参数 | 适用场景 | 典型值 |
+|------|---------|--------|
+| `p_pha_offset` / `p_pha_ramp` | 金属质感（正值）或空灵感（负值） | ±0.1~0.4 |
+| `p_lpf_freq` | 暗色/温暖音色（<0.5 暗沉，0.5~0.8 温暖） | 0.3~0.8 |
+| `p_lpf_resonance` | 金属共振峰 | 0.15~0.3 |
+| `p_hpf_freq` | 去浑浊/空气感 | 0.05~0.15 |
+| `p_vib_strength` / `p_vib_speed` | 弦振动/能量脉冲/液体晃动 | 0.1~0.25 |
+| `p_arp_mod` / `p_arp_speed` | 和弦/音程跳跃（神圣/魔法） | 0.15~0.3 |
+| `p_repeat_speed` | 脉冲/节奏感（护盾嗡鸣/脚步/石磨） | 0.3~0.6 |
+| `p_duty_ramp` | 占空比渐变（碰撞感/消散感） | ±0.15~0.3 |
+
+### sound_vol 标准（强制）
+
+| 分类 | sound_vol | 涉及系统 |
+|------|-----------|---------|
+| 战斗/玩家状态/技能 | 0.7 | #001-#031 |
+| 道具拾取/UI/多人 | 0.5 | #032-#055 |
+| 地牢/氛围 | 0.35 | #038-#043 |
+
+## 混合源策略
+
+jsfxr 适用于大部分音效，但部分音效（金属碰撞、真实打击）需要 CC0 外部素材。
+
+### 素材来源
+
+| 来源 | 许可 | 覆盖范围 |
+|------|------|---------|
+| [80 CC0 RPG SFX](https://opengameart.org/content/80-cc0-rpg-sfx) (rubberduck) | CC0 | 剑刃、链条、生物、法术 |
+| [100 CC0 metal/wood SFX](https://opengameart.org/content/100-cc0-metal-and-wood-sfx) (rubberduck) | CC0 | 锤击、钥匙、门、金属碰撞 |
+
+### generate-sfx.js 混合源
+
+```js
+// jsfxr 生成（默认）
+{ id: 'ui_click', preset: 'click', params: {...} }
+
+// CC0 外部素材（从 inbox/ 复制，保留原始扩展名）
+{ id: 'warrior_slash', type: 'external', src: 'warrior_slash.ogg' }
+```
+
+- `type` 默认为 `'jsfxr'`（向后兼容）
+- `external` 类型 → 从 `src/assets/sfx/inbox/` 复制到 `src/assets/sfx/`
+- 外部素材格式通常为 `.ogg`，Howler.js 原生支持
