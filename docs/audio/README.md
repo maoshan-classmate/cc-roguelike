@@ -7,7 +7,7 @@
 | 环节 | 工具 | 说明 |
 |------|------|------|
 | **生成** | jsfxr | 8-bit 音效生成器，参数化控制 |
-| **存储** | `src/assets/sfx/` | 55 个 .wav 文件 |
+| **存储** | `src/assets/sfx/` | 53 个 .wav + 2 个 .ogg 文件 |
 | **播放** | Howler.js | 跨浏览器音效库，~10KB |
 | **触发** | React Hook | `useSound()` 封装播放逻辑 |
 
@@ -51,8 +51,8 @@ src/
 │   └── useSound.ts         # React Hook
 ├── assets/
 │   └── sfx/
-│       ├── warrior_slash.wav
-│       ├── warrior_hit.wav
+│       ├── warrior_slash.ogg
+│       ├── warrior_hit.ogg
 │       └── ... (55个文件)
 ```
 

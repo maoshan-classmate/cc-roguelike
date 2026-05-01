@@ -1,16 +1,7 @@
 import { soundEngine } from './SoundEngine'
 
-/**
- * 音效定义 - 55个音效按系统分类
- * 音效文件路径：src/assets/sfx/
- */
-
-// 音效文件基础路径
 const SFX_BASE = '/src/assets/sfx'
 
-/**
- * 音效 ID 常量
- */
 export const SFX_IDS = {
   // 1. 战斗 - 玩家攻击（10个）
   WARRIOR_SLASH: 'warrior_slash',
@@ -86,9 +77,6 @@ export const SFX_IDS = {
 
 export type SfxId = typeof SFX_IDS[keyof typeof SFX_IDS]
 
-/**
- * 音效定义列表
- */
 const SFX_DEFINITIONS = [
   // 1. 战斗 - 玩家攻击
   { id: SFX_IDS.WARRIOR_SLASH, src: `${SFX_BASE}/warrior_slash.ogg` },
@@ -162,23 +150,14 @@ const SFX_DEFINITIONS = [
   { id: SFX_IDS.ALL_READY, src: `${SFX_BASE}/all_ready.wav` },
 ]
 
-/**
- * 初始化音效系统
- */
 export function initSfx(): void {
   soundEngine.registerAll(SFX_DEFINITIONS)
 }
 
-/**
- * 便捷播放函数
- */
 export function playSfx(id: SfxId): void {
   soundEngine.play(id)
 }
 
-/**
- * 按职业播放攻击音效
- */
 export function playAttackSfx(characterClass: string): void {
   switch (characterClass) {
     case 'warrior':
@@ -196,9 +175,6 @@ export function playAttackSfx(characterClass: string): void {
   }
 }
 
-/**
- * 按敌人类型播放死亡音效
- */
 export function playEnemyDieSfx(enemyType: string): void {
   switch (enemyType) {
     case 'ghost':
@@ -213,9 +189,6 @@ export function playEnemyDieSfx(enemyType: string): void {
   }
 }
 
-/**
- * 按道具类型播放拾取音效
- */
 export function playPickupSfx(itemType: string): void {
   switch (itemType) {
     case 'coin':

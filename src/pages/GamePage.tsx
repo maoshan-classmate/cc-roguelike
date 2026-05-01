@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
 import { useGameStore } from '../store/useGameStore'
@@ -7,7 +7,7 @@ import { mainAtlasPath } from '../assets/0x72'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useParticleSystem } from '../hooks/useParticleSystem'
 import { useDamageTexts } from '../hooks/useDamageTexts'
-import { useGameRenderer, getAnimSprite, lerp } from '../hooks/useGameRenderer'
+import { useGameRenderer, getAnimSprite } from '../hooks/useGameRenderer'
 import { GENERATED_SPRITES } from '../config/generatedSprites'
 import { useSound } from '../audio/useSound'
 import { SFX_IDS } from '../audio/sfx'
@@ -612,7 +612,7 @@ export default function GamePage() {
               fontSize: 24, boxShadow: '2px 2px 0 rgba(0,0,0,0.5)', cursor: 'pointer',
             }}
           >
-            {React.createElement(SkillIconComponents[i], { size: 24, color: skill.color })}
+            {(() => { const Icon = SkillIconComponents[i]; return <Icon size={24} color={skill.color} />; })()}
           </motion.div>
         ))}
       </div>

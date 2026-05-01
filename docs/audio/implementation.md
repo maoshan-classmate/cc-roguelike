@@ -33,7 +33,7 @@
 │                          │                                 │
 │                          ▼                                 │
 │                   ┌─────────────┐                          │
-│                   │ .wav 文件   │                          │
+│                   │.wav/.ogg    │                          │
 │                   │(55个音效)   │                          │
 │                   └─────────────┘                          │
 └─────────────────────────────────────────────────────────────┘
@@ -157,31 +157,14 @@ function MyComponent() {
 
 | 事件 | 触发位置 | 音效 | 说明 |
 |------|---------|------|------|
-| 冲刺 | `game:input` 事件（`skill: 0`） | `skill_dash` | 待实现 |
-| 护盾 | `game:input` 事件（`skill: 1`） | `skill_shield_on` | 待实现 |
-| 治疗 | `game:input` 事件（`skill: 2`） | `skill_heal` | 待实现 |
-| 加速 | `game:input` 事件（`skill: 3`） | `skill_speed_on` | 待实现 |
+| 冲刺 | `game:input` 事件（`skill: 0`） | `skill_dash` | 已接入 |
+| 护盾 | `game:input` 事件（`skill: 1`） | `skill_shield_on` | 已接入 |
+| 治疗 | `game:input` 事件（`skill: 2`） | `skill_heal` | 已接入 |
+| 加速 | `game:input` 事件（`skill: 3`） | `skill_speed_on` | 已接入 |
 
 ## 性能优化
 
-### 音效预加载
-
-```typescript
-// 在游戏开始时预加载所有音效
-const engine = SoundEngine.getInstance()
-await engine.preload(Object.values(SFX_IDS))
-```
-
-### 音效池
-
-Howler.js 内置音效池，支持同时播放多个相同音效。
-
-### 内存管理
-
-```typescript
-// 游戏结束时销毁音效引擎
-engine.destroy()
-```
+Howler.js 内置音效池，支持同时播放多个相同音效。音效在 `initSfx()` 时通过 `registerAll()` 批量注册。
 
 ## 扩展指南
 
