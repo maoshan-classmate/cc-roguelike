@@ -316,3 +316,31 @@ server/config/
 2. 代码中加注释说明：`// 已知问题：XXX（TODO: YYY）`
 3. **不得**引入新的架构债（过渡方案仅用于存量问题）
 4. 每个 PR 最多携带**一项**架构债清理，超出则拆解
+
+---
+
+## 测试证据分级
+
+> 验证驱动开发：先写测试再写实现。每个完成声明必须有对应级别的测试证据支撑。
+
+### 证据级别
+
+| 级别 | 适用场景 | 证据要求 | 示例 |
+|------|---------|---------|------|
+| **Logic** | 纯逻辑、算法、数据处理 | 自动化测试（单元测试）通过 | `npx jest --passWithNoTests` |
+| **Integration** | 跨模块交互、API、Socket | 集成测试或 E2E 验证通过 | Playwright 完整流程 + tsc 零 error |
+| **Visual** | UI 渲染、动画、视觉效果 | 截图 + 人工确认 | Playwright 截图 + 用户目视确认 |
+
+### 验证规则
+
+1. **Logic 级变更**：至少有自动化测试覆盖核心路径
+2. **Integration 级变更**：需跑 `npx tsc --noEmit` + 相关 E2E 流程
+3. **Visual 级变更**：需截图存档 + 用户目视确认后才能标记完成
+4. **不允许降级**：Integration 级变更不能用 Logic 级证据代替
+5. **"已手动测试"不作为有效证据**：手动测试不可复现、不可记录、不可回放
+
+### TODO 条目完成标准
+
+每个 TODO 条目（见 `.claude/rules/todo-format.md`）的 DONE 标准中，必须指定证据级别：
+- `DONE: [Logic] 核心算法测试通过 + [Integration] tsc 零 error`
+- 未指定级别的默认为 Integration 级

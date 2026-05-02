@@ -7,6 +7,13 @@
 teammate 失败 2 次以上时向 Leader 发送 [PUA-REPORT] 格式汇报。
 Leader 负责全局压力等级管理和跨 teammate 失败传递。
 
+### 协调规则（与 PUA 并行生效）
+详见 `.claude/rules/coordination.md` — 垂直委派、横向咨询、冲突解决、变更传播、禁止跨域修改。
+
+### Gate 体系
+详见 `.claude/rules/gates.md` — 3 级 review 模式（full/lean/solo）+ 4 个项目 gate。
+配置：`.claude/review-mode.txt`（默认 `lean`）。
+
 ## 自动化 Agent / Skill 调度规则（强制）
 
 > 用户手动触发 或 CLAUDE.md 明确场景下调度，不得忽略。
@@ -29,6 +36,23 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 |---------|------|------|
 | `🔴 [sprite-audit] 发现 {n} 项不同步` | `Agent(sprite-fix)` | AI 审查触发，用户选择是否修复 |
 | 手动调用 `/code-hygiene` | `Skill(code-hygiene)` | 项目代码整洁性全维度扫描 |
+| 手动调用 `/bug-report` | `Skill(bug-report)` | 结构化 bug 报告 |
+| 手动调用 `/tech-debt` | `Skill(tech-debt)` | 技术债追踪 |
+| 手动调用 `/code-review` | `Skill(code-review)` | 架构级代码审查 |
+| 手动调用 `/smoke-check` | `Skill(smoke-check)` | 冒烟测试 |
+| 手动调用 `/retrospective` | `Skill(retrospective)` | 冲刺回顾 |
+| 手动调用 `/scope-check` | `Skill(scope-check)` | 范围蔓延检查 |
+| 手动调用 `/sprint-status` | `Skill(sprint-status)` | 快速进度检查 |
+| 手动调用 `/story-done` | `Skill(story-done)` | TODO 完成验证 |
+| 手动调用 `/design-system` | `Skill(design-system)` | 引导式写 GDD（8 章节） |
+| 手动调用 `/quick-design` | `Skill(quick-design)` | 轻量设计修改 |
+| 手动调用 `/design-review` | `Skill(design-review)` | 单个 GDD 审查 |
+| 手动调用 `/review-all-gdds` | `Skill(review-all-gdds)` | 跨 GDD 一致性审查 |
+| 手动调用 `/consistency-check` | `Skill(consistency-check)` | GDD vs 代码注册表一致性 |
+| 手动调用 `/propagate-design-change` | `Skill(propagate-design-change)` | GDD 改动影响范围扫描 |
+| 手动调用 `/team-combat` | `Skill(team-combat)` | 战斗系统多 agent 管道 |
+| 手动调用 `/team-qa` | `Skill(team-qa)` | QA 多 agent 管道 |
+| 手动调用 `/team-polish` | `Skill(team-polish)` | 打磨优化多 agent 管道 |
 
 **规则**：
 - agent 只做审查/分析，不自行修改文件（sprite-fix 例外）
@@ -103,7 +127,8 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 ├── docs/                  # 项目文档
 │   ├── components.md      # 组件库索引
 │   ├── bugs/              # Bug 记录（按系统分类）
-│   └── todo/              # 待办任务（按领域分类）
+│   ├── todo/              # 待办任务（按领域分类）
+│   └── gdd/               # 游戏设计文档（5 个核心系统，8 章节 GDD 格式）
 └── sprite-viewer.html     # 贴图资产可视化预览（交互）
 ```
 
@@ -162,6 +187,18 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 - [待办任务（按领域）](docs/todo/)
 - **[架构问题（最高优先级）](docs/todo/architecture.md)** — 全局设计债/体系不对齐
 - **[开发规范（强制）](docs/DEVELOPMENT_STANDARD.md)** — 所有 AI 开发必须遵守，含 AI 开发检查清单
+- **[GDD 战斗系统](docs/gdd/combat.md)** — 4 职业攻击路径、伤害公式、技能冷却
+- **[GDD 地牢生成](docs/gdd/dungeon-generation.md)** — 房间/走廊算法、出生/出口规则
+- **[GDD 敌人 AI](docs/gdd/enemy-ai.md)** — 5 种敌人行为模式、状态机
+- **[GDD 物品系统](docs/gdd/items.md)** — 道具效果、掉落率、拾取交互
+- **[GDD 关卡推进](docs/gdd/progression.md)** — Floor 1-5 难度曲线、Boss 机制
+- **[协调规则](.claude/rules/coordination.md)** — PUA 角色委派规则（alwaysApply）
+- **[Gate 体系](.claude/rules/gates.md)** — 3 级 review 模式 + 4 个项目 gate（alwaysApply）
+- **[上下文管理](.claude/rules/context-management.md)** — 文件状态持久化、主动压缩（alwaysApply）
+- **[TODO 格式规范](.claude/rules/todo-format.md)** — TODO 条目结构化格式（条件加载）
+- **[设计交互协议](.claude/docs/collaborative-protocols/design-agent-protocol.md)** — Question→Options→Decision→Draft→Approval
+- **[实施交互协议](.claude/docs/collaborative-protocols/implementation-agent-protocol.md)** — Read→Ask→Propose→Implement→Approve
+- **[领导交互协议](.claude/docs/collaborative-protocols/leadership-agent-protocol.md)** — Understand→Frame→Options→Recommend
 
 ## 关键命令
 
@@ -200,6 +237,9 @@ npx tsc --noEmit                                # TypeScript 编译检查
 - **编译检查**：`npx tsc --noEmit`（零 error 即通过，弃用警告可忽略）
 - **E2E 验证**：Playwright MCP 走完 登录→建房间→选职业→准备→开始冒险，确认零 `[0x72] Sprite not found` 警告
 - **截图存档**：E2E 通过后截图，验证后删除 `.playwright-mcp/` 下的截图文件；Playwright MCP `browser_take_screenshot` 保存截图到 `.playwright-mcp/` 目录
+- **Gate 体系**：详见 `.claude/rules/gates.md`（默认 lean 模式）
+- **冒烟测试**：`/smoke-check` — 标准化冒烟测试流程
+- **上下文管理**：详见 `.claude/rules/context-management.md` — 文件状态持久化、主动压缩、会话恢复
 
 ## TODO 管理规范
 
@@ -208,6 +248,11 @@ npx tsc --noEmit                                # TypeScript 编译检查
 **完成一项** → 验证闭环后打钩 `- [x]` + 日期（tsc → build → E2E → 才标记，不要先标后验）
 **发现 bug** → 先写 `docs/bugs/` 对应子文件，再修复
 **架构问题** → 写 `docs/todo/architecture.md`（最高优先级，需先写方案再动手）
+
+**新系统需求** → 先写 `docs/gdd/*.md`（GDD 8 章节）→ `/review-all-gdds` 审查一致性 → 再开发
+**小改动** → `/quick-design` → 自动更新对应 GDD 章节
+**新增实体/配置** → `/consistency-check` → 扫描 GDD 与代码注册表一致性
+**TODO 条目格式**：详见 `.claude/rules/todo-format.md` — WHAT/WHERE/DONE/DON'T/DEPENDS 结构化格式
 
 ## 资源管理流程（外源素材引入）
 

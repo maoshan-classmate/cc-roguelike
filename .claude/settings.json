@@ -8,6 +8,11 @@
             "type": "command",
             "command": "bash .claude/scripts/hook-ai-mission.sh",
             "statusMessage": "[AI项目主权声明已注入]"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/scripts/detect-gaps.sh",
+            "statusMessage": "[缺口检测]"
           }
         ]
       },
@@ -31,6 +36,15 @@
             "command": "python .claude/scripts/hook-block-sensitive.py"
           }
         ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/scripts/validate-push.sh"
+          }
+        ]
       }
     ],
     "UserPromptSubmit": [
@@ -44,6 +58,63 @@
           }
         ]
       }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/scripts/pre-compact.sh",
+            "statusMessage": "[保存会话状态]"
+          }
+        ]
+      }
+    ],
+    "PostCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/scripts/post-compact.sh",
+            "statusMessage": "[恢复上下文提醒]"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/scripts/session-stop.sh",
+            "statusMessage": "[归档会话状态]"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/scripts/notify.sh"
+          }
+        ]
+      }
+    ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "bash .claude/scripts/statusline.sh"
+  },
+  "permissions": {
+    "deny": [
+      "rm -rf",
+      "git push --force",
+      "git reset --hard",
+      "git clean -f",
+      "sudo",
+      "chmod 777"
     ]
   },
   "enabledPlugins": {
