@@ -57,6 +57,7 @@ export interface EnemyState {
   bossRangedTimer?: number;  // ms since last ranged attack
   bossAoETimer?: number;     // ms since last AoE attack
   bossCasting?: string | null; // 'ranged' | 'aoe' | null — 蓄力状态
+  bossPostCastCooldown?: number; // 技能释放后冷却（ms），防止技能视觉重叠
   bossCastTimer?: number;     // ms into current cast
   bossTargetAngle?: number;   // 蓄力时锁定的朝向角度
 }
@@ -614,6 +615,7 @@ export class GameRoom {
         }
         enemy.bossCasting = null;
         enemy.bossCastTimer = 0;
+        enemy.bossPostCastCooldown = 1000; // 1s 后摇，让视觉特效播完再放下一个技能
       }
       return; // 蓄力期间不移动
     }
@@ -665,25 +667,32 @@ export class GameRoom {
       if (nearestPlayer.hp <= 0) nearestPlayer.alive = false;
     }
 
-    // ── 弹幕技能（蓄力触发）──
-    const rangedTimer = (enemy.bossRangedTimer || 0) + dt * 1000;
-    enemy.bossRangedTimer = rangedTimer;
-    if (rangedTimer >= rangedCooldown && dist > 40) {
-      enemy.bossRangedTimer = 0;
-      enemy.bossCasting = 'ranged';
-      enemy.bossCastTimer = 0;
-      enemy.bossTargetAngle = Math.atan2(dy, dx);
-      this.bossEvents.push({ type: 'ranged_windup', x: enemy.x, y: enemy.y });
+    // ── 技能计时器持续走（蓄力期间也累加，但不触发）──
+    enemy.bossRangedTimer = (enemy.bossRangedTimer || 0) + dt * 1000;
+    enemy.bossAoETimer = (enemy.bossAoETimer || 0) + dt * 1000;
+
+    // ── 后摇冷却递减 ──
+    if (enemy.bossPostCastCooldown && enemy.bossPostCastCooldown > 0) {
+      enemy.bossPostCastCooldown -= dt * 1000;
     }
 
-    // ── 震地技能（蓄力触发）──
-    const aoeTimer = (enemy.bossAoETimer || 0) + dt * 1000;
-    enemy.bossAoETimer = aoeTimer;
-    if (aoeTimer >= aoeCooldown) {
-      enemy.bossAoETimer = 0;
-      enemy.bossCasting = 'aoe';
-      enemy.bossCastTimer = 0;
-      this.bossEvents.push({ type: 'aoe_windup', x: enemy.x, y: enemy.y });
+    // ── 当前无蓄力且后摇结束时，检查冷却触发下一个技能 ──
+    if (!enemy.bossCasting && (!enemy.bossPostCastCooldown || enemy.bossPostCastCooldown <= 0)) {
+      // 弹幕优先判定
+      if (enemy.bossRangedTimer >= rangedCooldown && dist > 40) {
+        enemy.bossRangedTimer = 0;
+        enemy.bossCasting = 'ranged';
+        enemy.bossCastTimer = 0;
+        enemy.bossTargetAngle = Math.atan2(dy, dx);
+        this.bossEvents.push({ type: 'ranged_windup', x: enemy.x, y: enemy.y });
+      }
+      // 弹幕未触发时才判定震地（避免同一 tick 双触发）
+      else if (enemy.bossAoETimer >= aoeCooldown) {
+        enemy.bossAoETimer = 0;
+        enemy.bossCasting = 'aoe';
+        enemy.bossCastTimer = 0;
+        this.bossEvents.push({ type: 'aoe_windup', x: enemy.x, y: enemy.y });
+      }
     }
   }
 
@@ -1055,7 +1064,7 @@ export class GameRoom {
       }
       case 'bossRanged': {
         const boss2 = [...this.enemies.values()].find(e => e.type === 'boss' && e.alive);
-        if (boss2) {
+        if (boss2 && !boss2.bossCasting) {
           const dx = player.x - boss2.x;
           const dy = player.y - boss2.y;
           boss2.bossTargetAngle = Math.atan2(dy, dx);
