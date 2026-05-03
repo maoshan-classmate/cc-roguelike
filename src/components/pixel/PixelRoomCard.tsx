@@ -9,7 +9,7 @@ interface PixelRoomCardProps {
     name: string
     hostName: string
     status: 'waiting' | 'playing' | 'ended'
-    players: any[]
+    players: unknown[]
     maxPlayers: number
   }
   onJoin: (id: string) => void

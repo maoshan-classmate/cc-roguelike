@@ -37,7 +37,7 @@ class NetworkClient {
     }
   }
 
-  emit(event: string, data?: any) {
+  emit(event: string, data?: unknown) {
     if (this.socket?.connected) {
       this.socket.emit(event, data)
     } else if (this.socket) {
@@ -48,12 +48,14 @@ class NetworkClient {
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- socket I/O boundary: caller knows data shape
   on(event: string, callback: (data: any) => void) {
     if (this.socket) {
       this.socket.on(event, callback)
     }
   }
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- socket I/O boundary: caller knows data shape
   off(event: string, callback?: (data: any) => void) {
     if (this.socket) {
       if (callback) {
@@ -76,5 +78,6 @@ class NetworkClient {
 export const networkClient = new NetworkClient()
 
 if (typeof window !== 'undefined') {
-  (window as any).__networkClient = networkClient
+  const win = window as Window & { __networkClient?: NetworkClient }
+  win.__networkClient = networkClient
 }

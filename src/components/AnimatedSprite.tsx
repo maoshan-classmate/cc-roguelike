@@ -17,7 +17,7 @@ interface AnimatedSpriteProps {
   /** framer-motion style props */
   motionStyle?: React.CSSProperties
   /** additional motion props */
-  motionProps?: Record<string, any>
+  motionProps?: Record<string, unknown>
 }
 
 const SPRITE_BASE = '/src/assets/0x72/frames/CHARACTER'

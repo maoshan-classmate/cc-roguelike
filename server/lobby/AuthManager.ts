@@ -11,7 +11,7 @@ interface Account {
   last_login: Date | null;
 }
 
-interface Character {
+export interface Character {
   id: string;
   account_id: string;
   name: string;
@@ -175,7 +175,7 @@ export class AuthManager {
 
   verifyToken(token: string): { accountId: string; username: string } | null {
     try {
-      const decoded = jwt.verify(token, this.jwtSecret) as any;
+      const decoded = jwt.verify(token, this.jwtSecret) as jwt.JwtPayload;
       return { accountId: decoded.id, username: decoded.username };
     } catch {
       return null;
@@ -200,7 +200,7 @@ export class AuthManager {
 
   async saveCharacter(character: Partial<Character> & { id: string }): Promise<void> {
     const fields: string[] = [];
-    const values: any[] = [];
+    const values: unknown[] = [];
 
     for (const [key, value] of Object.entries(character)) {
       if (key !== 'id' && value !== undefined) {
@@ -219,7 +219,7 @@ export class AuthManager {
   }
 
   // 职业→武器/技能映射
-  private static readonly CLASS_CONFIG: Record<string, { weapon: string; skills: string[] }> = {
+  public static readonly CLASS_CONFIG: Record<string, { weapon: string; skills: string[] }> = {
     warrior: { weapon: 'sword',   skills: ['dash', 'shield', 'heal', 'speed_boost'] },
     ranger:  { weapon: 'pistol',  skills: ['dash', 'speed_boost', 'heal', 'shield'] },
     mage:    { weapon: 'pistol',  skills: ['dash', 'shield', 'speed_boost', 'heal'] },

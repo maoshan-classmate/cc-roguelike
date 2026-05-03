@@ -15,7 +15,7 @@ interface RoomState {
   isHost: boolean
   isReady: boolean
   gameStarted: boolean
-  setRoom: (roomId: string, room: any, isHost: boolean) => void
+  setRoom: (roomId: string, room: { name: string; hostId: string; players: Player[] }, isHost: boolean) => void
   addPlayer: (player: Player) => void
   removePlayer: (playerId: string, newHostId?: string) => void
   setPlayerReady: (playerId: string, ready: boolean) => void

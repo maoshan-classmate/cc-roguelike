@@ -2,7 +2,7 @@ import { useRef, useEffect, useCallback } from 'react'
 import { drawTile } from '../utils/dungeonTileRenderer'
 import { SPRITE_ATLAS } from '../assets/0x72/spriteIndex'
 
-const TILE = 32
+import { TILE_SIZE as TILE } from '@shared/constants'
 const ATLAS_PATH = '/src/assets/0x72/main_atlas.png'
 
 function drawScene(ctx: CanvasRenderingContext2D, atlas: HTMLImageElement) {

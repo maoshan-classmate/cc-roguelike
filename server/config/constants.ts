@@ -52,41 +52,8 @@ export const FLOOR_CONFIG: Record<number, {
   5: { enemyCount: [8, 12], eliteChance: 0.3, bossType: 'boss', enemyTypes: ['ghost', 'tank', 'tank', 'tank'] }
 };
 
-// 敌人基础属性
-// @deprecated 未使用（游戏使用 GameRoom.ts 中的 basic/fast/tank/boss 类型）
-export const ENEMY_BASE: Record<string, {
-  health: number;
-  damage: number;
-  speed: number;
-  expValue: number;
-  radius: number;
-}> = {
-  slime: { health: 30, damage: 8, speed: 60, expValue: 10, radius: 20 },
-  bat: { health: 20, damage: 10, speed: 150, expValue: 8, radius: 14 },
-  skeleton: { health: 50, damage: 15, speed: 80, expValue: 20, radius: 18 },
-  orc: { health: 100, damage: 25, speed: 70, expValue: 40, radius: 24 },
-  archer: { health: 40, damage: 18, speed: 90, expValue: 25, radius: 16 },
-  wizard: { health: 60, damage: 30, speed: 60, expValue: 35, radius: 18 },
-  elite_orc: { health: 200, damage: 35, speed: 80, expValue: 80, radius: 28 },
-  elite_wizard: { health: 150, damage: 45, speed: 70, expValue: 70, radius: 22 },
-  boss: { health: 500, damage: 40, speed: 50, expValue: 200, radius: 40 }
-};
-
-// Boss模板
-export const BOSS_TEMPLATES: Record<string, {
-  healthMultiplier: number;
-  phases: number;
-  patterns: string[];
-}> = {
-  slime_king: { healthMultiplier: 50, phases: 2, patterns: ['splash', 'summon'] },
-  skeleton_lord: { healthMultiplier: 60, phases: 3, patterns: ['bone_projectile', 'curse', 'resurrect'] },
-  demon_mage: { healthMultiplier: 70, phases: 3, patterns: ['fireball', 'meteor', 'teleport'] },
-  dragon: { healthMultiplier: 100, phases: 4, patterns: ['fire_breath', 'tail_swipe', 'fly'] },
-  final_boss: { healthMultiplier: 150, phases: 5, patterns: ['combo', 'phase_shift', 'enrage'] }
-};
-
 // 武器模板
-export const WEAPON_TEMPLATES: Record<string, {
+export interface WeaponTemplate {
   name: string;
   type: 'gun' | 'melee';
   damage: number;
@@ -96,7 +63,9 @@ export const WEAPON_TEMPLATES: Record<string, {
   spread?: number;
   range?: number;
   arc?: number;
-}> = {
+}
+
+export const WEAPON_TEMPLATES: Record<string, WeaponTemplate> = {
   pistol: { name: '手枪', type: 'gun', damage: 12, cooldown: 300, energyCost: 5 },
   shotgun: { name: '霰弹枪', type: 'gun', damage: 8, cooldown: 800, energyCost: 15, bulletCount: 5, spread: 30 },
   rifle: { name: '步枪', type: 'gun', damage: 20, cooldown: 500, energyCost: 10 },

@@ -3,110 +3,11 @@ import { GAME_CONFIG, FLOOR_CONFIG, WEAPON_TEMPLATES } from '../config/constants
 import { DungeonGenerator } from './dungeon/DungeonGenerator';
 import { Combat } from './combat/Combat';
 import { Vec2 } from '../utils/Vec2';
+import type { PlayerState, EnemyState, BulletState, GameState, HealWaveState, BossEvent, ItemState, DungeonData } from '../../shared/types';
+import { ENEMY_BASE_HP, ENEMY_BASE_ATTACK, ENEMY_RADIUS, CLASS_SPEED } from '../../shared/constants';
+import { EnemyAI, type EnemyAIDeps } from './enemy/EnemyAI';
 
-// 敌人基础属性映射
-const ENEMY_BASE_HP: Record<string, number> = {
-  basic: 30,
-  fast: 20,
-  ghost: 40,
-  tank: 80,
-  boss: 200
-};
-
-export interface PlayerState {
-  id: string;
-  accountId: string;
-  name: string;
-  x: number;
-  y: number;
-  dx: number;
-  dy: number;
-  hp: number;
-  hpMax: number;
-  energy: number;
-  energyMax: number;
-  attack: number;
-  defense: number;
-  speed: number;
-  speedBuff: number;  // 速度倍率（1.0=正常）
-  speedBuffTimer: number;  // 速度增益剩余时间（秒）
-  weapon: string;
-  characterType: string;
-  skills: string[];
-  alive: boolean;
-  invincible: number;
-  angle: number;
-  gold: number;
-  keys: number;
-}
-
-export interface EnemyState {
-  id: string;
-  type: string;
-  x: number;
-  y: number;
-  hp: number;
-  hpMax: number;
-  attack: number;
-  alive: boolean;
-  state: string;  // 'idle' | 'chase' | 'attack' | 'dying'
-  deathTimer?: number;
-  lastAttackTime?: number;
-  isElite?: boolean;
-  bossPhase?: number;        // 1 or 2
-  bossRangedTimer?: number;  // ms since last ranged attack
-  bossAoETimer?: number;     // ms since last AoE attack
-  bossCasting?: string | null; // 'ranged' | 'aoe' | null — 蓄力状态
-  bossPostCastCooldown?: number; // 技能释放后冷却（ms），防止技能视觉重叠
-  bossCastTimer?: number;     // ms into current cast
-  bossTargetAngle?: number;   // 蓄力时锁定的朝向角度
-}
-
-export interface BulletState {
-  id: string;
-  x: number;
-  y: number;
-  vx: number;
-  vy: number;
-  ownerId: string;
-  ownerType: string;
-  damage: number;
-  friendly: boolean;
-  piercing: number;
-  radius: number;
-}
-
-export interface GameState {
-  tick: number;
-  floor: number;
-  gameSession: number;
-  players: PlayerState[];
-  enemies: EnemyState[];
-  bullets: BulletState[];
-  healWaves: HealWaveState[];
-  items: { id: string; x: number; y: number; type: string }[];
-  boss?: EnemyState;
-  bossEvents?: { type: 'ranged' | 'aoe'; x: number; y: number }[];
-  floorCompleted: boolean;
-  dungeon?: {
-    rooms: { x: number; y: number; width: number; height: number; type: string }[];
-    corridorTiles: { x: number; y: number }[];
-    spawnPoint: { x: number; y: number };
-    exitPoint: { x: number; y: number };
-    collisionGrid: boolean[][];
-  };
-}
-
-// 牧师治疗波（AoE 脉冲，从牧师位置扩散）
-export interface HealWaveState {
-  id: string;
-  x: number;
-  y: number;
-  radius: number;
-  maxRadius: number;
-  age: number;       // ms
-  ownerId: string;
-}
+export type { PlayerState, EnemyState, BulletState, GameState, HealWaveState, BossEvent, ItemState, DungeonData };
 
 export class GameRoom {
   private roomId: string;
@@ -115,11 +16,12 @@ export class GameRoom {
   private enemies: Map<string, EnemyState> = new Map();
   private bullets: Map<string, BulletState> = new Map();
   private healWaves: HealWaveState[] = [];
-  private bossEvents: { type: 'ranged' | 'aoe'; x: number; y: number }[] = [];
+  private bossEvents: BossEvent[] = [];
   private items: { id: string; x: number; y: number; type: string }[] = [];
   private dungeonGenerator: DungeonGenerator;
   private combat: Combat;
-  private currentDungeon: any = null;
+  private enemyAI: EnemyAI;
+  private currentDungeon: DungeonData | null = null;
   private _gameOver: boolean = false;
   private _victory: boolean = false;
   private _floorChanged: boolean = false;
@@ -138,9 +40,10 @@ export class GameRoom {
     this.db = db;
     this.dungeonGenerator = new DungeonGenerator();
     this.combat = new Combat(this);
+    this.enemyAI = new EnemyAI(this);
   }
 
-  addPlayer(accountId: string, name: string, charData: any): void {
+  addPlayer(accountId: string, name: string, charData: { hp: number; hp_max: number; energy: number; energy_max: number; attack: number; defense: number; speed: number; weapon: string; character_type: string; skills: string }): void {
     const player: PlayerState = {
       id: accountId,
       accountId,
@@ -246,13 +149,6 @@ export class GameRoom {
   private createEnemy(type: string, x: number, y: number, floor: number = 1): EnemyState {
     const id = `enemy_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const baseHp = ENEMY_BASE_HP[type] || 30;
-    const ENEMY_BASE_ATTACK: Record<string, number> = {
-      basic: 8,
-      fast: 10,
-      ghost: 12,
-      tank: 15,
-      boss: 25
-    };
 
     // Boss: fixed HP (no floor scaling), ATK scales with floor
     let scaledHp: number;
@@ -336,11 +232,6 @@ export class GameRoom {
     if (!this.running) return;
     this.bossEvents = [];
 
-    // 职业移动速度（px/s）
-    const CLASS_SPEED: Record<string, number> = {
-      warrior: 180, ranger: 220, mage: 180, cleric: 190
-    };
-
     // Update players
     for (const player of this.players.values()) {
       if (!player.alive) continue;
@@ -402,10 +293,10 @@ export class GameRoom {
         }
         continue;
       }
-      this.updateEnemy(enemy, dt);
+      this.enemyAI.update(enemy, dt);
     }
 
-    // Separate overlapping enemies (enemy-enemy collision)
+    // Separate overlapping enemies
     this.separateEnemies();
 
     // Update bullets
@@ -458,328 +349,26 @@ export class GameRoom {
     }
   }
 
-  private static readonly ENEMY_AGGRO_RANGE: Record<string, number> = {
-    basic: 200, fast: 250, ghost: 300, tank: 150, boss: 400
-  };
-  private static readonly ENEMY_ATTACK_COOLDOWN: Record<string, number> = {
-    basic: 1000, fast: 800, ghost: 600, tank: 1500, boss: 500
-  };
-  private static readonly ENEMY_SPEED: Record<string, number> = {
-    basic: 60, fast: 100, ghost: 70, tank: 40, boss: 50
-  };
-  private static readonly ENEMY_RADIUS: Record<string, number> = {
-    basic: 16, fast: 14, ghost: 16, tank: 20, boss: 28
-  };
-
-  private updateEnemy(enemy: EnemyState, dt: number): void {
-    // Boss has its own AI
-    if (enemy.type === 'boss') {
-      this.updateBossEnemy(enemy, dt);
-      return;
-    }
-
-    const aggroRange = GameRoom.ENEMY_AGGRO_RANGE[enemy.type] || 200;
-    const attackCooldown = GameRoom.ENEMY_ATTACK_COOLDOWN[enemy.type] || 1000;
-    const speed = (GameRoom.ENEMY_SPEED[enemy.type] || 60) * dt;
-    const radius = GameRoom.ENEMY_RADIUS[enemy.type] || 16;
-    const isGhost = enemy.type === 'ghost';
-
-    // Find nearest player within aggro range
-    let nearestPlayer: PlayerState | null = null;
-    let nearestDist = Infinity;
-
-    for (const player of this.players.values()) {
-      if (!player.alive) continue;
-      const dist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
-      if (dist < nearestDist) {
-        nearestDist = dist;
-        nearestPlayer = player;
-      }
-    }
-
-    if (!nearestPlayer) return;
-
-    // Out of aggro range → idle
-    if (nearestDist > aggroRange) {
-      enemy.state = 'idle';
-      return;
-    }
-
-    const dx = nearestPlayer.x - enemy.x;
-    const dy = nearestPlayer.y - enemy.y;
-    const dist = Math.hypot(dx, dy);
-
-    if (dist > 30) {
-      const dirX = dx / dist;
-      const dirY = dy / dist;
-      const newEX = enemy.x + dirX * speed;
-      const newEY = enemy.y + dirY * speed;
-
-      if (isGhost) {
-        // Ghost: skip wall collision, only check map bounds
-        const W = GAME_CONFIG.DUNGEON_WIDTH;
-        const H = GAME_CONFIG.DUNGEON_HEIGHT;
-        enemy.x = Math.max(radius, Math.min(W - radius, newEX));
-        enemy.y = Math.max(radius, Math.min(H - radius, newEY));
-      } else if (this.isWalkableRadius(newEX, newEY, radius)) {
-        enemy.x = newEX;
-        enemy.y = newEY;
-      } else if (this.isWalkableRadius(newEX, enemy.y, radius)) {
-        enemy.x = newEX;
-      } else if (this.isWalkableRadius(enemy.x, newEY, radius)) {
-        enemy.y = newEY;
-      } else {
-        const baseAngle = Math.atan2(dirY, dirX);
-        const escapeOffsets = [-Math.PI / 2, Math.PI / 2, -Math.PI / 4, Math.PI / 4, -3 * Math.PI / 4, 3 * Math.PI / 4, Math.PI, 0];
-        for (const offset of escapeOffsets) {
-          const escapeAngle = baseAngle + offset;
-          const tryX = enemy.x + Math.cos(escapeAngle) * speed;
-          const tryY = enemy.y + Math.sin(escapeAngle) * speed;
-          if (this.isWalkableRadius(tryX, tryY, radius)) {
-            enemy.x = tryX;
-            enemy.y = tryY;
-            break;
-          }
-        }
-      }
-
-      enemy.state = 'chase';
-    } else {
-      enemy.state = 'attack';
-      // Attack with per-type cooldown
-      const now = Date.now();
-      const lastAttack = enemy.lastAttackTime || 0;
-      if (now - lastAttack >= attackCooldown && nearestPlayer.invincible <= 0) {
-        const finalDamage = Math.max(1, (enemy.attack || 10) - nearestPlayer.defense * 0.5);
-        nearestPlayer.hp -= finalDamage;
-        nearestPlayer.invincible = 0.5;
-        enemy.lastAttackTime = now;
-        if (nearestPlayer.hp <= 0) {
-          nearestPlayer.alive = false;
-        }
-      }
-    }
-  }
-
-  private updateBossEnemy(enemy: EnemyState, dt: number): void {
-    const speed = GameRoom.ENEMY_SPEED.boss * dt; // 50 px/s
-    const radius = GameRoom.ENEMY_RADIUS.boss;    // 28
-    const phase = enemy.bossPhase || 1;
-    const rangedCooldown = phase === 2 ? 2000 : 4000;
-    const aoeCooldown = phase === 2 ? 7000 : 10000;
-    const aoeDamage = phase === 2 ? 40 : 30;
-    const aoeRange = 100;
-    const aggroRange = GameRoom.ENEMY_AGGRO_RANGE.boss; // 400
-    const RANGED_WINDUP = 500;  // 弹幕前摇 500ms
-    const AOE_WINDUP = 800;     // 震地前摇 800ms
-
-    // Find nearest player
-    let nearestPlayer: PlayerState | null = null;
-    let nearestDist = Infinity;
-    for (const player of this.players.values()) {
-      if (!player.alive) continue;
-      const dist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
-      if (dist < nearestDist) {
-        nearestDist = dist;
-        nearestPlayer = player;
-      }
-    }
-    if (!nearestPlayer) return;
-
-    // 脱战：超出 aggroRange 后 idle，重置技能计时器（蓄力中不中断）
-    if (nearestDist > aggroRange && !enemy.bossCasting) {
-      enemy.state = 'idle';
-      enemy.bossRangedTimer = 0;
-      enemy.bossAoETimer = 0;
-      return;
-    }
-
-    // Phase 2 trigger
-    if (phase === 1 && enemy.hp <= enemy.hpMax * 0.5) {
-      enemy.bossPhase = 2;
-      enemy.hp = Math.min(enemy.hpMax, enemy.hp + Math.round(enemy.hpMax * 0.2));
-    }
-
-    // ── 蓄力阶段：不动，等待前摇结束 ──
-    if (enemy.bossCasting) {
-      enemy.bossCastTimer = (enemy.bossCastTimer || 0) + dt * 1000;
-      const windup = enemy.bossCasting === 'ranged' ? RANGED_WINDUP : AOE_WINDUP;
-      enemy.state = 'attack';
-
-      if (enemy.bossCastTimer >= windup) {
-        // 蓄力完成，释放技能
-        if (enemy.bossCasting === 'ranged') {
-          this.bossFireRanged(enemy);
-        } else {
-          this.bossFireAoE(enemy, aoeRange, aoeDamage);
-        }
-        enemy.bossCasting = null;
-        enemy.bossCastTimer = 0;
-        enemy.bossPostCastCooldown = 1000; // 1s 后摇，让视觉特效播完再放下一个技能
-      }
-      return; // 蓄力期间不移动
-    }
-
-    // ── 移动 + 避障 ──
-    const dx = nearestPlayer.x - enemy.x;
-    const dy = nearestPlayer.y - enemy.y;
-    const dist = Math.hypot(dx, dy);
-
-    if (dist > 40) {
-      const dirX = dx / dist;
-      const dirY = dy / dist;
-      const newEX = enemy.x + dirX * speed;
-      const newEY = enemy.y + dirY * speed;
-      if (this.isWalkableRadius(newEX, newEY, radius)) {
-        enemy.x = newEX;
-        enemy.y = newEY;
-      } else if (this.isWalkableRadius(newEX, enemy.y, radius)) {
-        enemy.x = newEX;
-      } else if (this.isWalkableRadius(enemy.x, newEY, radius)) {
-        enemy.y = newEY;
-      } else {
-        // 卡墙：尝试 8 个偏移角度逃逸
-        const baseAngle = Math.atan2(dy, dx);
-        const escapeOffsets = [-Math.PI/2, Math.PI/2, -Math.PI/4, Math.PI/4, -Math.PI*3/4, Math.PI*3/4];
-        for (const offset of escapeOffsets) {
-          const tryX = enemy.x + Math.cos(baseAngle + offset) * speed;
-          const tryY = enemy.y + Math.sin(baseAngle + offset) * speed;
-          if (this.isWalkableRadius(tryX, tryY, radius)) {
-            enemy.x = tryX;
-            enemy.y = tryY;
-            break;
-          }
-        }
-      }
-      enemy.state = 'chase';
-    } else {
-      enemy.state = 'attack';
-    }
-
-    // ── 近战攻击 ──
-    const now = Date.now();
-    const lastAttack = enemy.lastAttackTime || 0;
-    if (dist <= 40 && now - lastAttack >= 500 && nearestPlayer.invincible <= 0) {
-      const finalDamage = Math.max(1, (enemy.attack || 25) - nearestPlayer.defense * 0.5);
-      nearestPlayer.hp -= finalDamage;
-      nearestPlayer.invincible = 0.5;
-      enemy.lastAttackTime = now;
-      if (nearestPlayer.hp <= 0) nearestPlayer.alive = false;
-    }
-
-    // ── 技能计时器持续走（蓄力期间也累加，但不触发）──
-    enemy.bossRangedTimer = (enemy.bossRangedTimer || 0) + dt * 1000;
-    enemy.bossAoETimer = (enemy.bossAoETimer || 0) + dt * 1000;
-
-    // ── 后摇冷却递减 ──
-    if (enemy.bossPostCastCooldown && enemy.bossPostCastCooldown > 0) {
-      enemy.bossPostCastCooldown -= dt * 1000;
-    }
-
-    // ── 当前无蓄力且后摇结束时，检查冷却触发下一个技能 ──
-    if (!enemy.bossCasting && (!enemy.bossPostCastCooldown || enemy.bossPostCastCooldown <= 0)) {
-      // 弹幕优先判定
-      if (enemy.bossRangedTimer >= rangedCooldown && dist > 40) {
-        enemy.bossRangedTimer = 0;
-        enemy.bossCasting = 'ranged';
-        enemy.bossCastTimer = 0;
-        enemy.bossTargetAngle = Math.atan2(dy, dx);
-        this.bossEvents.push({ type: 'ranged_windup', x: enemy.x, y: enemy.y });
-      }
-      // 弹幕未触发时才判定震地（避免同一 tick 双触发）
-      else if (enemy.bossAoETimer >= aoeCooldown) {
-        enemy.bossAoETimer = 0;
-        enemy.bossCasting = 'aoe';
-        enemy.bossCastTimer = 0;
-        this.bossEvents.push({ type: 'aoe_windup', x: enemy.x, y: enemy.y });
-      }
-    }
-  }
-
-  private bossFireRanged(enemy: EnemyState): void {
-    const angleToPlayer = enemy.bossTargetAngle || 0;
-    const spreadAngle = 30 * Math.PI / 180;
-    for (let i = 0; i < 5; i++) {
-      const angle = angleToPlayer + (i - 2) * (spreadAngle / 4);
-      this.bossEvents.push({ type: 'ranged', x: enemy.x, y: enemy.y });
-      const bulletSpeed = 250;
-      const id = `bullet_boss_${Date.now()}_${Math.random().toString(36).slice(2)}_${i}`;
-      this.bullets.set(id, {
-        id,
-        x: enemy.x + Math.cos(angle) * 20,
-        y: enemy.y + Math.sin(angle) * 20,
-        vx: Math.cos(angle) * bulletSpeed,
-        vy: Math.sin(angle) * bulletSpeed,
-        ownerId: enemy.id,
-        ownerType: 'boss',
-        damage: Math.round((enemy.attack || 25) * 0.6),
-        friendly: false,
-        piercing: 1,
-        radius: 6,
-      });
-    }
-  }
-
-  private bossFireAoE(enemy: EnemyState, aoeRange: number, aoeDamage: number): void {
-    this.bossEvents.push({ type: 'aoe', x: enemy.x, y: enemy.y });
-    for (const player of this.players.values()) {
-      if (!player.alive || player.invincible > 0) continue;
-      const pDist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
-      if (pDist <= aoeRange) {
-        const finalDamage = Math.max(1, aoeDamage - player.defense * 0.5);
-        player.hp -= finalDamage;
-        player.invincible = 0.5;
-        if (player.hp <= 0) player.alive = false;
-      }
-    }
-  }
-
-  /**
-   * 敌人-敌人碰撞分离
-   * 防止敌人重叠在一起，推动它们分开
-   */
   private separateEnemies(): void {
     const enemies = Array.from(this.enemies.values()).filter(e => e.alive);
     const separationForce = 0.5;
-
     for (let i = 0; i < enemies.length; i++) {
       for (let j = i + 1; j < enemies.length; j++) {
-        const e1 = enemies[i];
-        const e2 = enemies[j];
-
-        const r1 = GameRoom.ENEMY_RADIUS[e1.type] || 16;
-        const r2 = GameRoom.ENEMY_RADIUS[e2.type] || 16;
-        const minDist = r1 + r2; // 两个敌人碰撞半径之和
-
-        const dx = e2.x - e1.x;
-        const dy = e2.y - e1.y;
+        const e1 = enemies[i], e2 = enemies[j];
+        const r1 = ENEMY_RADIUS[e1.type] || 16, r2 = ENEMY_RADIUS[e2.type] || 16;
+        const minDist = r1 + r2;
+        const dx = e2.x - e1.x, dy = e2.y - e1.y;
         const dist = Math.hypot(dx, dy);
-
         if (dist < minDist && dist > 0) {
-          // 重叠了，需要分离
           const overlap = minDist - dist;
-          const dirX = dx / dist;
-          const dirY = dy / dist;
-
-          // 按半径比例分配分离距离
-          const totalRadius = r1 + r2;
-          const push1 = overlap * (r2 / totalRadius) * separationForce;
-          const push2 = overlap * (r1 / totalRadius) * separationForce;
-
-          const newX1 = e1.x - dirX * push1;
-          const newY1 = e1.y - dirY * push1;
-          const newX2 = e2.x + dirX * push2;
-          const newY2 = e2.y + dirY * push2;
-
-          // 验证分离后位置可行走
-          if (this.isWalkableRadius(newX1, newY1, r1)) {
-            e1.x = newX1;
-            e1.y = newY1;
-          }
-          if (this.isWalkableRadius(newX2, newY2, r2)) {
-            e2.x = newX2;
-            e2.y = newY2;
-          }
+          const dirX = dx / dist, dirY = dy / dist;
+          const totalR = r1 + r2;
+          const push1 = overlap * (r2 / totalR) * separationForce;
+          const push2 = overlap * (r1 / totalR) * separationForce;
+          const nx1 = e1.x - dirX * push1, ny1 = e1.y - dirY * push1;
+          const nx2 = e2.x + dirX * push2, ny2 = e2.y + dirY * push2;
+          if (this.isWalkableRadius(nx1, ny1, r1)) { e1.x = nx1; e1.y = ny1; }
+          if (this.isWalkableRadius(nx2, ny2, r2)) { e2.x = nx2; e2.y = ny2; }
         }
       }
     }
@@ -934,6 +523,18 @@ export class GameRoom {
     });
   }
 
+  addBullet(bullet: BulletState): void {
+    this.bullets.set(bullet.id, bullet);
+  }
+
+  pushBossEvent(event: BossEvent): void {
+    this.bossEvents.push(event);
+  }
+
+  getPlayers(): PlayerState[] {
+    return Array.from(this.players.values());
+  }
+
   damageEnemy(enemyId: string, damage: number): void {
     const enemy = this.enemies.get(enemyId);
     if (!enemy || !enemy.alive) return;
@@ -1023,19 +624,22 @@ export class GameRoom {
   }
 
   // 调试命令处理
-  handleDebugCommand(playerId: string, action: string, params?: any): void {
+  handleDebugCommand(playerId: string, action: string, params?: Record<string, unknown>): void {
     const player = this.players.get(playerId);
     if (!player) return;
 
     // Support both {floor:5} and {params:{floor:5}} formats
-    const p = params?.params || params;
+    const raw = params ?? {};
+    const p = (raw.params as Record<string, unknown> | undefined) ?? raw;
 
     switch (action) {
-      case 'teleport':
-        if (p?.floor && p.floor >= 1 && p.floor <= 5) {
-          this.startFloor(p.floor);
+      case 'teleport': {
+        const floor = p.floor as number | undefined;
+        if (floor && floor >= 1 && floor <= 5) {
+          this.startFloor(floor);
         }
         break;
+      }
       case 'killAll':
         for (const enemy of this.enemies.values()) {
           enemy.state = 'dying';
@@ -1068,7 +672,20 @@ export class GameRoom {
           const dx = player.x - boss2.x;
           const dy = player.y - boss2.y;
           boss2.bossTargetAngle = Math.atan2(dy, dx);
-          this.bossFireRanged(boss2);
+          const angleToPlayer = boss2.bossTargetAngle;
+          const spreadAngle = 30 * Math.PI / 180;
+          for (let i = 0; i < 5; i++) {
+            const angle = angleToPlayer + (i - 2) * (spreadAngle / 4);
+            this.pushBossEvent({ type: 'ranged', x: boss2.x, y: boss2.y });
+            const bulletSpeed = 250;
+            const id = `bullet_boss_debug_${Date.now()}_${Math.random().toString(36).slice(2)}_${i}`;
+            this.addBullet({
+              id, x: boss2.x + Math.cos(angle) * 20, y: boss2.y + Math.sin(angle) * 20,
+              vx: Math.cos(angle) * bulletSpeed, vy: Math.sin(angle) * bulletSpeed,
+              ownerId: boss2.id, ownerType: 'boss', damage: Math.round((boss2.attack || 25) * 0.6),
+              friendly: false, piercing: 1, radius: 6,
+            });
+          }
         }
         break;
       }
@@ -1085,5 +702,29 @@ export class GameRoom {
     this.enemies.clear();
     this.bullets.clear();
     this.healWaves = [];
+  }
+
+  consumeFloorChanged(): boolean {
+    if (this._floorChanged) {
+      this._floorChanged = false;
+      return true;
+    }
+    return false;
+  }
+
+  consumeGameOver(): boolean {
+    if (this._gameOver) {
+      this._gameOver = false;
+      return true;
+    }
+    return false;
+  }
+
+  consumeVictory(): boolean {
+    return this._victory;
+  }
+
+  getGameSession(): number {
+    return this.gameSession;
   }
 }

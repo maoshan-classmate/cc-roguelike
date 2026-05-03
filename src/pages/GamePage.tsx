@@ -2,6 +2,28 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
 import { useGameStore } from '../store/useGameStore'
+import type { PlayerState, EnemyState, BulletState, HealWaveState, ItemState, DungeonData, GameState as SharedGameState } from '@shared/types'
+
+interface BossVisualEffect {
+  type: 'aoe_shockwave' | 'ranged_flash'
+  x: number
+  y: number
+  startTime: number
+  duration: number
+  maxRadius: number
+}
+import { GameMessages, RoomMessages } from '@shared/protocol'
+
+interface ClientGameState {
+  players: PlayerState[]
+  enemies: EnemyState[]
+  bullets: BulletState[]
+  healWaves: HealWaveState[]
+  items: ItemState[]
+  gold: number
+  keys: number
+  dungeon: DungeonData | null
+}
 import { networkClient } from '../network/socket'
 import { mainAtlasPath } from '../assets/0x72'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -204,15 +226,15 @@ export default function GamePage() {
   const [showDebug, setShowDebug] = useState(false)
   const [isInvincible, setIsInvincible] = useState(false)
 
-  const gameStateRef = useRef({
-    players: [] as any[],
-    enemies: [] as any[],
-    bullets: [] as any[],
-    healWaves: [] as any[],
-    items: [] as any[],
+  const gameStateRef = useRef<ClientGameState>({
+    players: [],
+    enemies: [],
+    bullets: [],
+    healWaves: [],
+    items: [],
     gold: 0,
     keys: 0,
-    dungeon: null as any
+    dungeon: null
   })
 
   const prevDyingRef = useRef<Set<string>>(new Set())
@@ -225,7 +247,7 @@ export default function GamePage() {
   const lastSentAngleRef = useRef<number | null>(null)
   const facingAngleRef = useRef<number | null>(null)
   const attackFlashRef = useRef(0)
-  const bossEffectsRef = useRef<any[]>([])
+  const bossEffectsRef = useRef<BossVisualEffect[]>([])
   const screenShakeRef = useRef({ intensity: 0, endTime: 0 })
   const prevAttackRef = useRef(false)
   const floorSessionRef = useRef<number>(0)
@@ -289,7 +311,7 @@ export default function GamePage() {
 
   // Game state listener
   useEffect(() => {
-    networkClient.on('game:state', (state: any) => {
+    networkClient.on(GameMessages.STATE, (state: SharedGameState & Record<string, unknown>) => {
       if (gameSessionRef.current !== 0 && state.gameSession !== gameSessionRef.current) return
 
       if (state.floorCompleted) setFloor(state.floor + 1)
@@ -306,7 +328,7 @@ export default function GamePage() {
         const prevHp = prevHpRef.current.get(key)
         if (prevHp !== undefined && e.hp < prevHp) {
           const damage = prevHp - e.hp
-          const isPlayer = state.players?.some((p: any) => p.id === key)
+          const isPlayer = state.players?.some(p => p.id === key)
           spawnDamageText(e.x, e.y - 20, damage, isPlayer)
 
           // 音效：受伤
@@ -322,8 +344,8 @@ export default function GamePage() {
         }
 
         // 音效：敌人死亡
-        if (!state.players?.some((p: any) => p.id === key) && e.hp <= 0 && prevHp !== undefined && prevHp > 0) {
-          playEnemyDie(e.type || 'basic')
+        if (!state.players?.some(p => p.id === key) && e.hp <= 0 && prevHp !== undefined && prevHp > 0) {
+          playEnemyDie('type' in e ? e.type : 'basic')
           // 打击感：敌人死亡（顿帧 5 帧 + 震动 5px）
           triggerHitEffect(5, 5, 200)
         }
@@ -331,7 +353,7 @@ export default function GamePage() {
         // 音效：玩家死亡
         const prevAlive = prevAliveRef.current.get(key)
         if (prevAlive !== undefined && e.alive === false && prevAlive === true) {
-          const isPlayer = state.players?.some((p: any) => p.id === key)
+          const isPlayer = state.players?.some(p => p.id === key)
           if (isPlayer && e.id === user?.id) {
             playDie()
             // 打击感：玩家死亡（顿帧 8 帧 + 震动 6px）
@@ -349,10 +371,10 @@ export default function GamePage() {
       const newItems = state.items || []
       if (newItems.length < prevItems.length) {
         // 检测到道具被拾取（数量减少）
-        const removedItems = prevItems.filter((item: any) => !newItems.some((newItem: any) => newItem.id === item.id))
+        const removedItems = prevItems.filter(item => !newItems.some(newItem => newItem.id === item.id))
         for (const item of removedItems) {
           // 检查是否是本地玩家拾取的（通过距离判断）
-          const localPlayer = state.players?.find((p: any) => p.id === user?.id)
+          const localPlayer = state.players?.find(p => p.id === user?.id)
           if (localPlayer) {
             const dist = Math.sqrt((localPlayer.x - item.x) ** 2 + (localPlayer.y - item.y) ** 2)
             if (dist < 50) { // 50px 内认为是本地玩家拾取
@@ -368,13 +390,13 @@ export default function GamePage() {
         bullets: state.bullets || [],
         healWaves: state.healWaves || [],
         items: state.items || [],
-        gold: state.gold || 0,
-        keys: state.keys || 0,
-        dungeon: state.dungeon || null
+        gold: state.players?.find((p: PlayerState) => p.id === user?.id)?.gold || 0,
+        keys: state.players?.find((p: PlayerState) => p.id === user?.id)?.keys || 0,
+        dungeon: state.dungeon ?? null
       }
 
       // Boss event audio + visual effects
-      if (state.bossEvents?.length > 0) {
+      if (state.bossEvents?.length) {
         for (const evt of state.bossEvents) {
           if (evt.type === 'ranged') {
             play(SFX_IDS.ENEMY_BOSS_ATTACK)
@@ -394,7 +416,7 @@ export default function GamePage() {
       setState(state)
     })
 
-    networkClient.on('game:floor:start', (data: any) => {
+    networkClient.on(GameMessages.FLOOR_START, (data: { floor: number; gameSession: number }) => {
       prevPositions.current.clear()
       targetPositions.current.clear()
       gameStateRef.current = { players: [], enemies: [], bullets: [], healWaves: [], items: [], gold: 0, keys: 0, dungeon: null }
@@ -407,7 +429,7 @@ export default function GamePage() {
       playFloorTransition()
     })
 
-    networkClient.on('game:end', (data: any) => {
+    networkClient.on(GameMessages.END, (data: { win: boolean }) => {
       setGameOver(true, data.win)
 
       // 音效：游戏结束/胜利
@@ -419,9 +441,9 @@ export default function GamePage() {
     })
 
     return () => {
-      networkClient.off('game:state')
-      networkClient.off('game:floor:start')
-      networkClient.off('game:end')
+      networkClient.off(GameMessages.STATE)
+      networkClient.off(GameMessages.FLOOR_START)
+      networkClient.off(GameMessages.END)
       floorSessionRef.current = 0
       gameSessionRef.current = 0
     }
@@ -441,7 +463,7 @@ export default function GamePage() {
       const skillKey = e.key
       if (['1', '2', '3', '4'].includes(skillKey) && !skillKeysDown.has(skillKey)) {
         skillKeysDown.add(skillKey)
-        networkClient.emit('game:input', { skill: parseInt(skillKey) - 1 })
+        networkClient.emit(GameMessages.INPUT, { skill: parseInt(skillKey) - 1 })
 
         // 播放技能音效
         switch (skillKey) {
@@ -497,7 +519,7 @@ export default function GamePage() {
       if (dx !== 0 && dy !== 0) { dx *= 0.707; dy *= 0.707 }
 
       const { players } = gameStateRef.current
-      const localPlayer = players.find((p: any) => p.id === user?.id)
+      const localPlayer = players.find(p => p.id === user?.id)
 
       if (!localPlayer) {
         render()
@@ -520,14 +542,14 @@ export default function GamePage() {
         const angleChanged = lastSentAngleRef.current === null || Math.abs(angle - lastSentAngleRef.current) > 0.087
         if (angleChanged) lastSentAngleRef.current = angle
         lastInputTime = now
-        networkClient.emit('game:input', { dx, dy, angle, attack: mouseRef.current.down })
+        networkClient.emit(GameMessages.INPUT, { dx, dy, angle, attack: mouseRef.current.down })
       }
 
       const isAttacking = mouseRef.current.down
       if (isAttacking && !prevAttackRef.current) {
         attackFlashRef.current = 1.0
         // 播放攻击音效
-        const localPlayer = gameStateRef.current.players.find((p: any) => p.id === user?.id)
+        const localPlayer = gameStateRef.current.players.find(p => p.id === user?.id)
         if (localPlayer) {
           playAttack(localPlayer.characterType || 'warrior')
         }
@@ -568,7 +590,7 @@ export default function GamePage() {
   useEffect(() => { render() }, [render])
 
   const handleExit = () => {
-    networkClient.emit('room:leave')
+    networkClient.emit(RoomMessages.LEAVE)
     floorSessionRef.current = 0
     gameSessionRef.current = 0
     prevPositions.current.clear()
@@ -588,24 +610,24 @@ export default function GamePage() {
 
   // 调试功能处理函数
   const handleDebugTeleport = (targetFloor: number) => {
-    networkClient.emit('game:debug', { action: 'teleport', floor: targetFloor })
+    networkClient.emit(GameMessages.DEBUG, { action: 'teleport', floor: targetFloor })
   }
 
   const handleDebugKillAll = () => {
-    networkClient.emit('game:debug', { action: 'killAll' })
+    networkClient.emit(GameMessages.DEBUG, { action: 'killAll' })
   }
 
   const handleDebugToggleInvincible = () => {
-    networkClient.emit('game:debug', { action: 'setInvincible', invincible: !isInvincible })
+    networkClient.emit(GameMessages.DEBUG, { action: 'setInvincible', invincible: !isInvincible })
     setIsInvincible(!isInvincible)
   }
 
   const handleDebugBossSlam = () => {
-    networkClient.emit('game:debug', { action: 'bossSlam' })
+    networkClient.emit(GameMessages.DEBUG, { action: 'bossSlam' })
   }
 
   const handleDebugBossRanged = () => {
-    networkClient.emit('game:debug', { action: 'bossRanged' })
+    networkClient.emit(GameMessages.DEBUG, { action: 'bossRanged' })
   }
 
   const { gold, keys } = gameStateRef.current

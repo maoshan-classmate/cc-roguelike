@@ -8,6 +8,7 @@ import { DungeonBackground } from '../components/DungeonBackground'
 import { AnimatedSprite } from '../components/AnimatedSprite'
 import { BlurText } from '../components/animations'
 import GradientText from '../components/animations/GradientText'
+import { AuthMessages } from '@shared/protocol'
 
 const CLASSES = [
   { name: 'knight_m', label: 'WARRIOR', color: '#4A9EFF', glow: '#4A9EFF44' },
@@ -147,7 +148,7 @@ export default function LoginPage() {
     setError('')
     setLoading(true)
     try {
-      const event = isRegister ? 'auth:register' : 'auth:login'
+      const event = isRegister ? AuthMessages.REGISTER : AuthMessages.LOGIN
       if (!networkClient.isConnected()) {
         networkClient.connect()
         await new Promise<void>((resolve) => {
@@ -156,13 +157,13 @@ export default function LoginPage() {
           else s?.once('connect', () => resolve())
         })
       }
-      const result = await new Promise<any>((resolve) => {
+      const result = await new Promise<{ success: boolean; error?: string; user?: { id: string; username: string }; token?: string }>((resolve) => {
         const t = setTimeout(() => resolve({ success: false, error: 'Timeout' }), 5000)
-        const h = (data: any) => { clearTimeout(t); networkClient.off('auth:result', h); resolve(data) }
+        const h = (data: { success: boolean; error?: string; user?: { id: string; username: string }; token?: string }) => { clearTimeout(t); networkClient.off('auth:result', h); resolve(data) }
         networkClient.on('auth:result', h)
         networkClient.emit(event, { username, password })
       })
-      if (result.success) { setAuth(result.user, result.token); navigate('/lobby') }
+      if (result.success && result.user && result.token) { setAuth(result.user, result.token); navigate('/lobby') }
       else setError(result.error === 'USERNAME_EXISTS' ? '用户名已存在' : '登录失败')
     } catch { setError('连接失败') }
     finally { setLoading(false) }

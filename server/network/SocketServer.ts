@@ -2,7 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { AuthManager } from '../lobby/AuthManager';
 import { LobbyManager, RoomInfo } from '../lobby/LobbyManager';
 import { GameManager } from '../game/GameManager';
-import { AuthMessages, LobbyMessages, RoomMessages, GameMessages, ChatMessages, ErrorCodes } from '../proto/MessageTypes';
+import { AuthMessages, LobbyMessages, RoomMessages, GameMessages, ChatMessages, ErrorCodes } from '../../shared/protocol';
 
 interface Session {
   accountId: string;
@@ -100,7 +100,7 @@ export class SocketServer {
       socket.on('room:selectClass', (data: { characterType: string }) => this.handleSelectClass(socket, data));
 
       // Game handlers
-      socket.on(GameMessages.INPUT, (data: any) => this.handleGameInput(socket, data));
+      socket.on(GameMessages.INPUT, (data: { dx: number; dy: number; angle: number; attack?: boolean; skill?: number; mouseX?: number; mouseY?: number }) => this.handleGameInput(socket, data));
       socket.on(GameMessages.CHAT, (data: { message: string }) => this.handleGameChat(socket, data));
       socket.on(GameMessages.DEBUG, (data: { action: string; floor?: number; invincible?: boolean }) => this.handleGameDebug(socket, data));
 
@@ -366,7 +366,7 @@ export class SocketServer {
     });
   }
 
-  private handleGameInput(socket: Socket, data: any): void {
+  private handleGameInput(socket: Socket, data: { dx: number; dy: number; angle: number; attack?: boolean; skill?: number; mouseX?: number; mouseY?: number }): void {
     this.requireAuth(socket, (session) => {
       if (!session.currentRoom) return;
 
@@ -451,17 +451,15 @@ export class SocketServer {
           this.io.to(`room:${roomId}`).emit(GameMessages.STATE, state);
 
           // Check for floor change
-          if ((gameRoom as any)._floorChanged) {
-            (gameRoom as any)._floorChanged = false;
+          if (gameRoom.consumeFloorChanged()) {
             this.io.to(`room:${roomId}`).emit('game:floor:start', {
               floor: state.floor,
-              gameSession: (gameRoom as any).gameSession
+              gameSession: gameRoom.getGameSession()
             });
           }
-        } else if ((gameRoom as any)._gameOver) {
+        } else if (gameRoom.consumeGameOver()) {
           // Game ended — reset room to waiting so others can find it
-          const victory = (gameRoom as any)._victory;
-          (gameRoom as any)._gameOver = false;
+          const victory = gameRoom.consumeVictory();
           this.lobbyManager.resetRoom(roomId);
           this.io.to(`room:${roomId}`).emit('game:end', { win: victory });
           // Broadcast updated room list to all in lobby

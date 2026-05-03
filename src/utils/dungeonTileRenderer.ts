@@ -1,6 +1,5 @@
 import { SPRITE_ATLAS } from '../assets/0x72/spriteIndex'
-
-const TILE = 32
+import { TILE_SIZE as TILE } from '@shared/constants'
 const FLOOR_VARIANTS = ['floor_1', 'floor_2', 'floor_3', 'floor_4', 'floor_5', 'floor_6', 'floor_7', 'floor_8']
 
 export function drawTile(

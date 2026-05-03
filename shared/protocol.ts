@@ -1,4 +1,4 @@
-// Socket消息类型定义
+// 客户端/服务端共享协议常量（唯一数据源）
 
 export interface Packet {
   type: string;

@@ -1,12 +1,23 @@
-import { GameRoom, PlayerState, BulletState } from '../GameRoom';
-import { GAME_CONFIG, WEAPON_TEMPLATES, SKILL_TEMPLATES } from '../../config/constants';
+import type { PlayerState, BulletState, GameState } from '../../../shared/types';
+import { ENEMY_RADIUS } from '../../../shared/constants';
+import { GAME_CONFIG, WEAPON_TEMPLATES, SKILL_TEMPLATES, type WeaponTemplate } from '../../config/constants';
 import { Vec2 } from '../../utils/Vec2';
 
+export interface CombatDeps {
+  getState(): GameState;
+  spawnBullet(ownerId: string, x: number, y: number, angle: number, damage: number, friendly: boolean, ownerType?: string): void;
+  spawnHealWave(ownerId: string, x: number, y: number, amount: number): void;
+  damageEnemy(enemyId: string, damage: number): void;
+  damagePlayer(playerId: string, damage: number): void;
+  removeBullet(bulletId: string): void;
+  isWalkable(x: number, y: number): boolean;
+}
+
 export class Combat {
-  private room: GameRoom;
+  private room: CombatDeps;
   private lastAttackTime: Map<string, number> = new Map();
 
-  constructor(room: GameRoom) {
+  constructor(room: CombatDeps) {
     this.room = room;
   }
 
@@ -28,7 +39,7 @@ export class Combat {
     }
   }
 
-  private fireGun(player: PlayerState, weapon: any): void {
+  private fireGun(player: PlayerState, weapon: WeaponTemplate): void {
     const isHealer = player.characterType === 'cleric';
 
     if (isHealer) {
@@ -49,13 +60,12 @@ export class Combat {
         angle,
         weapon.damage,
         true,
-        player.characterType,
-        false
+        player.characterType
       );
     }
   }
 
-  private executeMelee(player: PlayerState, weapon: any): void {
+  private executeMelee(player: PlayerState, weapon: WeaponTemplate): void {
     const range = weapon.range || GAME_CONFIG.MELEE_RANGE;
     const arc = weapon.arc || GAME_CONFIG.MELEE_ARC;
 
@@ -146,7 +156,6 @@ export class Combat {
     const state = this.room.getState();
 
     if (bullet.friendly) {
-      const ENEMY_RADIUS: Record<string, number> = { basic: 16, fast: 14, ghost: 16, tank: 20, boss: 28 };
       for (const enemy of state.enemies) {
         if (!enemy.alive) continue;
 

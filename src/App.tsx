@@ -14,7 +14,7 @@ function AuthErrorHandler() {
   const logout = useAuthStore((s) => s.logout)
 
   useEffect(() => {
-    const handler = (data: any) => {
+    const handler = (data: { message?: string }) => {
       console.warn('[Auth] Token expired or invalid:', data.message)
       logout()
       navigate('/login', { replace: true })

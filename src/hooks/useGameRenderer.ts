@@ -3,6 +3,8 @@ import { CHARACTERS } from '../config/characters'
 import { ENEMIES } from '../config/enemies'
 import { ITEMS } from '../config/items'
 import { SPRITE_REGISTRY } from '../config/sprites'
+import type { PlayerState, EnemyState, BulletState, HealWaveState, ItemState, GameState as SharedGameState, DungeonData } from '@shared/types'
+import { drawFallbackRect } from '../rendering/fallbackDraw'
 
 interface BossEffect {
   type: 'aoe_shockwave' | 'ranged_flash'
@@ -63,18 +65,18 @@ const WEAPON_SPRITE: Record<string, string> = {
 }
 
 interface GameState {
-  players: any[]
-  enemies: any[]
-  bullets: any[]
-  healWaves: any[]
-  items: any[]
+  players: PlayerState[]
+  enemies: EnemyState[]
+  bullets: BulletState[]
+  healWaves: HealWaveState[]
+  items: ItemState[]
   gold: number
   keys: number
-  dungeon: any
+  dungeon: DungeonData | null
 }
 
 interface RenderDeps {
-  user: any
+  user: { id: string; username: string } | null
   spritesLoaded: boolean
   tileset2Atlas: HTMLImageElement
   generatedSheets: Record<string, HTMLImageElement>
@@ -88,10 +90,11 @@ interface RenderDeps {
   spawnDamageText: (x: number, y: number, value: number, isPlayer: boolean) => void
   updateAndDrawParticles: (ctx: CanvasRenderingContext2D) => void
   updateAndDrawDamageTexts: (ctx: CanvasRenderingContext2D) => void
-  particlesRef: { current: any[] }
-  damageTextsRef: { current: any[] }
+  particlesRef: { current: Array<{ x: number; y: number; vx: number; vy: number; life: number; maxLife: number; color: string; size: number }> }
+  damageTextsRef: { current: Array<{ x: number; y: number; value: number; isPlayer: boolean; life: number; maxLife: number }> }
   bossEffectsRef: React.MutableRefObject<BossEffect[]>
   screenShakeRef: React.MutableRefObject<{ intensity: number; endTime: number }>
+  attackFlashRef?: React.MutableRefObject<number>
 }
 
 export function useGameRenderer(
@@ -142,7 +145,7 @@ export function useGameRenderer(
     const FPS = 60
 
     // ── 检测新道具出现 ──
-    const currentItemIds = new Set(items.map((it: any) => it.id))
+    const currentItemIds = new Set(items.map(it => it.id))
     for (const item of items) {
       if (!prevItemIdsRef.current.has(item.id)) {
         itemSpawnRef.current.set(item.id, frame)
@@ -190,7 +193,7 @@ export function useGameRenderer(
       ctx.drawImage(dungeonCacheRef.current.canvas, 0, 0)
 
       // 出口引导：清怪后入口处淡蓝色光线
-      if (dungeon.exitPoint && enemies.filter((e: any) => e.alive !== false).length === 0) {
+      if (dungeon.exitPoint && enemies.filter(e => e.alive !== false).length === 0) {
         const tileX = Math.floor(dungeon.exitPoint.x / 32) * 32
         const tileY = Math.floor(dungeon.exitPoint.y / 32) * 32
         const cx = tileX + 16
@@ -217,7 +220,7 @@ export function useGameRenderer(
         ctx.restore()
       }
     } else if (dungeon && dungeon.rooms) {
-      const roomsKey = 'rooms-' + dungeon.rooms.map((r: any) => `${r.x},${r.y},${r.width},${r.height}`).join('|')
+      const roomsKey = 'rooms-' + dungeon.rooms.map(r => `${r.x},${r.y},${r.width},${r.height}`).join('|')
 
       if (!dungeonCacheRef.current || dungeonCacheRef.current.gridKey !== roomsKey) {
         const offscreen = document.createElement('canvas')
@@ -230,7 +233,7 @@ export function useGameRenderer(
       ctx.drawImage(dungeonCacheRef.current.canvas, 0, 0)
 
       // 出口引导：清怪后入口处淡蓝色光线（rooms 路径）
-      if (dungeon.exitPoint && enemies.filter((e: any) => e.alive !== false).length === 0) {
+      if (dungeon.exitPoint && enemies.filter(e => e.alive !== false).length === 0) {
         const tileX = Math.floor(dungeon.exitPoint.x / 32) * 32
         const tileY = Math.floor(dungeon.exitPoint.y / 32) * 32
         const cx = tileX + 16
@@ -290,11 +293,7 @@ export function useGameRenderer(
         const animSprite = getAnimSprite(itemConfig.spriteName ?? '', performance.now() - lastAnimTime.current)
         draw0x72Sprite(ctx, tileset2Atlas, animSprite, item.x, item.y, itemSize)
       } else {
-        ctx.fillStyle = itemConfig.color
-        ctx.fillRect(item.x - 14, item.y - 14, 28, 28)
-        ctx.strokeStyle = '#fff'
-        ctx.lineWidth = 1
-        ctx.strokeRect(item.x - 14, item.y - 14, 28, 28)
+        drawFallbackRect(ctx, item.x, item.y, 28, itemConfig.color)
       }
       ctx.restore()
     }
@@ -378,8 +377,8 @@ export function useGameRenderer(
         // ── Boss 动作切换：idle/run/casting 使用不同精灵帧 ──
         if (enemyConfig.isBoss && tileset2Atlas.complete) {
           const bossState = enemy.state
-          const bossCasting = (enemy as any).bossCasting
-          const castProgress = (enemy as any).bossCastTimer || 0 // ms into cast
+          const bossCasting = enemy.bossCasting
+          const castProgress = enemy.bossCastTimer || 0
           const castWindup = bossCasting === 'ranged' ? 500 : bossCasting === 'aoe' ? 800 : 0
           const progress = castWindup > 0 ? Math.min(castProgress / castWindup, 1) : 0
 
@@ -450,19 +449,11 @@ export function useGameRenderer(
             const animSprite = getAnimSprite(sName, performance.now() - lastAnimTime.current)
             draw0x72Sprite(ctx, tileset2Atlas, animSprite, epos.x, epos.y, size)
           } else {
-            ctx.fillStyle = enemyConfig.color
-            ctx.fillRect(epos.x - size/2, epos.y - size/2, size, size)
-            ctx.strokeStyle = '#fff'
-            ctx.lineWidth = 1
-            ctx.strokeRect(epos.x - size/2, epos.y - size/2, size, size)
+            drawFallbackRect(ctx, epos.x, epos.y, size, enemyConfig.color)
           }
         }
       } else {
-        ctx.fillStyle = enemyConfig.color
-        ctx.fillRect(epos.x - size/2, epos.y - size/2, size, size)
-        ctx.strokeStyle = '#fff'
-        ctx.lineWidth = 1
-        ctx.strokeRect(epos.x - size/2, epos.y - size/2, size, size)
+        drawFallbackRect(ctx, epos.x, epos.y, size, enemyConfig.color)
       }
 
       // 红色受击覆盖层
@@ -862,11 +853,7 @@ export function useGameRenderer(
           draw0x72Sprite(ctx, tileset2Atlas, animSprite, ppos.x, ppos.y, size)
         }
       } else {
-        ctx.fillStyle = charConfig.color
-        ctx.fillRect(ppos.x - size/2, ppos.y - size/2, size, size)
-        ctx.strokeStyle = '#fff'
-        ctx.lineWidth = 1
-        ctx.strokeRect(ppos.x - size/2, ppos.y - size/2, size, size)
+        drawFallbackRect(ctx, ppos.x, ppos.y, size, charConfig.color)
       }
 
       // 红色受击覆盖层
@@ -882,7 +869,7 @@ export function useGameRenderer(
       const facingRight = pAngle > -Math.PI / 2 && pAngle <= Math.PI / 2
       const wSprite = WEAPON_SPRITE[player.characterType] || 'weapon_knight_sword'
       const isMelee = player.characterType === 'warrior'
-      const flashVal = isLocal ? (deps as any).attackFlashRef?.current || 0 : 0
+      const flashVal = isLocal ? deps.attackFlashRef?.current || 0 : 0
       if (tileset2Atlas.complete) {
         if (!facingRight) {
           ctx.save()

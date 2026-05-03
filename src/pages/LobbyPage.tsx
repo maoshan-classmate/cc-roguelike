@@ -8,6 +8,7 @@ import { DungeonParticles } from '../components/DungeonParticles'
 import { DungeonBackground } from '../components/DungeonBackground'
 import { BlurText } from '../components/animations'
 import { PixelCastle, PixelSword, PixelStar, PixelSkull, PixelCrown, PixelGem, PixelKey, PixelDragon } from '../components/PixelIcons'
+import { LobbyMessages, RoomMessages, AuthMessages } from '@shared/protocol'
 import { PixelRoomCard } from '../components/pixel'
 
 /* ── animation variants ── */
@@ -38,9 +39,9 @@ export default function LobbyPage() {
     if (!networkClient.isConnected()) networkClient.connect()
 
     const setup = () => {
-      networkClient.emit('lobby:list')
-      networkClient.on('lobby:list:result', (data: any) => setRooms(data.rooms))
-      networkClient.on('room:create:result', (data: any) => {
+      networkClient.emit(LobbyMessages.LIST)
+      networkClient.on('lobby:list:result', (data: { rooms: { id: string; name: string; hostId: string; hostName: string; status: 'waiting' | 'playing' | 'ended'; players: { id: string; name: string; ready: boolean }[]; maxPlayers: number }[] }) => setRooms(data.rooms))
+      networkClient.on('room:create:result', (data: { success: boolean; room: { id: string } }) => {
         if (data.success) navigate(`/room/${data.room.id}`)
       })
     }
@@ -48,7 +49,7 @@ export default function LobbyPage() {
     if (networkClient.isConnected()) setup()
     else networkClient.getSocket()?.once('connect', setup)
 
-    networkClient.on('room:error', (data: any) => {
+    networkClient.on('room:error', (data: { message?: string }) => {
       setErrorMsg(data.message || '操作失败')
       setTimeout(() => setErrorMsg(''), 3000)
     })
@@ -63,12 +64,12 @@ export default function LobbyPage() {
   const handleCreateRoom = () => {
     if (!roomName.trim()) return
     if (!networkClient.isConnected()) { showError('正在连接服务器，请稍后...'); return }
-    networkClient.emit('room:create', { name: roomName })
+    networkClient.emit(RoomMessages.CREATE, { name: roomName })
     setShowCreate(false); setRoomName('')
   }
   const handleJoinRoom = (roomId: string) => navigate(`/room/${roomId}`)
-  const handleLogout = () => { networkClient.emit('auth:logout'); networkClient.disconnect(); logout(); navigate('/login') }
-  const handleRefresh = () => networkClient.emit('lobby:list')
+  const handleLogout = () => { networkClient.emit(AuthMessages.LOGOUT); networkClient.disconnect(); logout(); navigate('/login') }
+  const handleRefresh = () => networkClient.emit(LobbyMessages.LIST)
 
   /* ── shared inline helpers ── */
   const FONT_TITLE = '"Kenney Pixel", monospace'

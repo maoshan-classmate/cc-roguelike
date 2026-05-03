@@ -85,7 +85,7 @@ const SFX_DEFINITIONS = [
   { id: SFX_IDS.RANGER_SHOOT, src: `${SFX_BASE}/ranger_shoot.wav` },
   { id: SFX_IDS.RANGER_HIT, src: `${SFX_BASE}/ranger_hit.wav` },
   { id: SFX_IDS.MAGE_CAST, src: `${SFX_BASE}/mage_cast.wav` },
-  { id: SFX_IDS.MAGE_ORB_FLY, src: `${SFX_BASE}/mage_orb_fly.wav`, options: { loop: true } as any },
+  { id: SFX_IDS.MAGE_ORB_FLY, src: `${SFX_BASE}/mage_orb_fly.wav`, options: { loop: true } },
   { id: SFX_IDS.MAGE_HIT, src: `${SFX_BASE}/mage_hit.wav` },
   { id: SFX_IDS.CLERIC_CAST, src: `${SFX_BASE}/cleric_cast.wav` },
   { id: SFX_IDS.CLERIC_HEAL, src: `${SFX_BASE}/cleric_heal.wav` },
@@ -129,9 +129,9 @@ const SFX_DEFINITIONS = [
   { id: SFX_IDS.FLOOR_TRANSITION, src: `${SFX_BASE}/floor_transition.wav` },
   { id: SFX_IDS.DOOR_OPEN, src: `${SFX_BASE}/door_open.wav` },
   { id: SFX_IDS.STAIRS_DOWN, src: `${SFX_BASE}/stairs_down.wav` },
-  { id: SFX_IDS.AMBIENT_DRIP, src: `${SFX_BASE}/ambient_drip.wav`, options: { loop: true } as any },
-  { id: SFX_IDS.AMBIENT_CHAIN, src: `${SFX_BASE}/ambient_chain.wav`, options: { loop: true } as any },
-  { id: SFX_IDS.AMBIENT_WIND, src: `${SFX_BASE}/ambient_wind.wav`, options: { loop: true } as any },
+  { id: SFX_IDS.AMBIENT_DRIP, src: `${SFX_BASE}/ambient_drip.wav`, options: { loop: true } },
+  { id: SFX_IDS.AMBIENT_CHAIN, src: `${SFX_BASE}/ambient_chain.wav`, options: { loop: true } },
+  { id: SFX_IDS.AMBIENT_WIND, src: `${SFX_BASE}/ambient_wind.wav`, options: { loop: true } },
 
   // 7. UI 系统
   { id: SFX_IDS.UI_CLICK, src: `${SFX_BASE}/ui_click.wav` },

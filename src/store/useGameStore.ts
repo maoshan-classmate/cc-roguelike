@@ -1,52 +1,19 @@
 import { create } from 'zustand'
+import type { PlayerState, EnemyState, BulletState, ItemState } from '@shared/types'
 
-interface PlayerState {
-  id: string
-  name: string
-  x: number
-  y: number
-  hp: number
-  hpMax: number
-  energy: number
-  energyMax: number
-  alive: boolean
-  angle: number
-}
-
-interface EnemyState {
-  id: string
-  type: string
-  x: number
-  y: number
-  hp: number
-  hpMax: number
-  alive: boolean
-  state?: string  // 'idle' | 'chase' | 'attack' | 'dying'
-  deathTimer?: number
-}
-
-interface BulletState {
-  id: string
-  x: number
-  y: number
-  vx: number
-  vy: number
-  friendly: boolean
-  radius: number
-  ownerType: string
-}
+export type { PlayerState, EnemyState, BulletState, ItemState }
 
 interface GameState {
   floor: number
   players: PlayerState[]
   enemies: EnemyState[]
   bullets: BulletState[]
-  items: { id: string; x: number; y: number; type: string }[]
+  items: ItemState[]
   isPaused: boolean
   isGameOver: boolean
   isVictory: boolean
   localPlayerId: string | null
-  setState: (state: any) => void
+  setState: (state: { floor: number; players: PlayerState[]; enemies: EnemyState[]; bullets: BulletState[]; items: ItemState[] }) => void
   setFloor: (floor: number) => void
   setPaused: (paused: boolean) => void
   setGameOver: (over: boolean, victory: boolean) => void

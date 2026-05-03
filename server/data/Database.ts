@@ -89,8 +89,8 @@ export class Database {
     // 兼容已有数据库：添加 character_type 列
     try {
       await this.pool.execute('ALTER TABLE characters ADD COLUMN character_type VARCHAR(20) DEFAULT \'warrior\' AFTER weapon');
-    } catch (e: any) {
-      if (!e.message.includes('Duplicate column')) throw e;
+    } catch (e: unknown) {
+      if (!(e instanceof Error && e.message.includes('Duplicate column'))) throw e;
     }
   }
 

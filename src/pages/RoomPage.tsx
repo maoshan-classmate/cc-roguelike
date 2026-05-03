@@ -8,6 +8,7 @@ import { DungeonParticles } from '../components/DungeonParticles'
 import { DungeonBackground } from '../components/DungeonBackground'
 import { AnimatedSprite } from '../components/AnimatedSprite'
 import { BlurText } from '../components/animations'
+import { RoomMessages } from '@shared/protocol'
 import { PixelCrown, PixelSkull, PixelDragon } from '../components/PixelIcons'
 import { PixelPlayerSlot } from '../components/pixel'
 
@@ -60,11 +61,11 @@ export default function RoomPage() {
 
   /* ── network logic (unchanged) ── */
   useEffect(() => {
-    const handleJoinPush = (data: any) => { if (data.room) setRoom(roomId!, data.room, data.room.hostId === user?.id) }
-    const handleLeavePush = (data: any) => removePlayer(data.playerId, data.newHostId)
-    const handleReadyPush = (data: any) => setPlayerReady(data.playerId, data.ready)
-    const handlePlayerUpdate = (data: any) => { if (data.characterType) setPlayerCharacterType(data.playerId, data.characterType) }
-    const handleStartPush = (data: any) => { setGameStarted(true); navigate(`/game/${data.roomId}`) }
+    const handleJoinPush = (data: { room: { name: string; hostId: string; players: { id: string; name: string; ready: boolean }[] } }) => { if (data.room) setRoom(roomId!, data.room, data.room.hostId === user?.id) }
+    const handleLeavePush = (data: { playerId: string; newHostId?: string }) => removePlayer(data.playerId, data.newHostId)
+    const handleReadyPush = (data: { playerId: string; ready: boolean }) => setPlayerReady(data.playerId, data.ready)
+    const handlePlayerUpdate = (data: { playerId: string; characterType?: string }) => { if (data.characterType) setPlayerCharacterType(data.playerId, data.characterType) }
+    const handleStartPush = (data: { roomId: string }) => { setGameStarted(true); navigate(`/game/${data.roomId}`) }
     const handleError = () => navigate('/lobby')
 
     networkClient.on('room:join:push', handleJoinPush)
@@ -74,8 +75,8 @@ export default function RoomPage() {
     networkClient.on('room:start:push', handleStartPush)
     networkClient.on('room:error', handleError)
 
-    if (networkClient.isConnected()) networkClient.emit('room:join', { roomId })
-    else { networkClient.connect(); networkClient.getSocket()?.once('connect', () => networkClient.emit('room:join', { roomId })) }
+    if (networkClient.isConnected()) networkClient.emit(RoomMessages.JOIN, { roomId })
+    else { networkClient.connect(); networkClient.getSocket()?.once('connect', () => networkClient.emit(RoomMessages.JOIN, { roomId })) }
 
     return () => {
       networkClient.off('room:join:push', handleJoinPush)
@@ -88,7 +89,7 @@ export default function RoomPage() {
     }
   }, [roomId])
 
-  const handleLeave = () => { networkClient.emit('room:leave'); navigate('/lobby') }
+  const handleLeave = () => { networkClient.emit(RoomMessages.LEAVE); navigate('/lobby') }
   const handleSelectClass = (classId: string) => {
     setSelectedClass(classId)
     if (user?.id) setPlayerCharacterType(user.id, classId)
@@ -97,9 +98,9 @@ export default function RoomPage() {
   const handleReady = () => {
     const newReady = !isReady; setReady(newReady)
     if (user?.id) setPlayerReady(user.id, newReady)
-    networkClient.emit('room:ready', { ready: newReady })
+    networkClient.emit(RoomMessages.READY, { ready: newReady })
   }
-  const handleStart = () => networkClient.emit('room:start')
+  const handleStart = () => networkClient.emit(RoomMessages.START)
 
   const allReady = players.length > 0 && players.every(p => p.ready)
   const spriteCSS = 'clamp(40px, 7vw, 64px)'

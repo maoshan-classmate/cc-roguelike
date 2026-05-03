@@ -19,7 +19,7 @@ class SoundEngine {
     return SoundEngine.instance
   }
 
-  register(id: string, src: string | string[], options: any = {}): void {
+  register(id: string, src: string | string[], options: Record<string, unknown> = {}): void {
     if (this.sounds.has(id)) {
       console.warn(`[SoundEngine] 音效 ${id} 已注册，跳过`)
       return
@@ -35,7 +35,7 @@ class SoundEngine {
     this.sounds.set(id, howl)
   }
 
-  registerAll(definitions: Array<{ id: string; src: string | string[]; options?: Partial<Howl> }>): void {
+  registerAll(definitions: Array<{ id: string; src: string | string[]; options?: Record<string, unknown> }>): void {
     for (const def of definitions) {
       this.register(def.id, def.src, def.options)
     }
