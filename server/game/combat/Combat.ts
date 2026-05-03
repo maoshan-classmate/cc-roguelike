@@ -146,12 +146,13 @@ export class Combat {
     const state = this.room.getState();
 
     if (bullet.friendly) {
-      // Check against enemies
+      const ENEMY_RADIUS: Record<string, number> = { basic: 16, fast: 14, ghost: 16, tank: 20, boss: 28 };
       for (const enemy of state.enemies) {
         if (!enemy.alive) continue;
 
+        const enemyRadius = ENEMY_RADIUS[enemy.type] || 16;
         const dist = Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y);
-        if (dist < bullet.radius + 15) {
+        if (dist < bullet.radius + enemyRadius) {
           this.room.damageEnemy(enemy.id, bullet.damage);
           bullet.piercing--;
 

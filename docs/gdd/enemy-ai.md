@@ -66,9 +66,9 @@
 
 | 优先级 | 优化项 | 描述 | 预期效果 |
 |--------|--------|------|---------|
-| P0 | **仇恨范围** | 引入 `aggroRange`（basic=200px, fast=250px, ghost=300px, tank=150px, boss=400px），超出范围保持 idle | 避免"全图感知"，增加潜行/策略空间 |
-| P0 | **攻击冷却** | 引入 `attackCooldown`（basic=1s, fast=0.8s, ghost=0.6s, tank=1.5s, boss=0.5s），替代依赖无敌帧 | 敌人间攻击节奏差异化 |
-| P0 | **Ghost 穿墙** | ghost 类型绕过 `isWalkableRadius` 检查，直接移动 | 差异化敌人行为，增加战术压力 |
+| P0 | **仇恨范围** ✅ 2026-05-03 | 已实现于 `GameRoom.ts updateEnemy()`，ENEMY_AGGRO_RANGE static 配置 | 避免"全图感知"，增加潜行/策略空间 |
+| P0 | **攻击冷却** ✅ 2026-05-03 | 已实现，EnemyState 新增 `lastAttackTime`，ENEMY_ATTACK_COOLDOWN static 配置 | 敌人间攻击节奏差异化 |
+| P0 | **Ghost 穿墙** ✅ 2026-05-03 | ghost 类型跳过 `isWalkableRadius`，仅检查地图边界 | 差异化敌人行为，增加战术压力 |
 | P1 | **Boss 攻击模式** | 实现 `BOSS_TEMPLATES` 中已定义的 5 个 Boss 攻击模式 | Boss 战成为 floor 高潮而非大号普通怪 |
 | P1 | **分类型 AI** | 将 `updateEnemy` 按类型拆分：basic/fast 用当前逻辑，ghost 加穿墙，tank 加护甲，boss 加多阶段 | 每种敌人有独特体验 |
 | P2 | **A* 寻路** | 替代直接追踪，支持绕障碍物追击 | 避免敌人卡在墙角 |

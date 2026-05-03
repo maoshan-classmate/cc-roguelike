@@ -74,7 +74,7 @@ enemyType = randomChoice(FLOOR_CONFIG[floor].enemyTypes)
 
 | 优先级 | 优化项 | 描述 | 预期效果 |
 |--------|--------|------|---------|
-| P0 | **Floor 缩放** | 启用 `enemy_hp = base × (1 + (floor-1) × 0.15)` | 后期敌人不再"纸糊" |
+| P0 | **Floor 缩放** ✅ 2026-05-03 | 已启用 `enemy_hp = base × (1 + (floor-1) × 0.15)` + `enemy_atk = base × (1 + (floor-1) × 0.1)`，验证 Floor 5 tank HP=128 | 后期敌人不再"纸糊" |
 | P0 | **Boss 战实现** | 在 boss 房间生成 boss 敌人，实现 BOSS_TEMPLATES 攻击模式 | Floor 5 是高潮而非走过场 |
 | P1 | **eliteChance 生效** | 启用 FLOOR_CONFIG 中的 eliteChance，elite 敌人 HP×2 + ATK×1.5 | 增加随机挑战 |
 | P1 | **死亡惩罚** | 死亡玩家下 floor HP 减半（而非恢复满），或掉落金币 | 增加失败成本 |

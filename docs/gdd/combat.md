@@ -76,7 +76,7 @@ damage = max(1, weapon.damage - target.def * 0.5)
 
 | 优先级 | 优化项 | 描述 | 预期效果 |
 |--------|--------|------|---------|
-| P0 | **启用 DEF 公式** | `damage = max(1, weapon.damage - target.def × 0.5)`，修改 `Combat.ts` | warrior 更肉，ranger/mage 更脆 |
+| P0 | **启用 DEF 公式** ✅ 2026-05-03 | `damage = max(1, weapon.damage - target.def × 0.5)`，已实现于 `GameRoom.ts damagePlayer()` | warrior 更肉，ranger/mage 更脆 |
 | P1 | **暴击系统** | 引入 `critChance`（默认 5%）+ `critMultiplier`（默认 2.0x），近战暴击率更高 | 增加战斗随机性和爽感 |
 | P1 | **元素伤害** | mage 武器附加 fire/ice 元素，对应 DOT/减速效果 | 职业差异化 |
 | P2 | **护甲穿透** | axe 类武器忽略 50% DEF | 武器选择有意义 |
@@ -125,7 +125,7 @@ enemy_hp = ENEMY_BASE_HP[type] × (1 + (floor - 1) × 0.15)
 
 | 优先级 | 优化项 | 描述 | 预期效果 |
 |--------|--------|------|---------|
-| P0 | **启用 Floor 缩放** | `enemy_hp = ENEMY_BASE_HP × (1 + (floor-1) × 0.15)` | 后期 floor 敌人不再"纸糊" |
+| P0 | **启用 Floor 缩放** ✅ 2026-05-03 | `enemy_hp = ENEMY_BASE_HP × (1 + (floor-1) × 0.15)`，已实现于 `GameRoom.ts createEnemy()` | 后期 floor 敌人不再"纸糊" |
 | P1 | **玩家 HP 随等级增长** | 每过 1 floor +10 HP（warrior Floor 5=140 HP） | 补偿后期敌人伤害增长 |
 | P1 | **Boss HP 多阶段** | Boss HP 低于 50% 进入 P2，回复 20% HP + 攻击模式变化 | Boss 战更有层次感 |
 | P2 | **难度自适应** | 根据存活玩家数动态调整敌人 HP（1人=0.7x, 4人=1.0x） | 单人/满员都平衡 |

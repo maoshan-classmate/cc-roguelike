@@ -39,20 +39,9 @@
 
 ---
 
-## 敌人血条不更新 ⚠️ 待修复
+## 敌人血条不更新 ✅ 已修复 (2026-05-03)
 - **发现时间**: 2026-03-31
+- **修复时间**: 2026-05-03
 - **优先级**: P1
-- **复现**: 用远程武器射击敌人 → 血条没有变化
-- **根因分析**:
-  - **文件**: `server/game/combat/Combat.ts` 第 145 行
-  - **问题**: 碰撞检测距离阈值使用硬编码值 `bullet.radius + 15 = 19 像素`，可能过小导致子弹"穿过"敌人
-  ```typescript
-  // 当前实现
-  const dist = Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y);
-  if (dist < bullet.radius + 15) {  // 4 + 15 = 19 像素阈值
-    this.room.damageEnemy(enemy.id, bullet.damage);
-  }
-  ```
-  - **另一可能**: 客户端插值显示位置与服务器实际位置不同步，导致视觉命中但服务器未检测到碰撞
-- **修复记录**:
-  - [ ] 2026-03-31: 待验证 - 碰撞阈值可能需要调大，或检查客户端插值同步问题
+- **根因**: 碰撞检测距离阈值使用硬编码值 `bullet.radius + 15 = 19px`，不区分敌人类型
+- **修复**: `Combat.ts` 碰撞阈值改为 `bullet.radius + ENEMY_RADIUS[enemy.type]`（basic=16, fast=14, ghost=16, tank=20, boss=28）

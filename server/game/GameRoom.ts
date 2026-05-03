@@ -51,6 +51,7 @@ export interface EnemyState {
   alive: boolean;
   state: string;  // 'idle' | 'chase' | 'attack' | 'dying'
   deathTimer?: number;  // ms remaining before fully dead (for death animation)
+  lastAttackTime?: number;  // timestamp of last attack (ms)
 }
 
 export interface BulletState {
@@ -220,7 +221,7 @@ export class GameRoom {
     // Spawn enemies
     for (const spawnData of dungeon.enemies) {
       for (let j = 0; j < spawnData.count; j++) {
-        const enemy = this.createEnemy(spawnData.type, spawnData.x, spawnData.y);
+        const enemy = this.createEnemy(spawnData.type, spawnData.x, spawnData.y, floor);
         this.enemies.set(enemy.id, enemy);
       }
     }
@@ -231,7 +232,7 @@ export class GameRoom {
     }
   }
 
-  private createEnemy(type: string, x: number, y: number): EnemyState {
+  private createEnemy(type: string, x: number, y: number, floor: number = 1): EnemyState {
     const id = `enemy_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const baseHp = ENEMY_BASE_HP[type] || 30;
     const ENEMY_BASE_ATTACK: Record<string, number> = {
@@ -241,6 +242,12 @@ export class GameRoom {
       tank: 15,
       boss: 25
     };
+
+    // Floor scaling: HP and ATK increase per floor
+    const floorMultiplier = 1 + (floor - 1) * 0.15;
+    const floorAtkMultiplier = 1 + (floor - 1) * 0.1;
+    const scaledHp = Math.round(baseHp * floorMultiplier);
+    const scaledAttack = Math.round((ENEMY_BASE_ATTACK[type] || 10) * floorAtkMultiplier);
 
     // Random offset, then verify position is walkable
     let spawnX = x + Math.random() * 40 - 20;
@@ -256,9 +263,9 @@ export class GameRoom {
       type,
       x: spawnX,
       y: spawnY,
-      hp: baseHp,
-      hpMax: baseHp,
-      attack: ENEMY_BASE_ATTACK[type] || 10,
+      hp: scaledHp,
+      hpMax: scaledHp,
+      attack: scaledAttack,
       alive: true,
       state: 'idle'
     };
@@ -414,8 +421,27 @@ export class GameRoom {
     }
   }
 
+  private static readonly ENEMY_AGGRO_RANGE: Record<string, number> = {
+    basic: 200, fast: 250, ghost: 300, tank: 150, boss: 400
+  };
+  private static readonly ENEMY_ATTACK_COOLDOWN: Record<string, number> = {
+    basic: 1000, fast: 800, ghost: 600, tank: 1500, boss: 500
+  };
+  private static readonly ENEMY_SPEED: Record<string, number> = {
+    basic: 60, fast: 100, ghost: 70, tank: 40, boss: 50
+  };
+  private static readonly ENEMY_RADIUS: Record<string, number> = {
+    basic: 16, fast: 14, ghost: 16, tank: 20, boss: 28
+  };
+
   private updateEnemy(enemy: EnemyState, dt: number): void {
-    // Find nearest player
+    const aggroRange = GameRoom.ENEMY_AGGRO_RANGE[enemy.type] || 200;
+    const attackCooldown = GameRoom.ENEMY_ATTACK_COOLDOWN[enemy.type] || 1000;
+    const speed = (GameRoom.ENEMY_SPEED[enemy.type] || 60) * dt;
+    const radius = GameRoom.ENEMY_RADIUS[enemy.type] || 16;
+    const isGhost = enemy.type === 'ghost';
+
+    // Find nearest player within aggro range
     let nearestPlayer: PlayerState | null = null;
     let nearestDist = Infinity;
 
@@ -430,39 +456,38 @@ export class GameRoom {
 
     if (!nearestPlayer) return;
 
+    // Out of aggro range → idle
+    if (nearestDist > aggroRange) {
+      enemy.state = 'idle';
+      return;
+    }
+
     const dx = nearestPlayer.x - enemy.x;
     const dy = nearestPlayer.y - enemy.y;
     const dist = Math.hypot(dx, dy);
 
     if (dist > 30) {
-      const ENEMY_SPEED: Record<string, number> = {
-        basic: 60, fast: 100, ghost: 70, tank: 40, boss: 50
-      };
-      const speed = (ENEMY_SPEED[enemy.type] || 60) * dt;
       const dirX = dx / dist;
       const dirY = dy / dist;
-
-      const ENEMY_RADIUS: Record<string, number> = {
-        basic: 16, fast: 14, ghost: 16, tank: 20, boss: 28
-      };
-      const radius = ENEMY_RADIUS[enemy.type] || 16;
       const newEX = enemy.x + dirX * speed;
       const newEY = enemy.y + dirY * speed;
 
-      if (this.isWalkableRadius(newEX, newEY, radius)) {
+      if (isGhost) {
+        // Ghost: skip wall collision, only check map bounds
+        const W = GAME_CONFIG.DUNGEON_WIDTH;
+        const H = GAME_CONFIG.DUNGEON_HEIGHT;
+        enemy.x = Math.max(radius, Math.min(W - radius, newEX));
+        enemy.y = Math.max(radius, Math.min(H - radius, newEY));
+      } else if (this.isWalkableRadius(newEX, newEY, radius)) {
         enemy.x = newEX;
         enemy.y = newEY;
       } else if (this.isWalkableRadius(newEX, enemy.y, radius)) {
-        // Slide along X
         enemy.x = newEX;
       } else if (this.isWalkableRadius(enemy.x, newEY, radius)) {
-        // Slide along Y
         enemy.y = newEY;
       } else {
-        // Stuck: 尝试 8 个不同逃逸角度，直到找到可行方向
         const baseAngle = Math.atan2(dirY, dirX);
         const escapeOffsets = [-Math.PI / 2, Math.PI / 2, -Math.PI / 4, Math.PI / 4, -3 * Math.PI / 4, 3 * Math.PI / 4, Math.PI, 0];
-        let escaped = false;
         for (const offset of escapeOffsets) {
           const escapeAngle = baseAngle + offset;
           const tryX = enemy.x + Math.cos(escapeAngle) * speed;
@@ -470,7 +495,6 @@ export class GameRoom {
           if (this.isWalkableRadius(tryX, tryY, radius)) {
             enemy.x = tryX;
             enemy.y = tryY;
-            escaped = true;
             break;
           }
         }
@@ -479,9 +503,14 @@ export class GameRoom {
       enemy.state = 'chase';
     } else {
       enemy.state = 'attack';
-      if (nearestPlayer.invincible <= 0) {
-        nearestPlayer.hp -= (enemy.attack || 10);
+      // Attack with per-type cooldown
+      const now = Date.now();
+      const lastAttack = enemy.lastAttackTime || 0;
+      if (now - lastAttack >= attackCooldown && nearestPlayer.invincible <= 0) {
+        const finalDamage = Math.max(1, (enemy.attack || 10) - nearestPlayer.defense * 0.5);
+        nearestPlayer.hp -= finalDamage;
         nearestPlayer.invincible = 0.5;
+        enemy.lastAttackTime = now;
         if (nearestPlayer.hp <= 0) {
           nearestPlayer.alive = false;
         }
@@ -494,20 +523,16 @@ export class GameRoom {
    * 防止敌人重叠在一起，推动它们分开
    */
   private separateEnemies(): void {
-    const ENEMY_RADIUS: Record<string, number> = {
-      basic: 16, fast: 14, ghost: 16, tank: 20, boss: 28
-    };
-
     const enemies = Array.from(this.enemies.values()).filter(e => e.alive);
-    const separationForce = 0.5; // 分离力度系数
+    const separationForce = 0.5;
 
     for (let i = 0; i < enemies.length; i++) {
       for (let j = i + 1; j < enemies.length; j++) {
         const e1 = enemies[i];
         const e2 = enemies[j];
 
-        const r1 = ENEMY_RADIUS[e1.type] || 16;
-        const r2 = ENEMY_RADIUS[e2.type] || 16;
+        const r1 = GameRoom.ENEMY_RADIUS[e1.type] || 16;
+        const r2 = GameRoom.ENEMY_RADIUS[e2.type] || 16;
         const minDist = r1 + r2; // 两个敌人碰撞半径之和
 
         const dx = e2.x - e1.x;
@@ -565,6 +590,13 @@ export class GameRoom {
               break;
             case 'key':
               player.keys += 1;
+              break;
+            case 'potion':
+              player.hp = Math.min(player.hpMax, player.hp + 50);
+              break;
+            case 'shield':
+              player.defense += 10;
+              setTimeout(() => { player.defense = Math.max(0, player.defense - 10); }, 10000);
               break;
           }
           this.items.splice(i, 1);
@@ -689,6 +721,7 @@ export class GameRoom {
     const enemy = this.enemies.get(enemyId);
     if (!enemy || !enemy.alive) return;
 
+    // DEF formula: enemies don't have defense stat, flat damage
     enemy.hp -= damage;
     if (enemy.hp <= 0) {
       enemy.hp = 0;
@@ -712,7 +745,9 @@ export class GameRoom {
     const player = this.players.get(playerId);
     if (!player || !player.alive || player.invincible > 0) return;
 
-    player.hp -= damage;
+    // GDD DEF formula: damage = max(1, raw_damage - target.def * 0.5)
+    const finalDamage = Math.max(1, damage - player.defense * 0.5);
+    player.hp -= finalDamage;
     player.invincible = 0.5;
 
     if (player.hp <= 0) {

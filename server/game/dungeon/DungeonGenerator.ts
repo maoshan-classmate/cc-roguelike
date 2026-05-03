@@ -276,19 +276,30 @@ export class DungeonGenerator {
   private spawnItems(rooms: Room[]): { id: string; x: number; y: number; type: string }[] {
     const items: { id: string; x: number; y: number; type: string }[] = [];
 
-    // Add some health packs in rooms
+    const ITEM_TABLE = ['health', 'energy', 'potion', 'shield', 'coin'];
     for (const room of rooms) {
       if (room.type !== 'treasure') continue;
 
-      const x = room.x + room.width / 2 + (this.random() - 0.5) * 30;
-      const y = room.y + room.height / 2 + (this.random() - 0.5) * 30;
+      // Spawn 1-2 items in treasure rooms
+      const count = this.random() > 0.5 ? 2 : 1;
+      for (let i = 0; i < count; i++) {
+        const x = room.x + room.width / 2 + (this.random() - 0.5) * 30;
+        const y = room.y + room.height / 2 + (this.random() - 0.5) * 30;
 
-      items.push({
-        id: `item_${Date.now()}_${Math.random().toString(36).slice(2)}`,
-        x,
-        y,
-        type: this.random() > 0.5 ? 'health' : 'energy'
-      });
+        const roll = this.random();
+        const type = roll < 0.3 ? 'health'
+          : roll < 0.5 ? 'energy'
+          : roll < 0.7 ? 'potion'
+          : roll < 0.85 ? 'shield'
+          : 'coin';
+
+        items.push({
+          id: `item_${Date.now()}_${Math.random().toString(36).slice(2)}_${i}`,
+          x,
+          y,
+          type
+        });
+      }
     }
 
     return items;

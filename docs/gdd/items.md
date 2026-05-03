@@ -90,7 +90,7 @@ treasureItemChance = { health: 50%, energy: 50% }
 
 | 优先级 | 优化项 | 描述 | 预期效果 |
 |--------|--------|------|---------|
-| P0 | **修复死代码道具** | potion（50HP 回复）、shield（临时 DEF buff）加入 checkItemPickup switch | 7 种道具全部可用 |
+| P0 | **修复死代码道具** ✅ 2026-05-03 | potion（50HP 回复）、shield（DEF+10 持续10s）已加入 checkItemPickup，DungeonGenerator 道具池已扩充 | 7 种道具全部可用 |
 | P1 | **Chest 战利品箱** | 实现随机开启，从 loot table 中抽取 1-3 个道具 | 探索奖励高潮 |
 | P1 | **Buff 持续时间** | shield 效果改为 10s DEF +10，带视觉指示 | 临时 buff 增加策略性 |
 | P1 | **稀有度分级** | common（白）、uncommon（绿）、rare（蓝），影响回复量/持续时间 | 增加拾取惊喜感 |
