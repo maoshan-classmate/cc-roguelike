@@ -18,7 +18,7 @@
 | fast | 20 | 8 | 2.0 | 36 | 14 | generated |
 | ghost | 40 | 12 | 1.2 | 42 | -- | generated |
 | tank | 80 | 10 | 0.5 | 48 | 20 | 0x72 |
-| boss | 200 | 20 | 0.8 | 64 | 28 | 0x72 |
+| boss | 800 | 25×(1+(floor-1)×0.1) | 0.8 | 64 | 28 | 0x72 |
 
 ### 客户端/服务端 ID 匹配
 - 客户端/服务端 ID 必须匹配（`slime`≠`basic`, `health_pack`≠`health`）
@@ -49,7 +49,7 @@
 
 **碰撞检测**：`isWalkableRadius(x, y, radius)` — 5 点采样（中心 + 四角），32px tile 网格
 
-**状态机**：
+**状态机**（普通敌人）：
 | 状态 | 转换条件 | 持续时间 |
 |------|---------|---------|
 | idle → chase | 首次 tick（无 aggro 范围，立即触发） | 持续 |
@@ -58,7 +58,16 @@
 | any → dying | hp ≤ 0 | 500ms（deathTimer） |
 | dying → alive=false | deathTimer ≤ 0 | 永久 |
 
-**注意**：`BOSS_TEMPLATES`（定义了 5 个 Boss 攻击模式如 fireball、bone_projectile）存在但**未被任何代码引用**。当前所有敌人（含 boss）共享同一近战 AI。
+**Boss 状态机**：
+| 状态 | 转换条件 | 说明 |
+|------|---------|------|
+| idle | 脱战（>400px 无蓄力） | 重置技能计时器 |
+| chase | 有玩家在 aggroRange 内 | 速度 50px/s |
+| casting | 蓄力中（弹幕500ms/震地800ms） | 不可被脱战中断 |
+| attack | 近战冷却 500ms | 距离 ≤ 40px |
+| phase2 | HP ≤ 50% | 回复20% HP，弹幕/震地冷却缩短 |
+
+**注意**：Boss 有独立 AI 方法 `updateBossEnemy()`，实现近战+弹幕+震地AoE三种攻击+两阶段切换。`BOSS_TEMPLATES`（fireball、bone_projectile 等）存在但未被引用。
 
 ---
 
@@ -69,10 +78,10 @@
 | P0 | **仇恨范围** ✅ 2026-05-03 | 已实现于 `GameRoom.ts updateEnemy()`，ENEMY_AGGRO_RANGE static 配置 | 避免"全图感知"，增加潜行/策略空间 |
 | P0 | **攻击冷却** ✅ 2026-05-03 | 已实现，EnemyState 新增 `lastAttackTime`，ENEMY_ATTACK_COOLDOWN static 配置 | 敌人间攻击节奏差异化 |
 | P0 | **Ghost 穿墙** ✅ 2026-05-03 | ghost 类型跳过 `isWalkableRadius`，仅检查地图边界 | 差异化敌人行为，增加战术压力 |
-| P1 | **Boss 攻击模式** | 实现 `BOSS_TEMPLATES` 中已定义的 5 个 Boss 攻击模式 | Boss 战成为 floor 高潮而非大号普通怪 |
-| P1 | **分类型 AI** | 将 `updateEnemy` 按类型拆分：basic/fast 用当前逻辑，ghost 加穿墙，tank 加护甲，boss 加多阶段 | 每种敌人有独特体验 |
+| P1 | **Boss 攻击模式** ✅ 2026-05-03 | `updateBossEnemy()` 实现3种攻击（近战+5颗扇形弹幕+震地AoE）+两阶段切换(HP<50%回复20%+加速)+蓄力前摇(弹幕500ms/震地800ms)+避障逃逸+脱战机制+动作切换(idle/run/casting帧) | Boss 战成为 floor 高潮而非大号普通怪 |
+| P1 | **分类型 AI** ✅ 2026-05-03 | boss独立AI方法，tank减伤40%，fast闪避20%，ghost穿墙，basic/fast共用追击 | 每种敌人有独特体验 |
 | P2 | **A* 寻路** | 替代直接追踪，支持绕障碍物追击 | 避免敌人卡在墙角 |
-| P2 | **脱战机制** | 超出 aggroRange 后 3s 脱战，返回 idle + 回血 | 允许玩家撤退/战术重整 |
+| P2 | **脱战机制** ✅ 2026-05-03 | Boss超出aggroRange(400px)后idle，重置技能计时器 | 允许玩家撤退/战术重整 |
 | P2 | **远程敌人** | 实现 `checkBulletCollision` 中 `friendly=false` 的敌人弹丸路径 | 增加战斗多样性（ranged 敌人） |
 
 ## Edge Cases

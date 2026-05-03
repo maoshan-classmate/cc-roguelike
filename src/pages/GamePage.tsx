@@ -69,12 +69,16 @@ function DebugMenu({
   onTeleport,
   onKillAll,
   onToggleInvincible,
-  isInvincible
+  isInvincible,
+  onBossSlam,
+  onBossRanged
 }: {
   onTeleport: (floor: number) => void
   onKillAll: () => void
   onToggleInvincible: () => void
   isInvincible: boolean
+  onBossSlam: () => void
+  onBossRanged: () => void
 }) {
   const [floorInput, setFloorInput] = useState('')
 
@@ -146,9 +150,26 @@ function DebugMenu({
       <button
         onClick={onKillAll}
         className="btn-pixel"
-        style={{ background: 'var(--pixel-red)', fontSize: 11, padding: '4px 8px', width: '100%' }}
+        style={{ background: 'var(--pixel-red)', fontSize: 11, padding: '4px 8px', width: '100%', marginBottom: 8 }}
       >
         [ 一键清怪 ]
+      </button>
+
+      {/* Boss 技能测试 */}
+      <div style={{ color: 'var(--pixel-gold)', marginBottom: 4, fontSize: 10 }}>Boss 技能</div>
+      <button
+        onClick={onBossSlam}
+        className="btn-pixel"
+        style={{ background: '#8B4513', fontSize: 11, padding: '4px 8px', width: '100%', marginBottom: 4 }}
+      >
+        [ 震地 AOE ]
+      </button>
+      <button
+        onClick={onBossRanged}
+        className="btn-pixel"
+        style={{ background: '#8B0000', fontSize: 11, padding: '4px 8px', width: '100%' }}
+      >
+        [ 弹幕 Ranged ]
       </button>
     </div>
   )
@@ -204,12 +225,14 @@ export default function GamePage() {
   const lastSentAngleRef = useRef<number | null>(null)
   const facingAngleRef = useRef<number | null>(null)
   const attackFlashRef = useRef(0)
+  const bossEffectsRef = useRef<any[]>([])
+  const screenShakeRef = useRef({ intensity: 0, endTime: 0 })
   const prevAttackRef = useRef(false)
   const floorSessionRef = useRef<number>(0)
   const gameSessionRef = useRef<number>(0)
 
   // Hooks
-  const { particlesRef, spawnDeathParticles, updateAndDrawParticles } = useParticleSystem()
+  const { particlesRef, spawnDeathParticles, spawnGroundSlamParticles, updateAndDrawParticles } = useParticleSystem()
   const { damageTextsRef, spawnDamageText, updateAndDrawDamageTexts } = useDamageTexts()
 
   const renderDeps = {
@@ -229,7 +252,9 @@ export default function GamePage() {
     updateAndDrawDamageTexts,
     particlesRef,
     damageTextsRef,
-    attackFlashRef
+    attackFlashRef,
+    bossEffectsRef,
+    screenShakeRef
   }
 
   const { render } = useGameRenderer(canvasRef, gameStateRef, renderDeps)
@@ -346,6 +371,25 @@ export default function GamePage() {
         gold: state.gold || 0,
         keys: state.keys || 0,
         dungeon: state.dungeon || null
+      }
+
+      // Boss event audio + visual effects
+      if (state.bossEvents?.length > 0) {
+        for (const evt of state.bossEvents) {
+          if (evt.type === 'ranged') {
+            play(SFX_IDS.ENEMY_BOSS_ATTACK)
+            bossEffectsRef.current.push({
+              type: 'ranged_flash', x: evt.x, y: evt.y,
+              startTime: performance.now(), duration: 300, maxRadius: 50
+            })
+          } else if (evt.type === 'aoe') {
+            play(SFX_IDS.ENEMY_BOSS_SPECIAL)
+            bossEffectsRef.current.push({
+              type: 'aoe_shockwave', x: evt.x, y: evt.y,
+              startTime: performance.now(), duration: 1200, maxRadius: 140
+            })
+          }
+        }
       }
       setState(state)
     })
@@ -556,6 +600,14 @@ export default function GamePage() {
     setIsInvincible(!isInvincible)
   }
 
+  const handleDebugBossSlam = () => {
+    networkClient.emit('game:debug', { action: 'bossSlam' })
+  }
+
+  const handleDebugBossRanged = () => {
+    networkClient.emit('game:debug', { action: 'bossRanged' })
+  }
+
   const { gold, keys } = gameStateRef.current
 
   return (
@@ -721,6 +773,8 @@ export default function GamePage() {
           onKillAll={handleDebugKillAll}
           onToggleInvincible={handleDebugToggleInvincible}
           isInvincible={isInvincible}
+          onBossSlam={handleDebugBossSlam}
+          onBossRanged={handleDebugBossRanged}
         />
       )}
     </div>

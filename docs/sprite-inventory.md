@@ -74,15 +74,16 @@ src/assets/
 
 ---
 
-### 2.2 怪物 (MONSTER) — 22 0x72 + 3 generated + 3 Kenney
+### 2.2 怪物 (MONSTER) — 23 0x72 + 3 generated + 3 Kenney
 
-#### 0x72（22个）
+#### 0x72（23个）
 
 | 贴图名称 | Atlas坐标 | 尺寸 | 游戏用途 | 状态 | 代码引用 |
 |---------|----------|------|---------|------|---------|
 | `goblin_idle_anim_f0` | (368,40) | 16×16 | ⚠️ 已被 generated 替代 | ❌ | |
 | `skelet_idle_anim_f0` | (368,88) | 16×16 | tank 敌人 | ✅ | `enemies.ts:58` |
 | `big_demon_idle_anim_f0` | (16,428) | 32×36 | boss 敌人 | ✅ | `enemies.ts:74` |
+| `big_demon_run_anim_f0` | (144,428) | 32×36 | boss 敌人奔跑动画 | ✅ | `useGameRenderer.ts:389,434` |
 | `angel_idle_anim_f0` | (368,304) | 16×16 | — | ❌ | |
 | `chort_idle_anim_f0` | (368,273) | 16×23 | — | ❌ | |
 | `necromancer_anim_f0` | (368,225) | 16×23 | — | ❌ | |

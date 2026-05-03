@@ -69,7 +69,9 @@ export class DungeonGenerator {
 
     // Set room types
     rooms[0].type = 'entrance';
-    rooms[rooms.length - 1].type = 'boss';
+    // Only last floor gets a boss room; other floors use 'exit' (normal enemies, no boss)
+    const isLastFloor = floor >= (GAME_CONFIG.FLOOR_COUNT || 5);
+    rooms[rooms.length - 1].type = isLastFloor ? 'boss' : 'exit';
 
     // Place some treasure rooms
     if (rooms.length > 3) {
@@ -78,7 +80,7 @@ export class DungeonGenerator {
     }
 
     // Spawn enemies
-    const enemies = this.spawnEnemies(rooms, floor);
+    const enemies = this.spawnEnemies(rooms, floor, exitPoint);
 
     // Spawn items
     const items = this.spawnItems(rooms);
@@ -247,22 +249,30 @@ export class DungeonGenerator {
     }
   }
 
-  private spawnEnemies(rooms: Room[], floor: number): { type: string; x: number; y: number; count: number }[] {
+  private spawnEnemies(rooms: Room[], floor: number, exitPoint: { x: number; y: number }): { type: string; x: number; y: number; count: number }[] {
     const config = FLOOR_CONFIG[floor];
     const enemies: { type: string; x: number; y: number; count: number }[] = [];
+    const isBossFloor = floor >= (GAME_CONFIG.FLOOR_COUNT || 5);
 
     for (const room of rooms) {
-      if (room.type === 'entrance' || room.type === 'boss' || room.type === 'treasure') continue;
+      // Boss room: spawn 1 boss at exit point
+      if (room.type === 'boss') {
+        enemies.push({ type: 'boss', x: exitPoint.x, y: exitPoint.y, count: 1 });
+        continue;
+      }
+
+      // Boss floor (Floor 5): only the boss, no regular enemies
+      if (isBossFloor) continue;
+
+      if (room.type === 'entrance' || room.type === 'treasure') continue;
 
       const count = Math.floor(config.enemyCount[0] + this.random() * (config.enemyCount[1] - config.enemyCount[0]));
       const type = config.enemyTypes[Math.floor(this.random() * config.enemyTypes.length)];
 
-      // Spawn positions spread across the room (not stacked at center)
-      const padding = 32; // Keep away from walls
+      const padding = 32;
       const maxOffsetX = Math.max(0, room.width / 2 - padding);
       const maxOffsetY = Math.max(0, room.height / 2 - padding);
 
-      // Generate individual spawn point for each enemy to prevent stacking
       for (let i = 0; i < count; i++) {
         const x = room.x + room.width / 2 + (this.random() - 0.5) * maxOffsetX;
         const y = room.y + room.height / 2 + (this.random() - 0.5) * maxOffsetY;
@@ -276,29 +286,36 @@ export class DungeonGenerator {
   private spawnItems(rooms: Room[]): { id: string; x: number; y: number; type: string }[] {
     const items: { id: string; x: number; y: number; type: string }[] = [];
 
-    const ITEM_TABLE = ['health', 'energy', 'potion', 'shield', 'coin'];
     for (const room of rooms) {
-      if (room.type !== 'treasure') continue;
+      if (room.type === 'treasure') {
+        // Treasure rooms: 1-2 random items
+        const count = this.random() > 0.5 ? 2 : 1;
+        for (let i = 0; i < count; i++) {
+          const x = room.x + room.width / 2 + (this.random() - 0.5) * 30;
+          const y = room.y + room.height / 2 + (this.random() - 0.5) * 30;
 
-      // Spawn 1-2 items in treasure rooms
-      const count = this.random() > 0.5 ? 2 : 1;
-      for (let i = 0; i < count; i++) {
-        const x = room.x + room.width / 2 + (this.random() - 0.5) * 30;
-        const y = room.y + room.height / 2 + (this.random() - 0.5) * 30;
+          const roll = this.random();
+          const type = roll < 0.3 ? 'health'
+            : roll < 0.5 ? 'energy'
+            : roll < 0.7 ? 'potion'
+            : roll < 0.85 ? 'shield'
+            : 'coin';
 
-        const roll = this.random();
-        const type = roll < 0.3 ? 'health'
-          : roll < 0.5 ? 'energy'
-          : roll < 0.7 ? 'potion'
-          : roll < 0.85 ? 'shield'
-          : 'coin';
-
-        items.push({
-          id: `item_${Date.now()}_${Math.random().toString(36).slice(2)}_${i}`,
-          x,
-          y,
-          type
-        });
+          items.push({
+            id: `item_${Date.now()}_${Math.random().toString(36).slice(2)}_${i}`,
+            x,
+            y,
+            type
+          });
+        }
+      } else if (room.type === 'boss') {
+        // Boss room: pre-fight supplies (1 health + 1 potion)
+        const cx = room.x + room.width / 2;
+        const cy = room.y + room.height / 2;
+        items.push(
+          { id: `item_boss_hp_${Date.now()}`, x: cx - 24, y: cy - 20, type: 'health' },
+          { id: `item_boss_pot_${Date.now()}`, x: cx + 24, y: cy - 20, type: 'potion' }
+        );
       }
     }
 

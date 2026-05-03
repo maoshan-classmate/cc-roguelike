@@ -33,18 +33,18 @@ Floor 1-5 的线性推进系统，每 floor 难度递增。通过出口楼梯进
 
 ### 难度递增
 
-**当前实现（无属性缩放，靠组合递增）**：
+**当前实现（属性缩放 + 组合递增）**：
 
-| Floor | 敌人数/房 | 敌人类型 | eliteChance(未用) | 房间数 |
-|-------|----------|---------|-------------------|--------|
+| Floor | 敌人数/房 | 敌人类型 | eliteChance | 房间数 |
+|-------|----------|---------|-------------|--------|
 | 1 | 3-5 | basic×2 | 10% | 8 |
 | 2 | 4-7 | basic, fast | 15% | 10 |
 | 3 | 5-8 | fast, ghost, tank | 20% | 12 |
 | 4 | 6-10 | fast, ghost, tank×2 | 25% | 14 |
 | 5 | 8-12 | ghost, tank×3 | 30% | 16 |
 
-- `eliteChance` 和 `bossType` 字段存在于 `FLOOR_CONFIG` 但**未被代码引用**
-- Boss 房间（`rooms[last]`）不生成任何敌人
+- `eliteChance` 已生效（✅）：elite 敌人 HP×2 + ATK×1.5
+- Boss 房间（`rooms[last]`）生成 boss + 战前补给道具
 - BSP 深度随 floor 增加：Floor 1-2→3，Floor 3-5→4（地牢布局更复杂）
 
 **死亡惩罚**：
@@ -68,17 +68,20 @@ enemyCountPerRoom = random(FLOOR_CONFIG[floor].enemyCount[0], [1])
 enemyType = randomChoice(FLOOR_CONFIG[floor].enemyTypes)
 ```
 
-**无难度缩放公式**——当前版本所有 floor 的敌人基础属性相同。
+**难度缩放公式**（✅ 已实现）：
+- `enemy_hp = base × (1 + (floor-1) × 0.15)`
+- `enemy_atk = base × (1 + (floor-1) × 0.1)`
+- Boss HP 固定 800，ATK = 25 × (1 + (floor-1) × 0.1)
 
 **TODO — 关卡推进优化计划**：
 
 | 优先级 | 优化项 | 描述 | 预期效果 |
 |--------|--------|------|---------|
 | P0 | **Floor 缩放** ✅ 2026-05-03 | 已启用 `enemy_hp = base × (1 + (floor-1) × 0.15)` + `enemy_atk = base × (1 + (floor-1) × 0.1)`，验证 Floor 5 tank HP=128 | 后期敌人不再"纸糊" |
-| P0 | **Boss 战实现** | 在 boss 房间生成 boss 敌人，实现 BOSS_TEMPLATES 攻击模式 | Floor 5 是高潮而非走过场 |
-| P1 | **eliteChance 生效** | 启用 FLOOR_CONFIG 中的 eliteChance，elite 敌人 HP×2 + ATK×1.5 | 增加随机挑战 |
+| P0 | **Boss 战实现** ✅ 2026-05-03 | Boss(HP=800/ATK=35)在boss房间生成，3种攻击模式(近战+弹幕+震地AoE)，两阶段切换(HP<50%回复20%) | Floor 5 是高潮而非走过场 |
+| P1 | **eliteChance 生效** ✅ 2026-05-03 | elite敌人HP×2+ATK×1.5，Floor 5 验证elite tank HP=256/ATK=32 | 增加随机挑战 |
 | P1 | **死亡惩罚** | 死亡玩家下 floor HP 减半（而非恢复满），或掉落金币 | 增加失败成本 |
-| P2 | **Boss 多阶段** | Boss HP < 50% 进入 P2，攻击模式变化 + 回复 20% HP | Boss 战更有层次感 |
+| P2 | **Boss 多阶段** ✅ 2026-05-04 | Boss HP < 50% 进入 P2，回复 20% HP + 弹幕冷却2s + 震地冷却7s | Boss 战更有层次感 |
 | P2 | **难度自适应** | 根据玩家存活数动态调整敌人数量（1人=0.6x, 4人=1.0x） | 单人/满员都平衡 |
 | P2 | **奖励递增** | 高 floor 掉落更好道具（potion/shield 替代 health） | 后期 floor 更值得探索 |
 

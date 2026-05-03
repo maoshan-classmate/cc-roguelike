@@ -97,6 +97,7 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
   goblin_idle_anim_f0:   { category: 'MONSTER', source: '0x72', atlasKey: 'goblin_idle_anim_f0',   size: 32, animated: true,  frameCount: 4 },
   skelet_idle_anim_f0:   { category: 'MONSTER', source: '0x72', atlasKey: 'skelet_idle_anim_f0',   size: 32, animated: true,  frameCount: 4 },
   big_demon_idle_anim_f0:{ category: 'MONSTER', source: '0x72', atlasKey: 'big_demon_idle_anim_f0',size: 64, animated: true,  frameCount: 4 },
+  big_demon_run_anim_f0: { category: 'MONSTER', source: '0x72', atlasKey: 'big_demon_run_anim_f0', size: 64, animated: true,  frameCount: 4 },
   // AI 生成精灵（Gemini sprite-animator，独立 sheet 渲染）
   slime_idle:  { category: 'MONSTER', source: 'generated', atlasKey: 'slime_idle',  size: 40, animated: true, frameCount: 16 },
   bat_idle:    { category: 'MONSTER', source: 'generated', atlasKey: 'bat_idle',    size: 36, animated: true, frameCount: 16 },
