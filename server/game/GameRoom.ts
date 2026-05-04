@@ -2,9 +2,10 @@ import { Database } from '../data/Database';
 import { GAME_CONFIG, FLOOR_CONFIG, WEAPON_TEMPLATES } from '../config/constants';
 import { DungeonGenerator } from './dungeon/DungeonGenerator';
 import { Combat } from './combat/Combat';
+import { CollisionGrid } from './collision/CollisionGrid';
 import { Vec2 } from '../utils/Vec2';
 import type { PlayerState, EnemyState, BulletState, GameState, HealWaveState, BossEvent, ItemState, DungeonData } from '../../shared/types';
-import { ENEMY_BASE_HP, ENEMY_BASE_ATTACK, ENEMY_RADIUS, CLASS_SPEED } from '../../shared/constants';
+import { ENEMY_BASE_HP, ENEMY_BASE_ATTACK, CLASS_SPEED } from '../../shared/constants';
 import { EnemyAI, type EnemyAIDeps } from './enemy/EnemyAI';
 
 export type { PlayerState, EnemyState, BulletState, GameState, HealWaveState, BossEvent, ItemState, DungeonData };
@@ -25,7 +26,7 @@ export class GameRoom {
   private _gameOver: boolean = false;
   private _victory: boolean = false;
   private _floorChanged: boolean = false;
-  private collisionGrid: boolean[][] = [];  // true = walkable
+  private collisionGrid: CollisionGrid = new CollisionGrid();
 
   private currentFloor: number = 1;
   // Use timestamp for game session — guarantees uniqueness even across server restarts
@@ -117,7 +118,7 @@ export class GameRoom {
     const seed = this.floorSeeds[floor - 1];
     const dungeon = this.dungeonGenerator.generate(floor, seed);
     this.currentDungeon = dungeon;
-    this.collisionGrid = dungeon.collisionGrid || [];
+    this.collisionGrid.setGrid(dungeon.collisionGrid || []);
     const config = FLOOR_CONFIG[floor];
 
     // Place players at spawn
@@ -350,28 +351,8 @@ export class GameRoom {
   }
 
   private separateEnemies(): void {
-    const enemies = Array.from(this.enemies.values()).filter(e => e.alive);
-    const separationForce = 0.5;
-    for (let i = 0; i < enemies.length; i++) {
-      for (let j = i + 1; j < enemies.length; j++) {
-        const e1 = enemies[i], e2 = enemies[j];
-        const r1 = ENEMY_RADIUS[e1.type] || 16, r2 = ENEMY_RADIUS[e2.type] || 16;
-        const minDist = r1 + r2;
-        const dx = e2.x - e1.x, dy = e2.y - e1.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist < minDist && dist > 0) {
-          const overlap = minDist - dist;
-          const dirX = dx / dist, dirY = dy / dist;
-          const totalR = r1 + r2;
-          const push1 = overlap * (r2 / totalR) * separationForce;
-          const push2 = overlap * (r1 / totalR) * separationForce;
-          const nx1 = e1.x - dirX * push1, ny1 = e1.y - dirY * push1;
-          const nx2 = e2.x + dirX * push2, ny2 = e2.y + dirY * push2;
-          if (this.isWalkableRadius(nx1, ny1, r1)) { e1.x = nx1; e1.y = ny1; }
-          if (this.isWalkableRadius(nx2, ny2, r2)) { e2.x = nx2; e2.y = ny2; }
-        }
-      }
-    }
+    const alive = Array.from(this.enemies.values()).filter(e => e.alive);
+    this.collisionGrid.separateEnemies(alive);
   }
 
   private checkItemPickup(): void {
@@ -457,29 +438,11 @@ export class GameRoom {
    * 检查坐标 (x, y) 是否可行走 (public，Combat.ts 也需要调用)
    */
   isWalkable(x: number, y: number): boolean {
-    // 空网格时禁止通行，防止敌人穿墙
-    if (!this.collisionGrid || this.collisionGrid.length === 0) {
-      console.warn('[CollisionGrid] Grid empty, blocking movement');
-      return false;
-    }
-    const tileSize = 32;
-    const col = Math.floor(x / tileSize);
-    const row = Math.floor(y / tileSize);
-    const rows = this.collisionGrid.length;
-    const cols = this.collisionGrid[0]?.length || 0;
-    if (row < 0 || row >= rows || col < 0 || col >= cols) return false;
-    return this.collisionGrid[row][col];
+    return this.collisionGrid.isWalkable(x, y);
   }
 
-  /**
-   * 检查实体半径内所有角点是否可行走
-   */
   isWalkableRadius(x: number, y: number, radius: number): boolean {
-    return this.isWalkable(x, y)
-      && this.isWalkable(x - radius, y - radius)
-      && this.isWalkable(x + radius, y - radius)
-      && this.isWalkable(x - radius, y + radius)
-      && this.isWalkable(x + radius, y + radius);
+    return this.collisionGrid.isWalkableRadius(x, y, radius);
   }
 
   getState(): GameState {
@@ -499,7 +462,7 @@ export class GameRoom {
         corridorTiles: this.currentDungeon.corridorTiles,
         spawnPoint: this.currentDungeon.spawnPoint,
         exitPoint: this.currentDungeon.exitPoint,
-        collisionGrid: this.currentDungeon.collisionGrid
+        collisionGrid: this.collisionGrid.getGrid()
       } : undefined
     };
   }

@@ -34,6 +34,7 @@ import { GENERATED_SPRITES } from '../config/generatedSprites'
 import { useSound } from '../audio/useSound'
 import { SFX_IDS } from '../audio/sfx'
 import { useHitEffect } from '../hooks/useHitEffect'
+import { useGameInput } from '../hooks/useGameInput'
 import {
   PixelCastle,
   PixelGem,
@@ -450,59 +451,10 @@ export default function GamePage() {
   }, [])
 
   // Input handling
-  useEffect(() => {
-    const skillKeysDown = new Set<string>()
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      keysRef.current.add(e.key.toLowerCase())
-      if (e.key === 'Escape') setPaused(!isPaused)
-      // 调试菜单快捷键 (Home)
-      if (e.key === 'Home' && import.meta.env.DEV) {
-        setShowDebug(prev => !prev)
-      }
-      const skillKey = e.key
-      if (['1', '2', '3', '4'].includes(skillKey) && !skillKeysDown.has(skillKey)) {
-        skillKeysDown.add(skillKey)
-        networkClient.emit(GameMessages.INPUT, { skill: parseInt(skillKey) - 1 })
-
-        // 播放技能音效
-        switch (skillKey) {
-          case '1': playDash(); break
-          case '2': playShield(); break
-          case '3': play(SFX_IDS.SKILL_HEAL); break
-          case '4': playSpeed(); break
-        }
-      }
-    }
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      keysRef.current.delete(e.key.toLowerCase())
-      if (['1', '2', '3', '4'].includes(e.key)) skillKeysDown.delete(e.key)
-    }
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const canvas = canvasRef.current
-      if (canvas) {
-        const rect = canvas.getBoundingClientRect()
-        mouseRef.current.x = e.clientX - rect.left
-        mouseRef.current.y = e.clientY - rect.top
-      }
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('keyup', handleKeyUp)
-    window.addEventListener('mousemove', handleMouseMove)
-    window.addEventListener('mousedown', () => { mouseRef.current.down = true })
-    window.addEventListener('mouseup', () => { mouseRef.current.down = false })
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('keyup', handleKeyUp)
-      window.removeEventListener('mousemove', handleMouseMove)
-      window.removeEventListener('mousedown', () => { mouseRef.current.down = true })
-      window.removeEventListener('mouseup', () => { mouseRef.current.down = false })
-    }
-  }, [isPaused])
+  useGameInput({
+    canvasRef, keysRef, mouseRef, isPaused, setPaused, setShowDebug,
+    playDash, playShield, play, playSpeed,
+  })
 
   // Game loop
   useEffect(() => {
