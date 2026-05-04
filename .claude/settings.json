@@ -109,12 +109,12 @@
   },
   "permissions": {
     "deny": [
-      "rm -rf",
-      "git push --force",
-      "git reset --hard",
-      "git clean -f",
-      "sudo",
-      "chmod 777"
+      "Bash(rm -rf)",
+      "Bash(git push --force)",
+      "Bash(git reset --hard)",
+      "Bash(git clean -f)",
+      "Bash(sudo)",
+      "Bash(chmod 777)"
     ]
   },
   "enabledPlugins": {
