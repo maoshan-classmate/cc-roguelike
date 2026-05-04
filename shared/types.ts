@@ -1,5 +1,41 @@
 // 客户端/服务端共享类型定义（唯一数据源）
 
+// ── Status Effect System ──
+
+export interface EffectFlags {
+  blocksMovement: boolean;
+  blocksAttack: boolean;
+  blocksSkill: boolean;
+  speedMultiplier: number;
+  damageMultiplier: number;
+  outgoingDamageMultiplier: number;
+  invulnerable: boolean;
+  forcedTarget: boolean;
+  knockbackImmune: boolean;
+  energyRegenMultiplier: number;
+  cooldownMultiplier: number;
+  ccImmune: boolean;
+}
+
+export interface StatusEffectInstance {
+  id: string;
+  typeId: string;
+  sourceId: string;
+  remainingMs: number;
+  stacks: number;
+  value: number;
+  tickAccumulator: number;
+}
+
+export interface SerializedStatusEffect {
+  t: string;   // typeId
+  r: number;   // remainingMs
+  s: number;   // stacks
+  v: number;   // value
+}
+
+// ── Entity States ──
+
 export interface PlayerState {
   id: string;
   accountId: string;
@@ -25,6 +61,7 @@ export interface PlayerState {
   angle: number;
   gold: number;
   keys: number;
+  statusEffects: SerializedStatusEffect[];
 }
 
 export interface EnemyState {
@@ -47,6 +84,7 @@ export interface EnemyState {
   bossPostCastCooldown?: number;
   bossCastTimer?: number;
   bossTargetAngle?: number;
+  statusEffects: SerializedStatusEffect[];
 }
 
 export interface BulletState {

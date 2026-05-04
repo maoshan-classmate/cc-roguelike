@@ -3,6 +3,16 @@ import { networkClient } from '../network/socket'
 import { GameMessages } from '@shared/protocol'
 import { SFX_IDS, type SfxId } from '../audio/sfx'
 
+export interface SkillPreviewState {
+  active: boolean
+  skillType: string
+  skillId: string
+  x: number
+  y: number
+  angle: number
+  startTime: number
+}
+
 interface UseGameInputDeps {
   canvasRef: React.RefObject<HTMLCanvasElement | null>
   keysRef: React.MutableRefObject<Set<string>>
@@ -11,13 +21,14 @@ interface UseGameInputDeps {
   setPaused: (v: boolean) => void
   setShowDebug: React.Dispatch<React.SetStateAction<boolean>>
   playDash: () => void
-  playShield: () => void
   play: (id: SfxId) => void
-  playSpeed: () => void
+  onSkillCast?: (skillIndex: number) => void
+  onSkillPreview?: (preview: SkillPreviewState | null) => void
+  getLocalPlayer?: () => { x: number; y: number; angle: number; skills: string[] } | undefined
 }
 
 export function useGameInput(deps: UseGameInputDeps): void {
-  const { canvasRef, keysRef, mouseRef, isPaused, setPaused, setShowDebug, playDash, playShield, play, playSpeed } = deps
+  const { canvasRef, keysRef, mouseRef, isPaused, setPaused, setShowDebug, playDash, play, onSkillCast, onSkillPreview, getLocalPlayer } = deps
 
   useEffect(() => {
     const skillKeysDown = new Set<string>()
@@ -29,21 +40,44 @@ export function useGameInput(deps: UseGameInputDeps): void {
         setShowDebug(prev => !prev)
       }
       const skillKey = e.key
-      if (['1', '2', '3', '4'].includes(skillKey) && !skillKeysDown.has(skillKey)) {
+      if (['1', '2', '3'].includes(skillKey) && !skillKeysDown.has(skillKey)) {
         skillKeysDown.add(skillKey)
-        networkClient.emit(GameMessages.INPUT, { skill: parseInt(skillKey) - 1 })
-        switch (skillKey) {
-          case '1': playDash(); break
-          case '2': playShield(); break
-          case '3': play(SFX_IDS.SKILL_HEAL); break
-          case '4': playSpeed(); break
+        // Show preview on keydown (don't fire yet)
+        const player = getLocalPlayer?.()
+        if (player) {
+          const skillIndex = parseInt(skillKey) - 1
+          const skillId = player.skills[skillIndex]
+          if (skillId) {
+            onSkillPreview?.({
+              active: true,
+              skillType: skillKey,
+              skillId,
+              x: player.x,
+              y: player.y,
+              angle: player.angle,
+              startTime: performance.now(),
+            })
+          }
         }
       }
     }
 
     const handleKeyUp = (e: KeyboardEvent) => {
       keysRef.current.delete(e.key.toLowerCase())
-      if (['1', '2', '3', '4'].includes(e.key)) skillKeysDown.delete(e.key)
+      const skillKey = e.key
+      if (['1', '2', '3'].includes(skillKey) && skillKeysDown.has(skillKey)) {
+        skillKeysDown.delete(skillKey)
+        // Fire skill on key release
+        const skillIndex = parseInt(skillKey) - 1
+        networkClient.emit(GameMessages.INPUT, { skill: skillIndex })
+        onSkillCast?.(skillIndex)
+        onSkillPreview?.(null) // clear preview
+        switch (skillKey) {
+          case '1': playDash(); break
+          case '2': play(SFX_IDS.SKILL_SHIELD_ON); break
+          case '3': play(SFX_IDS.SKILL_HEAL); break
+        }
+      }
     }
 
     const handleMouseMove = (e: MouseEvent) => {

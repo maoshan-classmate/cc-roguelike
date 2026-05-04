@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuthStore } from '../store/useAuthStore'
 import { useGameStore } from '../store/useGameStore'
 import type { PlayerState, EnemyState, BulletState, HealWaveState, ItemState, DungeonData, GameState as SharedGameState } from '@shared/types'
+import { SKILL_INFO, type SkillInfo } from '../config/skills'
 
 interface BossVisualEffect {
   type: 'aoe_shockwave' | 'ranged_flash'
@@ -35,15 +36,14 @@ import { useSound } from '../audio/useSound'
 import { SFX_IDS } from '../audio/sfx'
 import { useHitEffect } from '../hooks/useHitEffect'
 import { useGameInput } from '../hooks/useGameInput'
+import { createSkillEffectStore, type SkillEffectStore } from '../rendering/skillEffectRenderer'
+import { drawSkillPreview, type SkillPreviewState } from '../rendering/skillPreviewRenderer'
 import {
   PixelCastle,
   PixelGem,
   PixelKey,
   PixelSword,
-  PixelShield,
   PixelSkull,
-  PixelBow,
-  PixelStar,
 } from '../components/PixelIcons'
 
 // 加载精灵图（仅 0x72 TilesetII，Kenney 已废弃）
@@ -58,14 +58,7 @@ for (const [name, def] of Object.entries(GENERATED_SPRITES)) {
   generatedSheets[name] = img
 }
 
-// 技能图标
-const SKILL_ICONS = [
-  { name: '技能1', color: '#C0C0C0' },
-  { name: '技能2', color: '#4A9EFF' },
-  { name: '技能3', color: '#8B4513' },
-  { name: '技能4', color: '#9B59B6' },
-]
-const SkillIconComponents = [PixelSword, PixelShield, PixelBow, PixelStar]
+// 技能图标通过 SKILL_INFO 动态加载
 
 // ── UI 动画 variants ──
 const hudItemVariant = (i: number) => ({
@@ -216,7 +209,7 @@ export default function GamePage() {
     reset
   } = useGameStore()
   const navigate = useNavigate()
-  const { play, playAttack, playHurt, playEnemyDie, playPickup, playFloorTransition, playVictory, playGameOver, playDash, playShield, playSpeed, playDie } = useSound()
+  const { play, playAttack, playHurt, playEnemyDie, playPickup, playFloorTransition, playVictory, playGameOver, playDash, playDie } = useSound()
   const { triggerHitEffect, updateShake, isHitlagging, updateHitlag } = useHitEffect()
 
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -226,6 +219,9 @@ export default function GamePage() {
   const [spritesLoaded, setSpritesLoaded] = useState(false)
   const [showDebug, setShowDebug] = useState(false)
   const [isInvincible, setIsInvincible] = useState(false)
+  const [hoveredSkill, setHoveredSkill] = useState<number | null>(null)
+  const cooldownEndRef = useRef<Map<number, number>>(new Map()) // skillIndex → end timestamp
+  const [, setCooldownTick] = useState(0) // triggers re-render for cooldown display
 
   const gameStateRef = useRef<ClientGameState>({
     players: [],
@@ -253,6 +249,8 @@ export default function GamePage() {
   const prevAttackRef = useRef(false)
   const floorSessionRef = useRef<number>(0)
   const gameSessionRef = useRef<number>(0)
+  const skillEffectStoreRef = useRef<SkillEffectStore>(createSkillEffectStore())
+  const skillPreviewRef = useRef<SkillPreviewState | null>(null)
 
   // Hooks
   const { particlesRef, spawnDeathParticles, spawnGroundSlamParticles, updateAndDrawParticles } = useParticleSystem()
@@ -277,10 +275,20 @@ export default function GamePage() {
     damageTextsRef,
     attackFlashRef,
     bossEffectsRef,
-    screenShakeRef
+    screenShakeRef,
+    skillEffectStore: skillEffectStoreRef.current,
+    skillPreviewRef,
   }
 
   const { render } = useGameRenderer(canvasRef, gameStateRef, renderDeps)
+
+  // Cooldown tick timer
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCooldownTick(t => t + 1)
+    }, 100)
+    return () => clearInterval(timer)
+  }, [])
 
   // Set local player ID
   useEffect(() => {
@@ -451,9 +459,29 @@ export default function GamePage() {
   }, [])
 
   // Input handling
+  const handleSkillCast = useCallback((skillIndex: number) => {
+    const localPlayer = gameStateRef.current.players.find(p => p.id === user?.id)
+    if (!localPlayer) return
+    const skillId = localPlayer.skills[skillIndex]
+    if (!skillId) return
+    skillEffectStoreRef.current.add(skillId, localPlayer.x, localPlayer.y, localPlayer.angle)
+    // Record cooldown end time
+    const info = SKILL_INFO[skillId]
+    if (info) {
+      cooldownEndRef.current.set(skillIndex, Date.now() + info.cooldown * 1000)
+    }
+  }, [user])
+
+  const getLocalPlayer = useCallback(() => {
+    const p = gameStateRef.current.players.find(p => p.id === user?.id)
+    return p ? { x: p.x, y: p.y, angle: p.angle, skills: p.skills } : undefined
+  }, [user])
+
   useGameInput({
     canvasRef, keysRef, mouseRef, isPaused, setPaused, setShowDebug,
-    playDash, playShield, play, playSpeed,
+    playDash, play, onSkillCast: handleSkillCast,
+    onSkillPreview: (preview) => { skillPreviewRef.current = preview },
+    getLocalPlayer,
   })
 
   // Game loop
@@ -517,14 +545,17 @@ export default function GamePage() {
         return
       }
 
-      // 打击感：屏幕震动
+      // 打击感：屏幕震动 (combining hit shake + skill shake)
       const shake = updateShake()
+      const skillShake = skillEffectStoreRef.current.getShake()
+      const totalShakeX = shake.x + skillShake.dx
+      const totalShakeY = shake.y + skillShake.dy
       const canvas = canvasRef.current
-      if (canvas && (shake.x !== 0 || shake.y !== 0)) {
+      if (canvas && (totalShakeX !== 0 || totalShakeY !== 0)) {
         const ctx = canvas.getContext('2d')
         if (ctx) {
           ctx.save()
-          ctx.translate(shake.x, shake.y)
+          ctx.translate(totalShakeX, totalShakeY)
           render()
           ctx.restore()
         }
@@ -617,31 +648,124 @@ export default function GamePage() {
         </div>
       </div>
 
-      {/* 技能栏 — 交错入场 + 弹簧交互 */}
-      <div style={{
-        position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
-        display: 'flex', flexDirection: 'column', gap: 6, zIndex: 10,
-      }}>
-        {SKILL_ICONS.map((skill, i) => (
-          <motion.div
-            key={i}
-            variants={skillVariant(i)}
-            initial="hidden"
-            animate="visible"
-            whileHover={{ scale: 1.15, boxShadow: `0 0 16px ${skill.color}66` }}
-            whileTap={{ scale: 0.9 }}
-            style={{
-              width: 48, height: 48,
-              background: `linear-gradient(135deg, ${skill.color} 0%, ${skill.color}88 100%)`,
-              border: '3px solid #FFFFFF', borderRadius: 4,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 24, boxShadow: '2px 2px 0 rgba(0,0,0,0.5)', cursor: 'pointer',
-            }}
-          >
-            {(() => { const Icon = SkillIconComponents[i]; return <Icon size={24} color={skill.color} />; })()}
-          </motion.div>
-        ))}
-      </div>
+      {/* 技能栏 — 动态图标 + 冷却遮罩 + tooltip */}
+      {(() => {
+        const localPlayer = gameStateRef.current.players.find(p => p.id === user?.id)
+        const skills = localPlayer?.skills ?? []
+        const now = Date.now()
+
+        return (
+          <div style={{
+            position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)',
+            display: 'flex', flexDirection: 'column', gap: 4, zIndex: 10,
+          }}>
+            {skills.map((skillId: string, i: number) => {
+              const info = SKILL_INFO[skillId]
+              if (!info) return null
+              const cdEnd = cooldownEndRef.current.get(i) ?? 0
+              const remaining = Math.max(0, cdEnd - now)
+              const cdRatio = info.cooldown > 0 ? remaining / (info.cooldown * 1000) : 0
+
+              return (
+                <motion.div
+                  key={skillId + i}
+                  variants={skillVariant(i)}
+                  initial="hidden"
+                  animate="visible"
+                  onHoverStart={() => setHoveredSkill(i)}
+                  onHoverEnd={() => setHoveredSkill(null)}
+                  style={{ position: 'relative' }}
+                >
+                  <div style={{
+                    width: 56, height: 56,
+                    background: '#1A1210',
+                    border: `2px solid ${info.color}`,
+                    borderRadius: 4,
+                    display: 'flex', flexDirection: 'column',
+                    alignItems: 'center', justifyContent: 'center',
+                    boxShadow: `2px 2px 0 rgba(0,0,0,0.5), inset 0 0 8px ${info.color}22`,
+                    cursor: 'pointer', position: 'relative', overflow: 'hidden',
+                  }}>
+                    {/* Icon */}
+                    <img
+                      src={info.icon}
+                      alt={info.name}
+                      style={{
+                        width: 32, height: 32, objectFit: 'contain',
+                        imageRendering: 'pixelated',
+                        opacity: cdRatio > 0 ? 0.4 : 1,
+                      }}
+                    />
+                    {/* Skill name */}
+                    <div style={{
+                      fontSize: 8, color: info.color, fontFamily: 'monospace',
+                      lineHeight: '10px', marginTop: 1, whiteSpace: 'nowrap',
+                    }}>
+                      {info.name}
+                    </div>
+                    {/* Key hint */}
+                    <div style={{
+                      position: 'absolute', top: 2, left: 3,
+                      fontSize: 9, color: '#666', fontFamily: 'monospace',
+                    }}>
+                      {i + 1}
+                    </div>
+                    {/* Energy cost */}
+                    <div style={{
+                      position: 'absolute', bottom: 2, right: 3,
+                      fontSize: 8, color: '#88AACC', fontFamily: 'monospace',
+                    }}>
+                      {info.energyCost}
+                    </div>
+                    {/* Cooldown overlay */}
+                    {cdRatio > 0 && (
+                      <>
+                        <div style={{
+                          position: 'absolute', top: 0, left: 0, right: 0,
+                          height: `${cdRatio * 100}%`,
+                          background: 'rgba(0,0,0,0.7)',
+                          pointerEvents: 'none',
+                        }} />
+                        <div style={{
+                          position: 'absolute', top: '50%', left: '50%',
+                          transform: 'translate(-50%, -50%)',
+                          fontSize: 14, color: '#FFF', fontFamily: 'monospace',
+                          fontWeight: 'bold', textShadow: '1px 1px 2px #000',
+                        }}>
+                          {(remaining / 1000).toFixed(1)}
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Tooltip */}
+                  {hoveredSkill === i && (
+                    <div style={{
+                      position: 'absolute', right: 64, top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'rgba(0,0,0,0.92)',
+                      border: `1px solid ${info.color}`,
+                      borderRadius: 4, padding: '6px 8px',
+                      minWidth: 140, maxWidth: 180, zIndex: 20,
+                      pointerEvents: 'none',
+                    }}>
+                      <div style={{ fontSize: 11, color: info.color, fontWeight: 'bold', fontFamily: 'monospace', marginBottom: 3 }}>
+                        {info.name}
+                      </div>
+                      <div style={{ fontSize: 9, color: '#CCC', fontFamily: 'monospace', lineHeight: '13px', marginBottom: 4 }}>
+                        {info.description}
+                      </div>
+                      <div style={{ fontSize: 9, color: '#888', fontFamily: 'monospace' }}>
+                        能量 {info.energyCost} | 冷却 {info.cooldown}s
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              )
+            })}
+          </div>
+        )
+      })()}
 
       {/* Canvas */}
       <canvas
@@ -667,7 +791,7 @@ export default function GamePage() {
           background: 'rgba(0,0,0,0.5)', zIndex: 10,
         }}
       >
-        [ WASD移动 | 鼠标瞄准 | 左键射击 | 1-4技能 | ESC暂停 ]
+        [ WASD移动 | 鼠标瞄准 | 左键射击 | 1-3技能(按住预览) | ESC暂停 ]
       </motion.div>
 
       {/* Pause overlay — 弹簧缩放进出 */}

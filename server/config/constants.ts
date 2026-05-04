@@ -75,16 +75,48 @@ export const WEAPON_TEMPLATES: Record<string, WeaponTemplate> = {
 };
 
 // 技能模板
-export const SKILL_TEMPLATES: Record<string, {
+export interface SkillTemplate {
   name: string;
-  type: 'active' | 'passive' | 'dash' | 'heal' | 'shield' | 'speed_boost';
-  cooldown: number;
+  type: 'dash' | 'taunt' | 'knockback' | 'dodge_roll' | 'aoe_delayed' | 'cc_aoe' | 'meteor' | 'heal_single' | 'zone_buff';
+  cooldown: number;       // ms
   energyCost: number;
-  duration?: number;
-  value?: number;
-}> = {
+  duration?: number;      // 效果持续时间 ms
+  value?: number;         // 主效果值
+  radius?: number;        // AOE 半径 px
+  range?: number;         // 施法距离 px
+  damageMult?: number;    // 伤害倍率
+  freezeDuration?: number;// 冰冻时间 ms
+  slowMult?: number;      // 减速倍率
+  dotDmg?: number;        // DOT 伤害/秒
+  dotDuration?: number;   // DOT 持续 ms
+  trapDuration?: number;  // 陷阱持续 ms
+  trapRadius?: number;    // 陷阱半径 px
+  trapSlow?: number;      // 陷阱减速倍率
+  targetRange?: number;   // 目标搜索范围 px
+  damageReduction?: number;// 减伤比例
+  healPerSec?: number;    // 持续回复 HP/s
+  waves?: number;         // 多波攻击波数
+  knockbackDist?: number; // 击退距离 px
+  stunDuration?: number;  // 眩晕时间 ms
+}
+
+export const SKILL_TEMPLATES: Record<string, SkillTemplate> = {
+  // ── 共享技能 ──
   dash: { name: '冲刺', type: 'dash', cooldown: 2000, energyCost: 20, value: 200 },
-  shield: { name: '护盾', type: 'active', cooldown: 5000, energyCost: 30, duration: 3000, value: 50 },
-  heal: { name: '治疗', type: 'heal', cooldown: 8000, energyCost: 40, value: 40 },
-  speed_boost: { name: '加速', type: 'active', cooldown: 10000, energyCost: 25, duration: 5000, value: 1.5 }
+
+  // ── Warrior ──
+  war_cry: { name: '战吼', type: 'taunt', cooldown: 8000, energyCost: 30, duration: 3000, radius: 200, value: 0.6 },
+  shield_bash: { name: '盾击', type: 'knockback', cooldown: 5000, energyCost: 25, range: 80, knockbackDist: 60, stunDuration: 1000 },
+
+  // ── Ranger ──
+  dodge_roll: { name: '翻滚', type: 'dodge_roll', cooldown: 6000, energyCost: 25, value: 150, trapDuration: 3000, trapRadius: 40, trapSlow: 0.5 },
+  arrow_rain: { name: '箭雨', type: 'aoe_delayed', cooldown: 10000, energyCost: 35, radius: 160, waves: 3, damageMult: 0.5 },
+
+  // ── Mage ──
+  frost_nova: { name: '冰霜新星', type: 'cc_aoe', cooldown: 7000, energyCost: 30, radius: 120, damageMult: 0.8, freezeDuration: 500, slowMult: 0.5, duration: 3000 },
+  meteor: { name: '陨石', type: 'meteor', cooldown: 12000, energyCost: 40, radius: 150, damageMult: 2.5, dotDmg: 5, dotDuration: 3000, duration: 1000, range: 300 },
+
+  // ── Cleric ──
+  holy_light: { name: '圣光', type: 'heal_single', cooldown: 6000, energyCost: 25, value: 50, targetRange: 150 },
+  sanctuary: { name: '圣域', type: 'zone_buff', cooldown: 12000, energyCost: 40, radius: 150, duration: 5000, damageReduction: 0.3, healPerSec: 5 },
 };

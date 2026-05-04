@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { Combat, type CombatDeps } from '../game/combat/Combat'
 import type { PlayerState, EnemyState, BulletState } from '../../shared/types'
+import { StatusManager } from '../game/status/StatusManager'
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   return {
@@ -84,6 +85,8 @@ function makeDeps(): CombatDeps & {
     damagePlayer: vi.fn((id, dmg) => damagedPlayers.set(id, dmg)),
     removeBullet: vi.fn((id) => removedBullets.add(id)),
     isWalkable: vi.fn(() => true),
+    getPlayerStatus: vi.fn(() => new StatusManager()),
+    getEnemyStatus: vi.fn(() => new StatusManager()),
   }
 
   return deps

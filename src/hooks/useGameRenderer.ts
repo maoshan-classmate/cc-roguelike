@@ -5,6 +5,9 @@ import { drawFallbackRect } from '../rendering/fallbackDraw'
 import { drawBossEffects, type BossEffect } from '../rendering/bossEffectRenderer'
 import { drawBullets, drawHealWaves } from '../rendering/projectileRenderer'
 import { drawEnemies, drawPlayers, type AnimRefs } from '../rendering/entityRenderer'
+import { drawStatusEffects } from '../rendering/statusEffectRenderer'
+import type { SkillEffectStore } from '../rendering/skillEffectRenderer'
+import { drawSkillPreview, type SkillPreviewState } from '../rendering/skillPreviewRenderer'
 import {
   draw0x72Sprite,
   getSpriteEntry,
@@ -65,6 +68,8 @@ interface RenderDeps {
   bossEffectsRef: React.MutableRefObject<BossEffect[]>
   screenShakeRef: React.MutableRefObject<{ intensity: number; endTime: number }>
   attackFlashRef?: React.MutableRefObject<number>
+  skillEffectStore?: SkillEffectStore
+  skillPreviewRef?: React.MutableRefObject<SkillPreviewState | null>
 }
 
 export function useGameRenderer(
@@ -105,6 +110,7 @@ export function useGameRenderer(
       updateAndDrawDamageTexts,
       bossEffectsRef,
       screenShakeRef,
+      skillEffectStore,
     } = deps
 
     const { players, enemies, bullets, healWaves, items, dungeon } = gameStateRef.current
@@ -268,6 +274,19 @@ export function useGameRenderer(
       ctx.restore()
     }
 
+    // ── 技能范围预览（按住时显示）──
+    if (deps.skillPreviewRef?.current) {
+      const preview = deps.skillPreviewRef.current
+      // Update preview position to follow player
+      const localPlayer = players.find(p => p.id === deps.user?.id)
+      if (localPlayer) {
+        preview.x = localPlayer.x
+        preview.y = localPlayer.y
+        if (localPlayer.angle !== undefined) preview.angle = localPlayer.angle
+      }
+      drawSkillPreview(ctx, preview)
+    }
+
     // 绘制敌人
     drawEnemies(ctx, enemies, {
       getRenderPos,
@@ -278,6 +297,13 @@ export function useGameRenderer(
       spawnDeathParticles,
       animRefs: { frame, fps: FPS, elapsedMs: performance.now() - lastAnimTime.current, hitAnimRef: hitAnimRef.current, deathAnimRef: deathAnimRef.current, displayHpRef: displayHpRef.current, prevDyingRef: prevDyingRef.current, prevHpRef: prevHpRef.current },
     })
+
+    // 敌人状态效果渲染
+    for (const enemy of enemies) {
+      if (enemy.alive === false || !enemy.statusEffects?.length) continue
+      const epos = getRenderPos(enemy.id, enemy.x, enemy.y)
+      drawStatusEffects(ctx, epos.x, epos.y, enemy.statusEffects, frame)
+    }
 
     // 绘制死亡粒子特效
     updateAndDrawParticles(ctx)
@@ -305,6 +331,19 @@ export function useGameRenderer(
       attackFlashRef: deps.attackFlashRef,
       getAnimSprite,
     })
+
+    // 玩家状态效果渲染
+    for (const player of players) {
+      if (!player.alive || !player.statusEffects?.length) continue
+      const ppos = getRenderPos(player.id, player.x, player.y)
+      drawStatusEffects(ctx, ppos.x, ppos.y, player.statusEffects, frame)
+    }
+
+    // 技能施放特效（客户端即时反馈）
+    if (skillEffectStore) {
+      skillEffectStore.update()
+      skillEffectStore.draw(ctx)
+    }
   }, [canvasRef, gameStateRef, deps])
 
   return { render }

@@ -78,7 +78,7 @@ export class AuthManager {
 
       // Create default character
       const characterId = uuidv4();
-      const defaultSkills = JSON.stringify(['dash', 'shield', 'heal', 'speed_boost']);
+      const defaultSkills = JSON.stringify(AuthManager.CLASS_CONFIG.warrior.skills);
 
       await this.db.execute(
         `INSERT INTO characters (id, account_id, name, weapon, character_type, skills)
@@ -158,6 +158,11 @@ export class AuthManager {
 
       const token = this.generateToken(account.id, account.username);
 
+      // Migrate old skill IDs (shield/heal/speed_boost → class-specific skills)
+      if (characters.length > 0) {
+        await this.migrateSkillsIfNeeded(characters[0]);
+      }
+
       return {
         success: true,
         token,
@@ -220,10 +225,10 @@ export class AuthManager {
 
   // 职业→武器/技能映射
   public static readonly CLASS_CONFIG: Record<string, { weapon: string; skills: string[] }> = {
-    warrior: { weapon: 'sword',   skills: ['dash', 'shield', 'heal', 'speed_boost'] },
-    ranger:  { weapon: 'pistol',  skills: ['dash', 'speed_boost', 'heal', 'shield'] },
-    mage:    { weapon: 'pistol',  skills: ['dash', 'shield', 'speed_boost', 'heal'] },
-    cleric:  { weapon: 'pistol',  skills: ['dash', 'heal', 'shield', 'speed_boost'] }
+    warrior: { weapon: 'sword',  skills: ['dash', 'war_cry', 'shield_bash'] },
+    ranger:  { weapon: 'pistol', skills: ['dash', 'dodge_roll', 'arrow_rain'] },
+    mage:    { weapon: 'pistol', skills: ['dash', 'frost_nova', 'meteor'] },
+    cleric:  { weapon: 'pistol', skills: ['dash', 'holy_light', 'sanctuary'] },
   };
 
   async updateCharacterType(accountId: string, characterType: string): Promise<void> {
@@ -237,6 +242,24 @@ export class AuthManager {
         'UPDATE characters SET character_type = ?, weapon = ?, skills = ? WHERE account_id = ?',
         [characterType, config.weapon, JSON.stringify(config.skills), accountId]
       );
+    }
+  }
+
+  private static readonly OLD_SKILL_IDS = new Set(['shield', 'heal', 'speed_boost']);
+
+  private async migrateSkillsIfNeeded(character: { id: string; character_type: string; skills: string }): Promise<void> {
+    try {
+      const skills: string[] = JSON.parse(character.skills || '[]');
+      if (!skills.some(s => AuthManager.OLD_SKILL_IDS.has(s))) return;
+
+      const classConfig = AuthManager.CLASS_CONFIG[character.character_type] || AuthManager.CLASS_CONFIG.warrior;
+      await this.db.execute(
+        'UPDATE characters SET skills = ? WHERE id = ?',
+        [JSON.stringify(classConfig.skills), character.id]
+      );
+      console.log(`[AuthManager] Migrated skills for character ${character.id}: ${skills} → ${classConfig.skills}`);
+    } catch {
+      // Non-critical: if migration fails, game will still work with old IDs
     }
   }
 }

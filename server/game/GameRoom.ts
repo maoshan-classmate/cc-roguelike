@@ -7,6 +7,7 @@ import { Vec2 } from '../utils/Vec2';
 import type { PlayerState, EnemyState, BulletState, GameState, HealWaveState, BossEvent, ItemState, DungeonData } from '../../shared/types';
 import { ENEMY_BASE_HP, ENEMY_BASE_ATTACK, CLASS_SPEED } from '../../shared/constants';
 import { EnemyAI, type EnemyAIDeps } from './enemy/EnemyAI';
+import { StatusManager, type TickContext } from './status/StatusManager';
 
 export type { PlayerState, EnemyState, BulletState, GameState, HealWaveState, BossEvent, ItemState, DungeonData };
 
@@ -27,6 +28,8 @@ export class GameRoom {
   private _victory: boolean = false;
   private _floorChanged: boolean = false;
   private collisionGrid: CollisionGrid = new CollisionGrid();
+  private playerStatus: Map<string, StatusManager> = new Map();
+  private enemyStatus: Map<string, StatusManager> = new Map();
 
   private currentFloor: number = 1;
   // Use timestamp for game session — guarantees uniqueness even across server restarts
@@ -66,8 +69,16 @@ export class GameRoom {
       characterType: charData.character_type || 'warrior',
       skills: (() => {
         const parsed: string[] = JSON.parse(charData.skills || '["dash","shield"]');
-        // 旧角色只有2技能，补齐为4技能
-        if (parsed.length < 4) return ['dash', 'shield', 'heal', 'speed_boost'];
+        // Migrate old 4-skill format to new 3-skill per-class format
+        if (parsed.length === 4 || parsed.some(s => ['shield', 'heal', 'speed_boost'].includes(s))) {
+          const classConfig = {
+            warrior: ['dash', 'war_cry', 'shield_bash'],
+            ranger: ['dash', 'dodge_roll', 'arrow_rain'],
+            mage: ['dash', 'frost_nova', 'meteor'],
+            cleric: ['dash', 'holy_light', 'sanctuary'],
+          };
+          return classConfig[(charData.character_type || 'warrior') as keyof typeof classConfig] || classConfig.warrior;
+        }
         return parsed;
       })(),
       alive: true,
@@ -77,10 +88,12 @@ export class GameRoom {
       keys: 0
     };
     this.players.set(accountId, player);
+    this.playerStatus.set(accountId, new StatusManager());
   }
 
   removePlayer(playerId: string): void {
     this.players.delete(playerId);
+    this.playerStatus.delete(playerId);
   }
 
   start(): void {
@@ -110,6 +123,7 @@ export class GameRoom {
   private startFloor(floor: number): void {
     this.currentFloor = floor;
     this.enemies.clear();
+    this.enemyStatus.clear();
     this.bullets.clear();
     this.healWaves = [];
     this.bossEvents = [];
@@ -138,6 +152,7 @@ export class GameRoom {
       for (let j = 0; j < spawnData.count; j++) {
         const enemy = this.createEnemy(spawnData.type, spawnData.x, spawnData.y, floor);
         this.enemies.set(enemy.id, enemy);
+        this.enemyStatus.set(enemy.id, new StatusManager());
       }
     }
 
@@ -237,44 +252,64 @@ export class GameRoom {
     for (const player of this.players.values()) {
       if (!player.alive) continue;
 
-      // Movement — 使用职业速度而非 DB 的 5.0
-      const speedMultiplier = player.speedBuff || 1.0;
+      // StatusManager tick
+      const sm = this.playerStatus.get(player.id);
+      if (sm) {
+        const ctx: TickContext = {
+          entityId: player.id,
+          dealDamage: (_id: string, amount: number) => { this.damagePlayer(player.id, amount); },
+          healTarget: (_id: string, amount: number) => { this.healPlayer(player.id, amount); },
+          restoreEnergy: (_id: string, amount: number) => { player.energy = Math.min(player.energyMax, player.energy + amount); },
+        };
+        sm.tick(dt * 1000, ctx);
+        // Dual-write: sync invulnerable flag to old invincible field
+        player.invincible = sm.getAggregatedFlags().invulnerable ? 999 : Math.max(0, player.invincible - dt);
+      }
+
+      // Movement — use StatusManager speedMultiplier
+      const flags = sm?.getAggregatedFlags();
+      const speedMultiplier = flags?.speedMultiplier ?? (player.speedBuff || 1.0);
       const baseSpeed = CLASS_SPEED[player.characterType] || 180;
-      const speed = baseSpeed * speedMultiplier * dt;
-      const newX = player.x + player.dx * speed;
-      const newY = player.y + player.dy * speed;
 
-      // 玩家碰撞半径 16px，用 5 点检测防止穿墙（中心+4角）
-      const PLAYER_RADIUS = 16;
-      if (this.isWalkableRadius(newX, newY, PLAYER_RADIUS)) {
-        player.x = newX;
-        player.y = newY;
-      } else if (this.isWalkableRadius(newX, player.y, PLAYER_RADIUS)) {
-        // Slide along X
-        player.x = newX;
-      } else if (this.isWalkableRadius(player.x, newY, PLAYER_RADIUS)) {
-        // Slide along Y
-        player.y = newY;
+      // Skip movement if blocksMovement flag is set
+      if (!flags?.blocksMovement) {
+        const speed = baseSpeed * speedMultiplier * dt;
+        const newX = player.x + player.dx * speed;
+        const newY = player.y + player.dy * speed;
+
+        // 玩家碰撞半径 16px，用 5 点检测防止穿墙（中心+4角）
+        const PLAYER_RADIUS = 16;
+        if (this.isWalkableRadius(newX, newY, PLAYER_RADIUS)) {
+          player.x = newX;
+          player.y = newY;
+        } else if (this.isWalkableRadius(newX, player.y, PLAYER_RADIUS)) {
+          // Slide along X
+          player.x = newX;
+        } else if (this.isWalkableRadius(player.x, newY, PLAYER_RADIUS)) {
+          // Slide along Y
+          player.y = newY;
+        }
+
+        // Clamp to dungeon bounds
+        const W = GAME_CONFIG.DUNGEON_WIDTH;
+        const H = GAME_CONFIG.DUNGEON_HEIGHT;
+        player.x = Math.max(20, Math.min(W - 20, player.x));
+        player.y = Math.max(20, Math.min(H - 20, player.y));
       }
 
-      // Clamp to dungeon bounds
-      const W = GAME_CONFIG.DUNGEON_WIDTH;
-      const H = GAME_CONFIG.DUNGEON_HEIGHT;
-      player.x = Math.max(20, Math.min(W - 20, player.x));
-      player.y = Math.max(20, Math.min(H - 20, player.y));
-
-      // Energy regen
+      // Energy regen (respect energyRegenMultiplier from status)
+      const energyRegenMult = flags?.energyRegenMultiplier ?? 1.0;
       if (player.energy < player.energyMax) {
-        player.energy = Math.min(player.energyMax, player.energy + GAME_CONFIG.ENERGY_REGEN * dt);
+        player.energy = Math.min(player.energyMax, player.energy + GAME_CONFIG.ENERGY_REGEN * dt * energyRegenMult);
       }
 
-      // Invincibility timer
-      if (player.invincible > 0) {
+      // Invincibility timer (legacy, dual-write transition)
+      if (player.invincible > 0 && !sm?.getAggregatedFlags().invulnerable) {
         player.invincible -= dt;
       }
 
-      // Speed buff timer
-      if (player.speedBuffTimer > 0) {
+      // Speed buff timer (legacy, dual-write transition)
+      if (player.speedBuffTimer > 0 && !sm?.has('speed_boost')) {
         player.speedBuffTimer -= dt;
         if (player.speedBuffTimer <= 0) {
           player.speedBuff = 1.0;
@@ -294,7 +329,20 @@ export class GameRoom {
         }
         continue;
       }
-      this.enemyAI.update(enemy, dt);
+
+      // StatusManager tick for enemies
+      const esm = this.enemyStatus.get(enemy.id);
+      if (esm) {
+        const ctx: TickContext = {
+          entityId: enemy.id,
+          dealDamage: (_id: string, amount: number) => { this.damageEnemy(enemy.id, amount); },
+          healTarget: (_id: string, amount: number) => { enemy.hp = Math.min(enemy.hpMax, enemy.hp + amount); },
+          restoreEnergy: () => {},
+        };
+        esm.tick(dt * 1000, ctx);
+      }
+
+      this.enemyAI.update(enemy, dt, esm);
     }
 
     // Separate overlapping enemies
@@ -446,12 +494,24 @@ export class GameRoom {
   }
 
   getState(): GameState {
+    // Serialize player status effects
+    const players = Array.from(this.players.values()).map(p => {
+      const sm = this.playerStatus.get(p.id);
+      return { ...p, statusEffects: sm?.serialize() ?? [] };
+    });
+
+    // Serialize enemy status effects
+    const enemies = Array.from(this.enemies.values()).map(e => {
+      const sm = this.enemyStatus.get(e.id);
+      return { ...e, statusEffects: sm?.serialize() ?? [] };
+    });
+
     return {
       tick: this.tick,
       floor: this.currentFloor,
       gameSession: this.gameSession,
-      players: Array.from(this.players.values()),
-      enemies: Array.from(this.enemies.values()),
+      players,
+      enemies,
       bullets: Array.from(this.bullets.values()),
       healWaves: this.healWaves,
       items: this.items,
@@ -498,9 +558,21 @@ export class GameRoom {
     return Array.from(this.players.values());
   }
 
-  damageEnemy(enemyId: string, damage: number): void {
+  getPlayerStatus(playerId: string): StatusManager | undefined {
+    return this.playerStatus.get(playerId);
+  }
+
+  getEnemyStatus(enemyId: string): StatusManager | undefined {
+    return this.enemyStatus.get(enemyId);
+  }
+
+  damageEnemy(enemyId: string, damage: number, attackerId?: string): void {
     const enemy = this.enemies.get(enemyId);
     if (!enemy || !enemy.alive) return;
+
+    // Check invulnerable via StatusManager
+    const esm = this.enemyStatus.get(enemyId);
+    if (esm?.getAggregatedFlags().invulnerable) return;
 
     // Fast: 20% dodge chance
     if (enemy.type === 'fast' && Math.random() < 0.2) return;
@@ -509,11 +581,24 @@ export class GameRoom {
     let effectiveDamage = damage;
     if (enemy.type === 'tank') effectiveDamage = Math.round(damage * 0.6);
 
+    // Apply damageMultiplier from StatusManager (vulnerable/shield)
+    const dmgMult = esm?.getAggregatedFlags().damageMultiplier ?? 1.0;
+    effectiveDamage = Math.round(effectiveDamage * dmgMult);
+
     enemy.hp -= effectiveDamage;
     if (enemy.hp <= 0) {
       enemy.hp = 0;
       enemy.state = 'dying';
       enemy.deathTimer = 500; // 500ms death animation before removal
+
+      // Energy on kill (+8) for attacker
+      if (attackerId) {
+        const attacker = this.players.get(attackerId);
+        if (attacker && attacker.alive) {
+          attacker.energy = Math.min(attacker.energyMax, attacker.energy + 8);
+        }
+      }
+
       // Drop item
       if (Math.random() < 0.3) {
         const dropTypes = ['health', 'coin', 'coin'];
@@ -530,12 +615,28 @@ export class GameRoom {
 
   damagePlayer(playerId: string, damage: number): void {
     const player = this.players.get(playerId);
-    if (!player || !player.alive || player.invincible > 0) return;
+    if (!player || !player.alive) return;
+
+    // Check invulnerable via StatusManager
+    const sm = this.playerStatus.get(playerId);
+    if (sm?.getAggregatedFlags().invulnerable) return;
+    // Legacy fallback
+    if (player.invincible > 0) return;
 
     // GDD DEF formula: damage = max(1, raw_damage - target.def * 0.5)
-    const finalDamage = Math.max(1, damage - player.defense * 0.5);
+    let finalDamage = Math.max(1, damage - player.defense * 0.5);
+
+    // Apply damageMultiplier from StatusManager (vulnerable/shield)
+    const dmgMult = sm?.getAggregatedFlags().damageMultiplier ?? 1.0;
+    finalDamage = Math.round(finalDamage * dmgMult);
+
     player.hp -= finalDamage;
     player.invincible = 0.5;
+
+    // Energy on hit (+3)
+    if (player.energy < player.energyMax) {
+      player.energy = Math.min(player.energyMax, player.energy + 3);
+    }
 
     if (player.hp <= 0) {
       player.alive = false;
@@ -610,10 +711,23 @@ export class GameRoom {
           enemy.alive = false;
         }
         break;
-      case 'setInvincible':
-        // Toggle: if invincible > 0, turn off; otherwise set high value
-        player.invincible = player.invincible > 0 ? 0 : 999;
+      case 'setInvincible': {
+        // Toggle via StatusManager
+        const psm = this.playerStatus.get(playerId);
+        if (psm) {
+          if (psm.has('invulnerable')) {
+            psm.clearAll();
+            player.invincible = 0;
+          } else {
+            psm.apply('invulnerable', 'debug', 0, 999999);
+            player.invincible = 999;
+          }
+        } else {
+          // Legacy fallback
+          player.invincible = player.invincible > 0 ? 0 : 999;
+        }
         break;
+      }
       case 'moveTo':
         if (typeof p?.x === 'number' && typeof p?.y === 'number') {
           player.x = p.x;
@@ -663,6 +777,8 @@ export class GameRoom {
     }
     this.players.clear();
     this.enemies.clear();
+    this.playerStatus.clear();
+    this.enemyStatus.clear();
     this.bullets.clear();
     this.healWaves = [];
   }

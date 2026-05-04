@@ -1,6 +1,7 @@
 import type { PlayerState, EnemyState, BulletState, BossEvent } from '../../../shared/types';
 import { ENEMY_RADIUS, ENEMY_SPEED, ENEMY_AGGRO_RANGE, ENEMY_ATTACK_COOLDOWN } from '../../../shared/constants';
 import { GAME_CONFIG } from '../../config/constants';
+import type { StatusManager } from '../status/StatusManager';
 
 export interface EnemyAIDeps {
   isWalkableRadius(x: number, y: number, radius: number): boolean;
@@ -17,30 +18,52 @@ export class EnemyAI {
     this.deps = deps;
   }
 
-  update(enemy: EnemyState, dt: number): void {
+  update(enemy: EnemyState, dt: number, sm?: StatusManager): void {
+    // Check status flags before acting
+    if (sm) {
+      const flags = sm.getAggregatedFlags();
+      if (flags.blocksMovement && flags.blocksAttack) return; // Stunned/Frozen — skip entirely
+    }
+
     if (enemy.type === 'boss') {
-      this.updateBoss(enemy, dt);
+      this.updateBoss(enemy, dt, sm);
       return;
     }
-    this.updateRegular(enemy, dt);
+    this.updateRegular(enemy, dt, sm);
   }
 
-  private updateRegular(enemy: EnemyState, dt: number): void {
+  private updateRegular(enemy: EnemyState, dt: number, sm?: StatusManager): void {
     const speed = (ENEMY_SPEED[enemy.type] || 60) * dt;
     const radius = ENEMY_RADIUS[enemy.type] || 16;
     const aggroRange = ENEMY_AGGRO_RANGE[enemy.type] || 200;
     const attackCooldown = ENEMY_ATTACK_COOLDOWN[enemy.type] || 1000;
     const isGhost = enemy.type === 'ghost';
+    const flags = sm?.getAggregatedFlags();
 
+    // Check taunt — forced target overrides nearest-player logic
     let nearestPlayer: PlayerState | null = null;
     let nearestDist = Infinity;
 
-    for (const player of this.deps.getPlayers()) {
-      if (!player.alive) continue;
-      const dist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
-      if (dist < nearestDist) {
-        nearestDist = dist;
-        nearestPlayer = player;
+    if (flags?.forcedTarget && flags.forcedTargetSource) {
+      // Taunt: target the taunter
+      for (const player of this.deps.getPlayers()) {
+        if (!player.alive) continue;
+        if (player.id === flags.forcedTargetSource) {
+          nearestPlayer = player;
+          nearestDist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
+          break;
+        }
+      }
+    }
+
+    if (!nearestPlayer) {
+      for (const player of this.deps.getPlayers()) {
+        if (!player.alive) continue;
+        const dist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
+        if (dist < nearestDist) {
+          nearestDist = dist;
+          nearestPlayer = player;
+        }
       }
     }
 
@@ -55,11 +78,18 @@ export class EnemyAI {
     const dy = nearestPlayer.y - enemy.y;
     const dist = Math.hypot(dx, dy);
 
-    if (dist > 30) {
+    // Apply speed multiplier from StatusManager (slow/freeze)
+    const speedMult = flags?.speedMultiplier ?? 1.0;
+    const effectiveSpeed = speed * speedMult;
+
+    // blocksMovement check — stunned/rooted enemies can't move
+    const canMove = !flags?.blocksMovement;
+
+    if (dist > 30 && canMove) {
       const dirX = dx / dist;
       const dirY = dy / dist;
-      const newEX = enemy.x + dirX * speed;
-      const newEY = enemy.y + dirY * speed;
+      const newEX = enemy.x + dirX * effectiveSpeed;
+      const newEY = enemy.y + dirY * effectiveSpeed;
 
       if (isGhost) {
         const W = GAME_CONFIG.DUNGEON_WIDTH;
@@ -78,8 +108,8 @@ export class EnemyAI {
         const escapeOffsets = [-Math.PI / 2, Math.PI / 2, -Math.PI / 4, Math.PI / 4, -3 * Math.PI / 4, 3 * Math.PI / 4, Math.PI, 0];
         for (const offset of escapeOffsets) {
           const escapeAngle = baseAngle + offset;
-          const tryX = enemy.x + Math.cos(escapeAngle) * speed;
-          const tryY = enemy.y + Math.sin(escapeAngle) * speed;
+          const tryX = enemy.x + Math.cos(escapeAngle) * effectiveSpeed;
+          const tryY = enemy.y + Math.sin(escapeAngle) * effectiveSpeed;
           if (this.deps.isWalkableRadius(tryX, tryY, radius)) {
             enemy.x = tryX;
             enemy.y = tryY;
@@ -89,7 +119,12 @@ export class EnemyAI {
       }
 
       enemy.state = 'chase';
-    } else {
+    } else if (dist <= 30) {
+      // blocksAttack check — stunned enemies can't attack
+      if (flags?.blocksAttack) {
+        enemy.state = 'idle';
+        return;
+      }
       enemy.state = 'attack';
       const now = Date.now();
       const lastAttack = enemy.lastAttackTime || 0;
@@ -105,7 +140,7 @@ export class EnemyAI {
     }
   }
 
-  private updateBoss(enemy: EnemyState, dt: number): void {
+  private updateBoss(enemy: EnemyState, dt: number, sm?: StatusManager): void {
     const speed = ENEMY_SPEED.boss * dt;
     const radius = ENEMY_RADIUS.boss;
     const phase = enemy.bossPhase || 1;
@@ -116,6 +151,10 @@ export class EnemyAI {
     const aggroRange = ENEMY_AGGRO_RANGE.boss;
     const RANGED_WINDUP = 500;
     const AOE_WINDUP = 800;
+    const flags = sm?.getAggregatedFlags();
+    const canMove = !flags?.blocksMovement;
+    const canAttack = !flags?.blocksAttack;
+    const speedMult = flags?.speedMultiplier ?? 1.0;
 
     let nearestPlayer: PlayerState | null = null;
     let nearestDist = Infinity;
@@ -141,7 +180,7 @@ export class EnemyAI {
       enemy.hp = Math.min(enemy.hpMax, enemy.hp + Math.round(enemy.hpMax * 0.2));
     }
 
-    if (enemy.bossCasting) {
+    if (enemy.bossCasting && canAttack) {
       enemy.bossCastTimer = (enemy.bossCastTimer || 0) + dt * 1000;
       const windup = enemy.bossCasting === 'ranged' ? RANGED_WINDUP : AOE_WINDUP;
       enemy.state = 'attack';
@@ -162,12 +201,13 @@ export class EnemyAI {
     const dx = nearestPlayer.x - enemy.x;
     const dy = nearestPlayer.y - enemy.y;
     const dist = Math.hypot(dx, dy);
+    const effectiveSpeed = speed * speedMult;
 
-    if (dist > 40) {
+    if (dist > 40 && canMove) {
       const dirX = dx / dist;
       const dirY = dy / dist;
-      const newEX = enemy.x + dirX * speed;
-      const newEY = enemy.y + dirY * speed;
+      const newEX = enemy.x + dirX * effectiveSpeed;
+      const newEY = enemy.y + dirY * effectiveSpeed;
       if (this.deps.isWalkableRadius(newEX, newEY, radius)) {
         enemy.x = newEX;
         enemy.y = newEY;
@@ -179,8 +219,8 @@ export class EnemyAI {
         const baseAngle = Math.atan2(dy, dx);
         const escapeOffsets = [-Math.PI/2, Math.PI/2, -Math.PI/4, Math.PI/4, -Math.PI*3/4, Math.PI*3/4];
         for (const offset of escapeOffsets) {
-          const tryX = enemy.x + Math.cos(baseAngle + offset) * speed;
-          const tryY = enemy.y + Math.sin(baseAngle + offset) * speed;
+          const tryX = enemy.x + Math.cos(baseAngle + offset) * effectiveSpeed;
+          const tryY = enemy.y + Math.sin(baseAngle + offset) * effectiveSpeed;
           if (this.deps.isWalkableRadius(tryX, tryY, radius)) {
             enemy.x = tryX;
             enemy.y = tryY;
@@ -189,13 +229,13 @@ export class EnemyAI {
         }
       }
       enemy.state = 'chase';
-    } else {
+    } else if (dist <= 40) {
       enemy.state = 'attack';
     }
 
     const now = Date.now();
     const lastAttack = enemy.lastAttackTime || 0;
-    if (dist <= 40 && now - lastAttack >= 500 && nearestPlayer.invincible <= 0) {
+    if (dist <= 40 && canAttack && now - lastAttack >= 500 && nearestPlayer.invincible <= 0) {
       const finalDamage = Math.max(1, (enemy.attack || 25) - nearestPlayer.defense * 0.5);
       nearestPlayer.hp -= finalDamage;
       nearestPlayer.invincible = 0.5;
@@ -203,25 +243,27 @@ export class EnemyAI {
       if (nearestPlayer.hp <= 0) nearestPlayer.alive = false;
     }
 
-    enemy.bossRangedTimer = (enemy.bossRangedTimer || 0) + dt * 1000;
-    enemy.bossAoETimer = (enemy.bossAoETimer || 0) + dt * 1000;
+    if (canAttack) {
+      enemy.bossRangedTimer = (enemy.bossRangedTimer || 0) + dt * 1000;
+      enemy.bossAoETimer = (enemy.bossAoETimer || 0) + dt * 1000;
 
-    if (enemy.bossPostCastCooldown && enemy.bossPostCastCooldown > 0) {
-      enemy.bossPostCastCooldown -= dt * 1000;
-    }
+      if (enemy.bossPostCastCooldown && enemy.bossPostCastCooldown > 0) {
+        enemy.bossPostCastCooldown -= dt * 1000;
+      }
 
-    if (!enemy.bossCasting && (!enemy.bossPostCastCooldown || enemy.bossPostCastCooldown <= 0)) {
-      if (enemy.bossRangedTimer >= rangedCooldown && dist > 40) {
-        enemy.bossRangedTimer = 0;
-        enemy.bossCasting = 'ranged';
-        enemy.bossCastTimer = 0;
-        enemy.bossTargetAngle = Math.atan2(dy, dx);
-        this.deps.pushBossEvent({ type: 'ranged_windup', x: enemy.x, y: enemy.y });
-      } else if (enemy.bossAoETimer >= aoeCooldown) {
-        enemy.bossAoETimer = 0;
-        enemy.bossCasting = 'aoe';
-        enemy.bossCastTimer = 0;
-        this.deps.pushBossEvent({ type: 'aoe_windup', x: enemy.x, y: enemy.y });
+      if (!enemy.bossCasting && (!enemy.bossPostCastCooldown || enemy.bossPostCastCooldown <= 0)) {
+        if (enemy.bossRangedTimer >= rangedCooldown && dist > 40) {
+          enemy.bossRangedTimer = 0;
+          enemy.bossCasting = 'ranged';
+          enemy.bossCastTimer = 0;
+          enemy.bossTargetAngle = Math.atan2(dy, dx);
+          this.deps.pushBossEvent({ type: 'ranged_windup', x: enemy.x, y: enemy.y });
+        } else if (enemy.bossAoETimer >= aoeCooldown) {
+          enemy.bossAoETimer = 0;
+          enemy.bossCasting = 'aoe';
+          enemy.bossCastTimer = 0;
+          this.deps.pushBossEvent({ type: 'aoe_windup', x: enemy.x, y: enemy.y });
+        }
       }
     }
   }

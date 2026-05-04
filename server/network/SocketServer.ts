@@ -371,7 +371,8 @@ export class SocketServer {
       if (!session.currentRoom) return;
 
       const gameRoom = this.gameManager.getRoom(session.currentRoom);
-      if (!gameRoom || !gameRoom.isRunning()) return;
+      if (!gameRoom) return;
+      if (!gameRoom.isRunning()) return;
 
       gameRoom.handlePlayerInput(session.accountId, data);
     });
