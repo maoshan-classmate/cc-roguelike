@@ -48,7 +48,7 @@
 
 **你必须**：
 - 严格遵守 `npx tsc --noEmit` 零 error（warning 可忽略）
-- 禁止 `any` 类型，禁用 `@ts-ignore`
+- `any` 策略见架构守卫（`.claude/rules/architecture-guard.md`）预算制：上限 15 个，新增必须注释理由
 - 接口命名：`I${Name}Config` 或直接 `{Name}Config`，不得用空接口
 
 **你应当**：
@@ -184,17 +184,11 @@ server/config/
 网关层（server/network/）
     ↓
 游戏逻辑层（server/game/）
-    ├── GameRoom.ts       # 房间状态 + 游戏循环
-    ├── combat/          # 战斗计算
-    ├── dungeon/         # 地牢生成
-    └── (其他模块)
     ↓
 数据层（MySQL via ORM）
 ```
 
-**你必须**：逻辑不得跨层调用（表现层不直接写游戏逻辑，服务端不直接调 Canvas API）
-
-> ⚠️ **已知架构债**：当前 `GamePage.tsx`（876行）混合了网关层（输入处理+socket发送）和表现层（Canvas渲染），`useEffect gameLoop` 块承担了客户端网关职责。目标态应为：网关逻辑提取到 `src/network/` 或 `src/hooks/useGameLoop.ts`，GamePage 专司渲染。
+> 模块职责与代码归属规则详见 `.claude/rules/architecture-guard.md`。
 
 ### 7.2 地牢生成
 
@@ -256,7 +250,7 @@ server/config/
 
 **你必须**：
 - 收到需求 → 先写 `docs/requirements.md`，再拆解到 `docs/todo/`
-- 发现架构问题 → 写入 `docs/todo/architecture.md`（最高优先级）
+- 发现架构问题 → 写入 `docs/todo/tech-debt.md`（技术债登记）
 - 完成一项 → 验证后打钩 `- [x] + 日期`，不得先标后验
 
 ---
@@ -274,7 +268,7 @@ server/config/
 
 ### 编码规范
 - [ ] `npx tsc --noEmit` 零 error（warning 可忽略）
-- [ ] 无 `any`、无 `@ts-ignore`
+- [ ] `any` 在预算内（≤15）且有注释，无 `@ts-ignore`
 - [ ] 命名风格统一（文件/类型/函数/常量各从其规范）
 - [ ] Edit 前已 re-Read 文件，`old_string` 与原文精确匹配
 
@@ -312,7 +306,7 @@ server/config/
 
 对于**已知架构债**，你**必须**：
 
-1. 在 `docs/todo/architecture.md` 记录：问题描述 + 根因 + 影响范围
+1. 在 `docs/todo/tech-debt.md` 记录：问题描述 + 根因 + 影响范围
 2. 代码中加注释说明：`// 已知问题：XXX（TODO: YYY）`
 3. **不得**引入新的架构债（过渡方案仅用于存量问题）
 4. 每个 PR 最多携带**一项**架构债清理，超出则拆解

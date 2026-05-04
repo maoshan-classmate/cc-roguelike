@@ -115,20 +115,35 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 
 ```
 ./
+├── shared/                 # 跨端共享（types.ts/constants.ts/protocol.ts）
 ├── src/                    # React 前端（Vite，端口3000）
-│   ├── config/            # 配置文件（sprites.ts/characters.ts/enemies.ts/items.ts）
+│   ├── config/            # 静态配置数据（sprites/characters/enemies/items）
 │   ├── components/        # React 组件（像素风格组件库）
-│   ├── hooks/             # 自定义 Hooks
-│   ├── pages/            # 页面（GamePage/LoginPage 等）
-│   └── assets/            # 静态资源（kenney/0x72 精灵图）
+│   ├── hooks/             # React 副作用封装（useGameRenderer/useGameInput）
+│   ├── rendering/         # 纯绘制函数（ctx,data）=>void，无 React 依赖
+│   ├── pages/            # Hook 组合 + JSX 布局（GamePage/LoginPage）
+│   ├── store/            # Zustand 状态管理
+│   ├── network/          # Socket.io 客户端
+│   ├── audio/            # 音效系统（jsfxr + Howler.js）
+│   ├── utils/            # 纯工具函数（动画/地牢瓦片渲染）
+│   ├── types/            # 仅客户端类型
+│   └── assets/            # 静态资源（kenney/0x72 精灵图 + AI 生成）
 ├── server/                # Node.js 后端（端口3001）
-│   ├── room/              # 游戏房间逻辑（GameRoom）
+│   ├── game/             # 游戏逻辑
+│   │   ├── GameRoom.ts   # 房间生命周期、模块编排
+│   │   ├── collision/    # 碰撞检测（CollisionGrid）
+│   │   ├── combat/       # 伤害计算（CombatResolver）
+│   │   ├── enemy/        # 敌人 AI（EnemyAI）
+│   │   ├── dungeon/      # 地牢生成（DungeonGenerator）
+│   │   ├── player/       # 玩家逻辑
+│   │   ├── skill/        # 技能系统
+│   │   └── item/         # 道具逻辑
 │   └── index.ts           # Express + Socket.io 入口
 ├── docs/                  # 项目文档
-│   ├── components.md      # 组件库索引
+│   ├── gdd/               # 游戏设计文档（5 个核心系统，8 章节 GDD 格式）
 │   ├── bugs/              # Bug 记录（按系统分类）
 │   ├── todo/              # 待办任务（按领域分类）
-│   └── gdd/               # 游戏设计文档（5 个核心系统，8 章节 GDD 格式）
+│   └── audio/             # 音效系统文档
 └── sprite-viewer.html     # 贴图资产可视化预览（交互）
 ```
 
@@ -146,6 +161,7 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 ## 铁律（最高优先级 ⚠️）
 
 > 贴图三文件同步铁律详见 `.claude/rules/sprite-sync.md`（条件加载）。
+> 架构守卫详见 `.claude/rules/architecture-guard.md`（alwaysApply）。
 > 以下为 agent 局限性和已知同步历史
 
 **已知同步历史**：
@@ -163,7 +179,7 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 - 只补缺失条目，不修复已存在条目间的坐标/尺寸不一致
 - WEAPON 类坐标差异需人工确认后手动同步
 
-**架构风险**：详见 [架构问题](docs/todo/architecture.md)
+**架构风险**：详见 [技术债登记](docs/todo/tech-debt.md) 和 `.claude/rules/architecture-guard.md`
 
 ## 索引
 
@@ -185,7 +201,7 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 - [Bug 记录（按系统）](docs/bugs/)
 - [用户需求原始记录](docs/requirements.md)
 - [待办任务（按领域）](docs/todo/)
-- **[架构问题（最高优先级）](docs/todo/architecture.md)** — 全局设计债/体系不对齐
+- **[架构问题 → 已迁移至架构守卫](docs/todo/tech-debt.md)** — 原架构 TODO 全部完成，现由 `.claude/rules/architecture-guard.md` 管控
 - **[开发规范（强制）](docs/DEVELOPMENT_STANDARD.md)** — 所有 AI 开发必须遵守，含 AI 开发检查清单
 - **[GDD 战斗系统](docs/gdd/combat.md)** — 4 职业攻击路径、伤害公式、技能冷却
 - **[GDD 地牢生成](docs/gdd/dungeon-generation.md)** — 房间/走廊算法、出生/出口规则
@@ -247,10 +263,10 @@ npx tsc --noEmit                                # TypeScript 编译检查
 **收到任务** → 先写 `docs/todo/` 对应子文件，再开发
 **完成一项** → 验证闭环后打钩 `- [x]` + 日期（tsc → build → E2E → 才标记，不要先标后验）
 **发现 bug** → 先写 `docs/bugs/` 对应子文件，再修复
-**架构问题** → 写 `docs/todo/architecture.md`（最高优先级，需先写方案再动手）
+**架构问题** → 写 `docs/todo/tech-debt.md`（登记技术债），架构约束见 `.claude/rules/architecture-guard.md`
 
-**新系统需求** → 先写 `docs/gdd/*.md`（GDD 8 章节）→ `/review-all-gdds` 审查一致性 → 再开发
-**小改动** → `/quick-design` → 自动更新对应 GDD 章节
+**新系统需求** → `/design-system` → GDD 8 章节 → `/review-all-gdds` → 开发（详见 architecture-guard GDD 体系对接）
+**小改动** → `/quick-design` → 更新 GDD 章节 → 开发
 **新增实体/配置** → `/consistency-check` → 扫描 GDD 与代码注册表一致性
 **TODO 条目格式**：详见 `.claude/rules/todo-format.md` — WHAT/WHERE/DONE/DON'T/DEPENDS 结构化格式
 

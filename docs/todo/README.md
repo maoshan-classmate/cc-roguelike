@@ -2,7 +2,7 @@
 
 ## 按领域分类
 
-- **[架构问题](architecture.md)** — 最高优先级，全局设计债/体系不对齐
+- **[技术债登记](tech-debt.md)** — 未解决的技术债（已完成项定期清理）
 - [Bug 修复清单](bugs.md)
 - [UI 优化](ui-optimization.md)
 - [功能待办](features.md)
