@@ -103,14 +103,14 @@ damage = max(1, weapon.damage - target.def * 0.5)
 | fast | 20 |
 | ghost | 40 |
 | tank | 80 |
-| boss | 200 |
+| boss | 800 |
 
-- **无 Floor 缩放乘数**：Floor 1 的 basic HP = Floor 5 的 basic HP = 30
-- 难度递增仅通过敌人类型组合和数量实现（见 progression.md）
+- **Floor 缩放已启用**（见 progression.md）：`enemy_hp = base × (1 + (floor-1) × 0.15)`
+- 难度递增通过属性缩放 + 敌人类型组合 + 数量实现
 
-**客户端配置差异（已知）**：`src/config/enemies.ts` 的 ATK 值与服务端不一致（如 basic ATK: 客户端=5, 服务端=8）。GDD 以服务端为准。
+**客户端配置差异（已知）**：`src/config/enemies.ts` 的 ATK 值可能与服务端不一致。以 `shared/constants.ts` ENEMY_BASE_ATTACK 为准（basic=8, fast=10, ghost=12, tank=15, boss=25）。
 
-**计划迭代（Floor 缩放公式，当前未启用）：**
+**Floor 缩放公式（✅ 已启用）：**
 
 ```
 enemy_hp = ENEMY_BASE_HP[type] × (1 + (floor - 1) × 0.15)
@@ -119,7 +119,7 @@ enemy_hp = ENEMY_BASE_HP[type] × (1 + (floor - 1) × 0.15)
 - Floor 1: ×1.0（不变）
 - Floor 3: ×1.3
 - Floor 5: ×1.6
-- Boss 不缩放（始终 200 HP）
+- Boss 不缩放（始终 800 HP）
 
 **TODO — HP 缩放优化计划**：
 
@@ -153,7 +153,7 @@ bullet_displacement = BULLET_SPEED × dt
 | mage | 180 |
 | cleric | 190 |
 | basic | 60 |
-| fast | 100 |
+| fast | 120 |
 | ghost | 70 |
 | tank | 40 |
 | boss | 50 |

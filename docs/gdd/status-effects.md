@@ -69,6 +69,7 @@ interface EffectFlags {
   energyRegenMultiplier: number; // 能量回复倍率
   cooldownMultiplier: number;  // 技能冷却倍率
   ccImmune: boolean;           // 免疫所有 CC 类状态（施加时检查）
+  trapResistance: boolean;     // 免疫陷阱效果
 }
 ```
 
@@ -488,6 +489,7 @@ shared/types.ts ← StatusManager ← GameRoom.update()
 | root | 定身 | 2000ms | blocksMovement=true | refresh | hard_cc | 2 | 无 |
 | knockback | 击退 | 瞬时(0ms) | knockbackImmune=true(self) | refresh | — | 0 | 无 |
 | taunt | 嘲讽 | 3000ms | forcedTarget=true | refresh | — | 1 | 无 |
+| slow_trap | 陷阱减速 | 3000ms | speedMultiplier=0.3 | max_duration | — | 1 | 无 |
 
 ### I2. Buff（增益）
 
@@ -499,6 +501,8 @@ shared/types.ts ← StatusManager ← GameRoom.update()
 | invulnerable | 绝对无敌 | 3000ms | invulnerable=true, knockbackImmune=true | refresh | invincibility | 6 | 无 |
 | heal_over_time | 持续回复 | 5000ms | — | max_stacks(max=3) | — | 0 | heal/500ms, value=8 |
 | energy_regen_boost | 能量回复 | 5000ms | energyRegenMultiplier=2.0 | refresh | — | 0 | 无 |
+| power_essence_effect | 力量精华 | 999000ms | outgoingDamageMultiplier=1.15 | refresh | — | 1 | 无 |
+| iron_rune_effect | 铁壁符文 | 999000ms | trapResistance=true | refresh | — | 1 | 无 |
 
 ### I3. Debuff（减益）
 
@@ -518,6 +522,7 @@ shared/types.ts ← StatusManager ← GameRoom.update()
 | cooldown_reduction | 冷却缩减 | 5000ms | cooldownMultiplier=0.5 | refresh | — | 0 | 无 |
 | cc_immune | CC 免疫 | 2000ms | ccImmune=true, knockbackImmune=true | refresh | — | 0 | 无 |
 | thorns | 反伤 | 5000ms | — | refresh | — | 0 | 无 |
+| vitality_crystal_effect | 生命结晶标记 | 999000ms | — | refresh | — | 0 | 无 |
 
 **注意**：`cc_immune` 通过 `ccImmune` flag 声明式生效。StatusManager.apply() 在步骤 2（互斥检查之前）先检查目标是否有 `ccImmune=true` 且新状态 `category='cc'`，若是则拒绝施加。
 
@@ -534,7 +539,10 @@ shared/types.ts ← StatusManager ← GameRoom.update()
 | 道具: speed_potion | speed_boost(5000ms, 1.5x) | 加速 |
 | 道具: health_potion | heal_over_time(3000ms, value=10) | 持续回复 |
 | 中毒敌人攻击 | poison(3000ms, value=3) | 中毒 DOT |
-| 减速陷阱 | slow(2000ms, 0.3x) | 强减速 |
+| 减速陷阱 | slow_trap(3000ms, 0.3x) | 竞技关陷阱强减速（独立于标准 slow） |
+| 竞技关奖励: 生命结晶 | vitality_crystal_effect(999000ms) | 唯一性标记（maxHP 通过直接属性修改） |
+| 竞技关奖励: 力量精华 | power_essence_effect(999000ms, 1.15x) | 造成伤害 +15%（持续到死亡） |
+| 竞技关奖励: 铁壁符文 | iron_rune_effect(999000ms) | 陷阱伤害 -50%（持续到死亡） |
 
 ---
 

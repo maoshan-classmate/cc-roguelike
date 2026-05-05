@@ -21,6 +21,15 @@ Floor 1-5 的线性推进系统，每 floor 难度递增。通过出口楼梯进
 2. **玩家到达出口**：任一存活玩家距 exitPoint < 40px
 3. 两个条件同时满足时触发
 
+**Floor 5 特殊胜利条件**（见 room-diversity.md AC 3）：
+- Floor 5 Boss 房间全敌清除后**直接 VICTORY**，无需玩家到达出口
+- 广播 `game:end { win: true }`
+
+**竞技关触发**（见 room-diversity.md）：
+- Floor ∈ {1,2,3} 过渡时 10% 概率进入竞技关（每局最多 1 次）
+- 竞技关不计入楼层数（竞技关后进入下一正常 floor）
+- 竞技关由独立状态机管理（ARENA_PLAYING）
+
 **Floor 过关后**：
 - `startFloor(floor + 1)` — 清除所有敌人/子弹/道具，重新生成地牢
 - 所有玩家（含已死亡）复活并传送到新出生点

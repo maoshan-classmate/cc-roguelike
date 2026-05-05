@@ -8,7 +8,7 @@ export const ENEMY_BASE_HP: Record<string, number> = {
   fast: 20,
   ghost: 40,
   tank: 80,
-  boss: 200
+  boss: 800
 };
 
 export const ENEMY_BASE_ATTACK: Record<string, number> = {

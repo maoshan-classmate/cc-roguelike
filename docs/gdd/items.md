@@ -30,6 +30,18 @@
 | Bullet | `bullet` | 弹药补充 | 死代码——拾取后移除但无效果 |
 | Chest | `chest` | 随机战利品 | 死代码——无法拾取 |
 
+**竞技关专属奖励**（room-diversity.md 定义，每局最多获取一次）：
+
+| 道具 | type ID | 效果 | 持续 | 说明 |
+|------|---------|------|------|------|
+| 生命结晶 | `vitality_crystal` | maxHP +15 | 永久（到死亡） | 直接修改 `player.hpMax += 15`，同时施加 `vitality_crystal_effect` 标记状态（唯一性检查） |
+| 力量精华 | `power_essence` | 造成伤害 +15% | 永久（到死亡） | 通过 `statusManager.apply('power_essence_effect', ...)` 施加 `outgoingDamageMultiplier=1.15` |
+| 铁壁符文 | `iron_rune` | 陷阱伤害 -50% | 永久（到死亡） | 通过 `statusManager.apply('iron_rune_effect', ...)` 施加 `trapResistance` flag |
+
+- 以上奖励仅在竞技关（Arena）3 波清除后生成
+- 每种道具每局只能获取一次（重复拾取仅刷新持续时间，不叠加效果）
+- 死亡时由 `statusManager.clearAll()` 清除 power_essence/iron_rune 效果；vitality_crystal 的 maxHP 修改在复活时重置
+
 ### 道具渲染
 - 0x72 优先 → Kenney fallback
 - `items.ts` 的 `spriteName` = Registry key
