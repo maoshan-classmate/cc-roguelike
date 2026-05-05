@@ -102,6 +102,39 @@ export const ITEMS: Record<string, ItemConfig> = {
     size: 16,
     color: '#8B4513',
     description: '打开可获得随机道具'
+  },
+  vitality_crystal: {
+    id: 'vitality_crystal',
+    name: '生命结晶',
+    spriteIndex: 29,
+    sheet: 'dungeon',
+    spriteName: 'flask_big_red',  // fallback to existing sprite
+    size: 16,
+    color: '#FF6B6B',
+    description: '+15 最大生命值',
+    effect: { type: 'buff', value: 15 }
+  },
+  power_essence: {
+    id: 'power_essence',
+    name: '力量精华',
+    spriteIndex: 30,
+    sheet: 'dungeon',
+    spriteName: 'flask_big_blue',
+    size: 16,
+    color: '#FF8C00',
+    description: '+15% 伤害',
+    effect: { type: 'buff', value: 15 }
+  },
+  iron_rune: {
+    id: 'iron_rune',
+    name: '铁壁符文',
+    spriteIndex: 34,
+    sheet: 'dungeon',
+    spriteName: 'flask_big_green',  // fallback to existing sprite
+    size: 16,
+    color: '#4A9EFF',
+    description: '-50% 陷阱伤害',
+    effect: { type: 'buff', value: 50 }
   }
 }
 

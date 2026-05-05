@@ -186,3 +186,28 @@ Prior verdict resolved: Yes (6 prior blocking items fixed)
 ### Post-Review Note
 
 - `enemy-ai.md` 和 `.claude/rules/game-constants.md` 的 ATK 值 (basic=5/fast=8/tank=10) 与代码 (shared/constants.ts: basic=8/fast=10/tank=15) 不一致，需在实施前同步更新
+
+## Review — 2026-05-05 — Verdict: APPROVED (fifth review, re-review)
+Scope signal: L
+Specialists: game-designer, systems-designer, qa-lead
+Summary: 五次审查（re-review）确认 GDD 骨架扎实（8/8 章节），4th review 的 8 个阻塞项全部已修复。新发现 5 个需修复项——explored tile alpha 内部矛盾（0.3 vs 0.7 两种说法）、slow_trap 持续时间跨 GDD 不一致（2s vs 3s）、enemy-ai 依赖表缺 dormant 行为、竞技关代码（ArenaGenerator.ts 单矩形）与 GDD（同心双层）布局不符、dungeon-generation.md 严重过时。前三项已当场修复，后两项属实施阶段同步问题（以 GDD 为准重建代码）。附加发现：法师竞技关生存性问题（调参解决）、57 条 AC 通过率 60%（34 条通过，23 条需修订/补充）。QA 建议补充 15 条新 AC（wave 2/3 生成、竞技关奖励效果、迷宫死胡同保证等）。
+Prior verdict resolved: Yes (all 8 editorial items fixed)
+
+### Fixed Items (3)
+
+1. **explored tile alpha 统一** — "alpha=0.3 显示" → "fog overlay alpha=0.7（地面 30% 可见）"（消除歧义）
+2. **slow_trap 持续时间统一** — status-effects.md 3000ms → 2000ms（匹配 room-diversity.md 的 2s）
+3. **enemy-ai 依赖表补充** — 新增 dormant 行为硬依赖说明
+
+### Propagated Changes
+
+- dungeon-generation.md: 完整重写，反映 BSP-Enhanced + 4 种生成器
+- progression.md: 完整重写，反映迷宫关/竞技关触发路由 + Floor 5 直接 VICTORY
+
+### Implementation Notes (not blocking)
+
+- ArenaGenerator.ts 需重建为 ColosseumGenerator.ts（同心双层布局）
+- 法师竞技关生存性：Floor 3 arena Wave 1 DPS 可在 4-6s 内击杀 60HP 法师（调参解决）
+- iron_rune 价值偏低：建议 buff 或允许玩家自选奖励
+- 57 条 AC 中 34 条通过，需补充 wave 2/3、奖励效果、迷宫死胡同等 AC
+- Dash 穿越陷阱的交互未在 GDD 中记录（位置传送绕过检测）

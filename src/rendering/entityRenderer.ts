@@ -198,6 +198,22 @@ export function drawEnemies(
       ctx.fillRect(epos.x - size/2, epos.y - size/2, size, size)
     }
 
+    // Dormant enemy indicator: purple breathing circle + body overlay
+    if (enemy.dormant) {
+      const time = performance.now()
+      const alpha = 0.4 + 0.2 * Math.sin(time * 2 * Math.PI / 2000)
+      // Purple breathing circle above head
+      ctx.beginPath()
+      ctx.arc(epos.x, epos.y - 24, 8, 0, Math.PI * 2)
+      ctx.fillStyle = `rgba(128, 64, 200, ${alpha})`
+      ctx.fill()
+      // Purple body overlay
+      ctx.globalAlpha = 0.15
+      ctx.fillStyle = '#8040C8'
+      ctx.fillRect(epos.x - size/2, epos.y - size/2, size, size)
+      ctx.globalAlpha = 1.0
+    }
+
     ctx.restore()
     ctx.globalAlpha = 1
 

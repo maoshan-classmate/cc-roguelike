@@ -23,10 +23,12 @@ const DEFAULT_FLAGS: EffectFlags = {
   outgoingDamageMultiplier: 1.0,
   invulnerable: false,
   forcedTarget: false,
+  forcedTargetSource: '',
   knockbackImmune: false,
   energyRegenMultiplier: 1.0,
   cooldownMultiplier: 1.0,
   ccImmune: false,
+  trapResistance: false,
 };
 
 export class StatusManager {
@@ -163,6 +165,7 @@ export class StatusManager {
       if (f.forcedTarget) { result.forcedTarget = true; lastForcedTargetSource = effect.sourceId; }
       if (f.knockbackImmune) result.knockbackImmune = true;
       if (f.ccImmune) result.ccImmune = true;
+      if (f.trapResistance) result.trapResistance = true;
 
       if (f.speedMultiplier !== undefined && f.speedMultiplier !== 1.0) {
         result.speedMultiplier *= f.speedMultiplier;
@@ -188,8 +191,8 @@ export class StatusManager {
     result.energyRegenMultiplier = Math.max(CLAMP_FLOOR, Math.min(CLAMP_CEIL, result.energyRegenMultiplier));
     result.cooldownMultiplier = Math.max(CLAMP_FLOOR, Math.min(CLAMP_CEIL, result.cooldownMultiplier));
 
-    result.forcedTargetSource = lastForcedTargetSource ?? undefined;
-    return result as any;
+    result.forcedTargetSource = lastForcedTargetSource ?? '';
+    return result;
   }
 
   serialize(): SerializedStatusEffect[] {

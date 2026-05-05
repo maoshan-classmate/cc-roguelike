@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react'
 import { ITEMS } from '../config/items'
-import type { PlayerState, EnemyState, BulletState, HealWaveState, ItemState, GameState as SharedGameState, DungeonData } from '@shared/types'
+import type { PlayerState, EnemyState, BulletState, HealWaveState, ItemState, GameState as SharedGameState, DungeonData, EnvObjectState } from '@shared/types'
 import { drawFallbackRect } from '../rendering/fallbackDraw'
 import { drawBossEffects, type BossEffect } from '../rendering/bossEffectRenderer'
 import { drawBullets, drawHealWaves } from '../rendering/projectileRenderer'
@@ -37,6 +37,97 @@ export function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
 }
 
+/** Render environment objects (pillars, traps, doors, decorations) */
+function drawEnvObjects(
+  ctx: CanvasRenderingContext2D,
+  envObjects: EnvObjectState[],
+  atlasImg: HTMLImageElement,
+  frame: number,
+  customSprites: Record<string, HTMLImageElement>,
+): void {
+  for (const obj of envObjects) {
+    switch (obj.type) {
+      case 'pillar': {
+        if (!obj.alive) break
+        // 2×2 tile base: cover wall tiles with floor, add boss-room tint
+        const hw = obj.width / 2
+        const hh = obj.height / 2
+        const tileCount = Math.round(obj.width / 32)
+        for (let dr = 0; dr < tileCount; dr++) {
+          for (let dc = 0; dc < tileCount; dc++) {
+            const tx = obj.x - hw + dc * 32 + 16
+            const ty = obj.y - hh + dr * 32 + 16
+            draw0x72Sprite(ctx, atlasImg, 'floor_1', tx, ty, 32)
+          }
+        }
+        // Dark red tint for boss-room atmosphere
+        ctx.fillStyle = 'rgba(42, 10, 10, 0.4)'
+        ctx.fillRect(obj.x - hw, obj.y - hh, obj.width, obj.height)
+        // Banner sprite planted in the center
+        const bannerImg = customSprites['floor_banner']
+        if (bannerImg) {
+          const prevSmooth = ctx.imageSmoothingEnabled
+          ctx.imageSmoothingEnabled = true
+          ctx.imageSmoothingQuality = 'high'
+          ctx.drawImage(bannerImg, obj.x - hw, obj.y - hh, obj.width, obj.height)
+          ctx.imageSmoothingEnabled = prevSmooth
+        } else {
+          draw0x72Sprite(ctx, atlasImg, 'skull', obj.x, obj.y, 32)
+        }
+        break
+      }
+      case 'trap': {
+        const spriteName = obj.trapActive
+          ? 'floor_spikes_anim_f3'
+          : 'floor_spikes_anim_f0';
+        if (is0x72Sprite(spriteName)) {
+          draw0x72Sprite(ctx, atlasImg, spriteName, obj.x, obj.y, obj.width);
+        }
+        break;
+      }
+      case 'door': {
+        if (obj.doorOpen) {
+          // Open door — draw exit stairs sprite
+          const spriteName = 'floor_stairs'
+          if (is0x72Sprite(spriteName)) {
+            draw0x72Sprite(ctx, atlasImg, spriteName, obj.x, obj.y, obj.width)
+          } else {
+            ctx.fillStyle = '#445566'
+            ctx.fillRect(obj.x - obj.width / 2, obj.y - obj.height / 2, obj.width, obj.height)
+          }
+        } else {
+          // Closed door
+          const spriteName = 'doors_leaf_closed'
+          if (is0x72Sprite(spriteName)) {
+            draw0x72Sprite(ctx, atlasImg, spriteName, obj.x, obj.y, obj.width)
+          } else {
+            ctx.fillStyle = '#654321'
+            ctx.fillRect(obj.x - obj.width / 2, obj.y - obj.height / 2, obj.width, obj.height)
+          }
+        }
+        break
+      }
+      case 'decoration': {
+        if (obj.spriteKey) {
+          const customImg = customSprites[obj.spriteKey];
+          if (customImg) {
+            const drawSize = obj.width;
+            // Enable smooth scaling for AI-generated images (large → small)
+            const prevSmooth = ctx.imageSmoothingEnabled;
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(customImg, obj.x - drawSize / 2, obj.y - drawSize / 2, drawSize, drawSize);
+            ctx.imageSmoothingEnabled = prevSmooth;
+          } else if (is0x72Sprite(obj.spriteKey)) {
+            draw0x72Sprite(ctx, atlasImg, obj.spriteKey, obj.x, obj.y, obj.width)
+          }
+        }
+        break
+      }
+    }
+  }
+}
+
 interface GameState {
   players: PlayerState[]
   enemies: EnemyState[]
@@ -46,6 +137,7 @@ interface GameState {
   gold: number
   keys: number
   dungeon: DungeonData | null
+  phase?: string
 }
 
 interface RenderDeps {
@@ -53,6 +145,7 @@ interface RenderDeps {
   spritesLoaded: boolean
   tileset2Atlas: HTMLImageElement
   generatedSheets: Record<string, HTMLImageElement>
+  customSprites: Record<string, HTMLImageElement>
   lastAnimTime: React.MutableRefObject<number>
   prevPositions: React.MutableRefObject<Map<string, { x: number; y: number }>>
   targetPositions: React.MutableRefObject<Map<string, { x: number; y: number }>>
@@ -98,6 +191,7 @@ export function useGameRenderer(
       spritesLoaded,
       tileset2Atlas,
       generatedSheets,
+      customSprites,
       lastAnimTime,
       prevPositions,
       targetPositions,
@@ -156,17 +250,26 @@ export function useGameRenderer(
     if (dungeon && dungeon.collisionGrid && spritesLoaded && tileset2Atlas.complete) {
       const grid = dungeon.collisionGrid
       const exitKey = dungeon.exitPoint ? `${dungeon.exitPoint.x},${dungeon.exitPoint.y}` : 'noExit'
-      const gridKey = grid.map((row: boolean[]) => row.join('')).join('|') + '|' + exitKey
+      const roomsKey = dungeon.rooms?.map((r: any) => `${r.x},${r.y},${r.width},${r.height},${r.type || ''}`).join('|') || ''
+      const gridKey = grid.map((row: boolean[]) => row.join('')).join('|') + '|' + exitKey + '|' + roomsKey
+
+      // Build exclude rects from pillar envObjects for micro-decoration cleanup
+      const pillarRects = (dungeon.envObjects || []).filter((o: any) => o.type === 'pillar' && o.alive)
 
       if (!dungeonCacheRef.current || dungeonCacheRef.current.gridKey !== gridKey) {
         const offscreen = document.createElement('canvas')
         offscreen.width = (grid[0]?.length || 0) * 32
         offscreen.height = grid.length * 32
         const offCtx = offscreen.getContext('2d')!
-        renderDungeonTiles(offCtx, grid, tileset2Atlas, dungeon.exitPoint)
+        renderDungeonTiles(offCtx, grid, tileset2Atlas, dungeon.exitPoint, dungeon.rooms, pillarRects)
         dungeonCacheRef.current = { canvas: offscreen, gridKey }
       }
       ctx.drawImage(dungeonCacheRef.current.canvas, 0, 0)
+
+      // Render environment objects (collisionGrid path)
+      if (dungeon.envObjects) {
+        drawEnvObjects(ctx, dungeon.envObjects, tileset2Atlas, frame, deps.customSprites)
+      }
 
       // 出口引导：清怪后入口处淡蓝色光线
       if (dungeon.exitPoint && enemies.filter(e => e.alive !== false).length === 0) {
@@ -203,10 +306,16 @@ export function useGameRenderer(
         offscreen.width = canvas.width
         offscreen.height = canvas.height
         const offCtx = offscreen.getContext('2d')!
-        renderDungeonFromRooms(offCtx, dungeon.rooms, dungeon.corridorTiles, tileset2Atlas, canvas.width, canvas.height, dungeon.exitPoint)
+        const pillarRects = (dungeon.envObjects || []).filter((o: any) => o.type === 'pillar' && o.alive)
+        renderDungeonFromRooms(offCtx, dungeon.rooms, dungeon.corridorTiles, tileset2Atlas, canvas.width, canvas.height, dungeon.exitPoint, pillarRects)
         dungeonCacheRef.current = { canvas: offscreen, gridKey: roomsKey }
       }
       ctx.drawImage(dungeonCacheRef.current.canvas, 0, 0)
+
+      // Render environment objects (rooms path)
+      if (dungeon.envObjects) {
+        drawEnvObjects(ctx, dungeon.envObjects, tileset2Atlas, frame, deps.customSprites)
+      }
 
       // 出口引导：清怪后入口处淡蓝色光线（rooms 路径）
       if (dungeon.exitPoint && enemies.filter(e => e.alive !== false).length === 0) {
@@ -343,6 +452,33 @@ export function useGameRenderer(
     if (skillEffectStore) {
       skillEffectStore.update()
       skillEffectStore.draw(ctx)
+    }
+
+    // ── Fog of war for maze ──
+    if (gameStateRef.current.phase === 'MAZE_PLAYING') {
+      const localPlayer = players.find(p => p.id === user?.id)
+      if (localPlayer) {
+        const visionRadius = 96
+        ctx.save()
+        // Solid black overlay with circular cutout
+        ctx.fillStyle = '#000000'
+        ctx.beginPath()
+        ctx.rect(0, 0, canvas.width, canvas.height)
+        ctx.arc(localPlayer.x, localPlayer.y, visionRadius, 0, Math.PI * 2, true)
+        ctx.fill()
+        // Soft edge gradient for natural falloff
+        const fogGrad = ctx.createRadialGradient(
+          localPlayer.x, localPlayer.y, visionRadius * 0.6,
+          localPlayer.x, localPlayer.y, visionRadius,
+        )
+        fogGrad.addColorStop(0, 'rgba(0, 0, 0, 0)')
+        fogGrad.addColorStop(1, 'rgba(0, 0, 0, 0.85)')
+        ctx.fillStyle = fogGrad
+        ctx.beginPath()
+        ctx.arc(localPlayer.x, localPlayer.y, visionRadius, 0, Math.PI * 2)
+        ctx.fill()
+        ctx.restore()
+      }
     }
   }, [canvasRef, gameStateRef, deps])
 

@@ -89,6 +89,7 @@ function drawMicroDecorations(
   atlas: HTMLImageElement,
   grid: boolean[][],
   exitPoint?: { x: number; y: number },
+  excludeRects?: Array<{ x: number; y: number; width: number; height: number }>,
 ) {
   const rows = grid.length
   const cols = grid[0]?.length || 0
@@ -99,6 +100,18 @@ function drawMicroDecorations(
     for (let c = 0; c < cols; c++) {
       if (!grid[r][c]) continue
       if (r === exitRow && c === exitCol) continue
+      // Skip tiles inside pillar exclude rects
+      if (excludeRects) {
+        const tx = c * TILE + TILE / 2, ty = r * TILE + TILE / 2
+        let inExcluded = false
+        for (const rect of excludeRects) {
+          if (tx > rect.x - rect.width / 2 && tx < rect.x + rect.width / 2
+            && ty > rect.y - rect.height / 2 && ty < rect.y + rect.height / 2) {
+            inExcluded = true; break
+          }
+        }
+        if (inExcluded) continue
+      }
 
       const seed = (r * 31 + c * 17) % 100
       if (seed >= 15) continue
@@ -117,20 +130,11 @@ function drawMicroDecorations(
         ctx.globalAlpha = 0.8
         drawTile(ctx, atlas, 'wall_goo', c, r)
       } else if (seed <= 11) {
-        ctx.globalAlpha = 0.35
-        ctx.fillStyle = '#8B0000'
-        ctx.beginPath()
-        ctx.ellipse(x + TILE / 2 + (seed * 3 - 18), y + TILE / 2 + (seed * 2 - 10), 12, 8, seed * 0.3, 0, Math.PI * 2)
-        ctx.fill()
+        ctx.globalAlpha = 0.7
+        drawTile(ctx, atlas, 'wall_goo_base', c, r)
       } else {
-        ctx.globalAlpha = 0.4
-        ctx.fillStyle = '#2D5A1E'
-        ctx.beginPath()
-        ctx.ellipse(x + TILE * 0.3, y + TILE * 0.6, 6, 4, 0.5, 0, Math.PI * 2)
-        ctx.fill()
-        ctx.beginPath()
-        ctx.ellipse(x + TILE * 0.6, y + TILE * 0.4, 5, 3, -0.3, 0, Math.PI * 2)
-        ctx.fill()
+        ctx.globalAlpha = 0.6
+        drawTile(ctx, atlas, 'wall_hole_1', c, r)
       }
       ctx.restore()
     }
@@ -150,6 +154,8 @@ export function renderDungeonTiles(
   grid: boolean[][],
   atlas: HTMLImageElement,
   exitPoint?: { x: number; y: number },
+  rooms?: { x: number; y: number; width: number; height: number; type: string }[],
+  excludeRects?: Array<{ x: number; y: number; width: number; height: number }>,
 ) {
   const rows = grid.length
   const cols = grid[0]?.length || 0
@@ -161,8 +167,43 @@ export function renderDungeonTiles(
   ctx.fillRect(0, 0, w, h)
 
   drawFloorTiles(ctx, atlas, grid)
+
+  // Room type floor overlays
+  if (rooms) {
+    for (const room of rooms) {
+      if (!room.type || room.type === 'normal') continue
+      const startCol = Math.floor(room.x / TILE)
+      const startRow = Math.floor(room.y / TILE)
+      const endCol = Math.ceil((room.x + room.width) / TILE)
+      const endRow = Math.ceil((room.y + room.height) / TILE)
+
+      if (room.type === 'boss') {
+        for (let r = startRow; r < endRow && r < rows; r++) {
+          for (let c = startCol; c < endCol && c < cols; c++) {
+            if (!grid[r][c]) continue
+            const centerCol = Math.floor((startCol + endCol) / 2)
+            if (Math.abs(c - centerCol) <= 1) {
+              ctx.fillStyle = 'rgba(42, 10, 10, 0.35)'
+            } else {
+              ctx.fillStyle = 'rgba(53, 26, 26, 0.25)'
+            }
+            ctx.fillRect(c * TILE, r * TILE, TILE, TILE)
+          }
+        }
+      } else if (room.type === 'arena') {
+        for (let r = startRow; r < endRow && r < rows; r++) {
+          for (let c = startCol; c < endCol && c < cols; c++) {
+            if (!grid[r][c]) continue
+            ctx.fillStyle = 'rgba(30, 40, 48, 0.3)'
+            ctx.fillRect(c * TILE, r * TILE, TILE, TILE)
+          }
+        }
+      }
+    }
+  }
+
   drawWallTiles(ctx, atlas, grid)
-  drawMicroDecorations(ctx, atlas, grid, exitPoint)
+  drawMicroDecorations(ctx, atlas, grid, exitPoint, excludeRects)
 
   if (exitPoint) {
     const exitCol = Math.floor(exitPoint.x / TILE)
@@ -175,12 +216,13 @@ export function renderDungeonTiles(
 
 export function renderDungeonFromRooms(
   ctx: CanvasRenderingContext2D,
-  rooms: Array<{ x: number; y: number; width: number; height: number }>,
+  rooms: Array<{ x: number; y: number; width: number; height: number; type?: string }>,
   corridorTiles: Array<{ x: number; y: number }> | undefined,
   atlas: HTMLImageElement,
   canvasWidth: number,
   canvasHeight: number,
   exitPoint?: { x: number; y: number },
+  excludeRects?: Array<{ x: number; y: number; width: number; height: number }>,
 ) {
   ctx.imageSmoothingEnabled = false
   ctx.fillStyle = '#1A1210'
@@ -213,8 +255,44 @@ export function renderDungeonFromRooms(
   }
 
   drawFloorTiles(ctx, atlas, grid)
+
+  // Room type floor overlays
+  for (const room of rooms) {
+    if (!room.type || room.type === 'normal') continue
+
+    const startCol = Math.floor(room.x / TILE)
+    const startRow = Math.floor(room.y / TILE)
+    const endCol = Math.ceil((room.x + room.width) / TILE)
+    const endRow = Math.ceil((room.y + room.height) / TILE)
+
+    if (room.type === 'boss') {
+      // Boss room: dark red floor with center column highlight
+      for (let r = startRow; r < endRow && r < rows; r++) {
+        for (let c = startCol; c < endCol && c < cols; c++) {
+          if (!grid[r][c]) continue
+          const centerCol = Math.floor((startCol + endCol) / 2)
+          if (Math.abs(c - centerCol) <= 1) {
+            ctx.fillStyle = 'rgba(42, 10, 10, 0.35)'
+          } else {
+            ctx.fillStyle = 'rgba(53, 26, 26, 0.25)'
+          }
+          ctx.fillRect(c * TILE, r * TILE, TILE, TILE)
+        }
+      }
+    } else if (room.type === 'arena') {
+      // Arena room: blue-tinted floor
+      for (let r = startRow; r < endRow && r < rows; r++) {
+        for (let c = startCol; c < endCol && c < cols; c++) {
+          if (!grid[r][c]) continue
+          ctx.fillStyle = 'rgba(30, 40, 48, 0.3)'
+          ctx.fillRect(c * TILE, r * TILE, TILE, TILE)
+        }
+      }
+    }
+  }
+
   drawWallTiles(ctx, atlas, grid)
-  drawMicroDecorations(ctx, atlas, grid, exitPoint)
+  drawMicroDecorations(ctx, atlas, grid, exitPoint, excludeRects)
 
   if (exitPoint) {
     const exitCol = Math.floor(exitPoint.x / TILE)

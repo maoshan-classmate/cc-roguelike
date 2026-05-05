@@ -1,5 +1,5 @@
 import type { PlayerState, EnemyState, BulletState, BossEvent } from '../../../shared/types';
-import { ENEMY_RADIUS, ENEMY_SPEED, ENEMY_AGGRO_RANGE, ENEMY_ATTACK_COOLDOWN } from '../../../shared/constants';
+import { ENEMY_RADIUS, ENEMY_SPEED, ENEMY_AGGRO_RANGE, ENEMY_ATTACK_COOLDOWN, ARENA_DORMANT_SPEED_MULTIPLIER } from '../../../shared/constants';
 import { GAME_CONFIG } from '../../config/constants';
 import type { StatusManager } from '../status/StatusManager';
 
@@ -19,6 +19,23 @@ export class EnemyAI {
   }
 
   update(enemy: EnemyState, dt: number, sm?: StatusManager): void {
+    // Dormant: slow patrol, no chase, no attack
+    if (enemy.dormant) {
+      const speed = (ENEMY_SPEED[enemy.type] || 60) * dt * ARENA_DORMANT_SPEED_MULTIPLIER;
+      // Slow random drift based on enemy id for deterministic direction
+      const seed = enemy.id.charCodeAt(enemy.id.length - 1) || 0;
+      const angle = (seed * 1.7 + Date.now() * 0.0003) % (Math.PI * 2);
+      const radius = ENEMY_RADIUS[enemy.type] || 16;
+      const newX = enemy.x + Math.cos(angle) * speed;
+      const newY = enemy.y + Math.sin(angle) * speed;
+      if (this.deps.isWalkableRadius(newX, newY, radius)) {
+        enemy.x = newX;
+        enemy.y = newY;
+      }
+      enemy.state = 'idle';
+      return;
+    }
+
     // Check status flags before acting
     if (sm) {
       const flags = sm.getAggregatedFlags();

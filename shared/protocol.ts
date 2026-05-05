@@ -62,7 +62,13 @@ export const GameMessages = {
   END: 'game:end',
   CHAT: 'game:chat',
   CHAT_PUSH: 'game:chat:push',
-  DEBUG: 'game:debug'
+  DEBUG: 'game:debug',
+  ARENA_ENTERED: 'game:arena:entered',
+  ARENA_WAVE: 'game:arena:wave',
+  ARENA_CLEARED: 'game:arena:cleared',
+  MAZE_ENTERED: 'game:maze:entered',
+  TRAP_TRIGGERED: 'game:trap:triggered',
+  DOOR_STATE: 'game:door:state'
 } as const;
 
 // 聊天消息

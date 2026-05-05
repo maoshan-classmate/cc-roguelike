@@ -2,17 +2,31 @@
 
 ## Overview
 
-Floor 1-5 的线性推进系统，每 floor 难度递增。通过出口楼梯进入下一 floor。
+Floor 1-5 的线性推进系统，每 floor 难度递增。通过出口楼梯进入下一 floor。Floor 2-4 过渡时可概率触发迷宫关（20%）或竞技关（10%），每局各最多 1 次，不计入楼层数。Floor 5 Boss 房间全敌清除后直接 VICTORY。
 
 ## Player Fantasy
 
-递进的紧张感和成就感：每过一 floor 感觉变强了，但敌人也在变强。Boss floor 是阶段性高潮。
+递进的紧张感和成就感：每过一 floor 感觉变强了，但敌人也在变强。Boss floor 是阶段性高潮。偶尔出现的迷宫关和竞技关打破常规节奏，提供高风险高回报的分支体验。
 
 ## Detailed Rules
 
 ### Floor 结构
 - 5 个 floor（可通过 DebugMenu 的 `teleport` 跳关验证）
 - 出口楼梯是唯一用精灵的地牢物体：`drawDungeonSprite(23)`
+
+### GameRoom 状态机
+
+| 状态 | 含义 |
+|------|------|
+| `LOBBY` | 等待玩家准备 |
+| `FLOOR_TRANSITION` | 过渡动画/生成，决定下一层类型 |
+| `PLAYING` | 普通 Floor 活跃游玩 |
+| `MAZE_PLAYING` | 迷宫关游玩（迷雾视野限制） |
+| `ARENA_PLAYING` | 竞技关游玩（波次战斗） |
+| `VICTORY` | Floor 5 通过 |
+| `GAME_OVER` | 全员死亡 |
+
+详见 `room-diversity.md` Section 1 完整转换表。
 
 ### 过关条件
 
@@ -25,15 +39,34 @@ Floor 1-5 的线性推进系统，每 floor 难度递增。通过出口楼梯进
 - Floor 5 Boss 房间全敌清除后**直接 VICTORY**，无需玩家到达出口
 - 广播 `game:end { win: true }`
 
-**竞技关触发**（见 room-diversity.md）：
-- Floor ∈ {1,2,3} 过渡时 10% 概率进入竞技关（每局最多 1 次）
-- 竞技关不计入楼层数（竞技关后进入下一正常 floor）
-- 竞技关由独立状态机管理（ARENA_PLAYING）
+**楼层过渡路由**（FLOOR_TRANSITION 时决定下一层类型）：
+```
+if floor ∈ {1,2,3} (过渡到 Floor 2/3/4):
+  roll = random()
+  if roll < 0.1 and !arenaTriggered:   → startArena(), arenaTriggered = true
+  elif roll < 0.3 and !mazeTriggered:  → startMaze(), mazeTriggered = true
+  else:                                 → startFloor(N+1)
+else (Floor 5):                         → VICTORY
+```
+
+**互斥规则**：
+- 迷宫关和竞技关同一过渡点只触发一种（先检查竞技关 10%，再检查迷宫关 20%）
+- 每局各最多 1 次迷宫关和 1 次竞技关（`mazeTriggered` / `arenaTriggered` 标记）
+- 迷宫关和竞技关不计入 1-5 层数
 
 **Floor 过关后**：
 - `startFloor(floor + 1)` — 清除所有敌人/子弹/道具，重新生成地牢
 - 所有玩家（含已死亡）复活并传送到新出生点
 - HP/能量恢复满
+
+**迷宫关通过后**：
+- `startFloor(N+1)` — N 为进入迷宫前的 floor 编号
+- 死亡玩家自动复活
+
+**竞技关通过后**：
+- 奖励道具生成在中央场中心 3×3 tile 区域
+- `startFloor(N+1)` — N 为进入竞技关前的 floor 编号
+- 死亡玩家自动复活
 
 **Floor 5 过关**：
 - `this.running = false`，游戏停止
@@ -56,9 +89,14 @@ Floor 1-5 的线性推进系统，每 floor 难度递增。通过出口楼梯进
 - Boss 房间（`rooms[last]`）生成 boss + 战前补给道具
 - BSP 深度随 floor 增加：Floor 1-2→3，Floor 3-5→4（地牢布局更复杂）
 
+**竞技关额外缩放**（详见 room-diversity.md）：
+- `arena_enemy_hp = Math.round(base × (1 + (floor-1) × 0.15) × 1.2)`
+- `arena_enemy_atk = Math.round(base × (1 + (floor-1) × 0.1) × 1.1)`
+- 竞技关使用独立工厂函数 `createArenaEnemy()`，禁止调用 `createEnemy()`
+
 **死亡惩罚**：
 - 全员死亡 → 游戏结束，无重试
-- 部分玩家死亡 → 存活玩家继续，死亡玩家下 floor 自动复活
+- 部分玩家死亡 → 存活玩家继续，死亡玩家下 floor/迷宫关/竞技关通过后自动复活
 
 ### DebugMenu 工具
 - `teleport` → 跳关（floor 1-5）
@@ -82,28 +120,29 @@ enemyType = randomChoice(FLOOR_CONFIG[floor].enemyTypes)
 - `enemy_atk = base × (1 + (floor-1) × 0.1)`
 - Boss HP 固定 800，ATK = 25 × (1 + (floor-1) × 0.1)
 
-**TODO — 关卡推进优化计划**：
+**竞技关缩放公式**（独立路径，详见 room-diversity.md）：
+- `arena_enemy_hp = Math.round(base × (1 + (floor-1) × 0.15) × 1.2)`
+- `arena_enemy_atk = Math.round(base × (1 + (floor-1) × 0.1) × 1.1)`
+- Elite 额外倍率：HP×2, ATK×1.5（作用于已缩放值之上）
 
-| 优先级 | 优化项 | 描述 | 预期效果 |
-|--------|--------|------|---------|
-| P0 | **Floor 缩放** ✅ 2026-05-03 | 已启用 `enemy_hp = base × (1 + (floor-1) × 0.15)` + `enemy_atk = base × (1 + (floor-1) × 0.1)`，验证 Floor 5 tank HP=128 | 后期敌人不再"纸糊" |
-| P0 | **Boss 战实现** ✅ 2026-05-03 | Boss(HP=800/ATK=35)在boss房间生成，3种攻击模式(近战+弹幕+震地AoE)，两阶段切换(HP<50%回复20%) | Floor 5 是高潮而非走过场 |
-| P1 | **eliteChance 生效** ✅ 2026-05-03 | elite敌人HP×2+ATK×1.5，Floor 5 验证elite tank HP=256/ATK=32 | 增加随机挑战 |
-| P1 | **死亡惩罚** | 死亡玩家下 floor HP 减半（而非恢复满），或掉落金币 | 增加失败成本 |
-| P2 | **Boss 多阶段** ✅ 2026-05-04 | Boss HP < 50% 进入 P2，回复 20% HP + 弹幕冷却2s + 震地冷却7s | Boss 战更有层次感 |
-| P2 | **难度自适应** | 根据玩家存活数动态调整敌人数量（1人=0.6x, 4人=1.0x） | 单人/满员都平衡 |
-| P2 | **奖励递增** | 高 floor 掉落更好道具（potion/shield 替代 health） | 后期 floor 更值得探索 |
+**触发概率**：
+- 迷宫关：20%（`roll ∈ [0.1, 0.3)` 且 `!mazeTriggered` 且 `floor ∈ {1,2,3}`）
+- 竞技关：10%（`roll < 0.1` 且 `!arenaTriggered` 且 `floor ∈ {1,2,3}`）
 
 ## Edge Cases
 
 - 出口坐标浮点对齐问题
 - 最后一个 floor（floor 5）过关后的处理
 - 玩家死亡后是否可重新进入同一 floor
+- Floor 5 完成后不触发竞技关/迷宫关（直接 VICTORY）
+- 竞技关/迷宫关玩家断线：角色保持在当前层（alive 不变，dx=0, dy=0）
+- 竞技关/迷宫关内全员死亡 → GAME_OVER（与普通 Floor 相同）
 
 ## Dependencies
 
-- 地牢生成（每 floor 重新生成）
-- 敌人 AI（难度影响敌人配置）
+- **room-diversity.md**（上游）：状态机定义、触发路由、迷宫关/竞技关完整规则
+- 地牢生成（每 floor 重新生成，4 种生成器）
+- 敌人 AI（难度影响敌人配置、dormant 模式）
 - 战斗系统（过关触发战斗结束）
 
 ## Tuning Knobs
@@ -114,6 +153,10 @@ enemyType = randomChoice(FLOOR_CONFIG[floor].enemyTypes)
 | 房间数公式 | 6+floor×2 | 4+floor×1 ~ 8+floor×3 | 地牢复杂度 |
 | 出口检测距离 | 40 px | 30-60 | 过关触发灵敏度 |
 | 掉落率 | 30% | 10%-50% | 道具稀缺性 |
+| 竞技关触发概率 | 10% | 0-30% | 竞技关出现频率 |
+| 迷宫关触发概率 | 20% | 0-40% | 迷宫关出现频率 |
+| 竞技关 HP 加成 | 1.2 | 1.0-1.5 | 竞技关难度 |
+| 竞技关 ATK 加成 | 1.1 | 1.0-1.3 | 竞技关伤害 |
 
 ## Acceptance Criteria
 
@@ -121,3 +164,7 @@ enemyType = randomChoice(FLOOR_CONFIG[floor].enemyTypes)
 2. Floor 1-5 难度递增可感知
 3. DebugMenu teleport 可跳到任意 floor
 4. Floor 5 过关后游戏正确结束
+5. FLOOR_TRANSITION 时正确路由：10% 竞技关 / 20% 迷宫关 / 其余下一 floor
+6. 迷宫关/竞技关不计入楼层数，通过后正确进入 N+1 floor
+7. 每局最多 1 次迷宫关和 1 次竞技关
+8. Floor 5 完成后直接 VICTORY，不触发迷宫关/竞技关

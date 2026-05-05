@@ -1,15 +1,20 @@
 import { GAME_CONFIG, FLOOR_CONFIG } from '../../config/constants';
 import { MathUtils } from '../../utils/MathUtils';
+import { ROOM_TEMPLATES } from './RoomTemplates';
+import type { EnvObjectState } from '../../../shared/types';
+import { PILLAR_HP, PILLAR_SIZE, BOSS_ROOM_MIN_SIZE, TRAP_TYPES, TILE_SIZE } from '../../../shared/constants';
 
 interface DungeonData {
   rooms: Room[];
   corridors: Corridor[];
-  corridorTiles: { x: number; y: number }[];  // 走廊瓦片坐标（像素中心），用于客户端渲染走廊地板
+  corridorTiles: { x: number; y: number }[];
   spawnPoint: { x: number; y: number };
   exitPoint: { x: number; y: number };
   enemies: { type: string; x: number; y: number; count: number }[];
   items: { id: string; x: number; y: number; type: string }[];
-  collisionGrid: boolean[][];  // true = walkable
+  collisionGrid: boolean[][];
+  envObjects: EnvObjectState[];
+  roomTemplates: string[];
 }
 
 interface Room {
@@ -18,7 +23,7 @@ interface Room {
   y: number;
   width: number;
   height: number;
-  type: 'normal' | 'elite' | 'treasure' | 'rest' | 'boss' | 'entrance' | 'exit';
+  type: 'normal' | 'elite' | 'treasure' | 'rest' | 'boss' | 'entrance' | 'exit' | 'trap';
   doors: { direction: string; x: number; y: number }[];
 }
 
@@ -41,99 +46,311 @@ interface BSPNode {
 
 export class DungeonGenerator {
   private random!: () => number;
+  private envObjectIdCounter = 0;
 
   generate(floor: number, seed: number): DungeonData {
     this.random = MathUtils.seededRandom(seed);
-
+    this.envObjectIdCounter = 0;
     const width = GAME_CONFIG.DUNGEON_WIDTH;
     const height = GAME_CONFIG.DUNGEON_HEIGHT;
-    const roomCount = 6 + floor * 2;
 
-    // BSP depth scales with floor: floor 1→depth 3 (5-7 rooms), floor 5→depth 4 (9-13 rooms)
-    const bspDepth = Math.min(2 + Math.ceil(floor / 2), 4);
+    // Step 1: Layout generation
+    const layout = this.generateLayout(floor, width, height);
 
-    // Generate BSP tree
-    const root = this.splitBSP(0, 0, width, height, bspDepth);
+    // Step 2: Room type assignment
+    this.assignRoomTypes(layout.rooms, floor);
 
-    // Generate rooms from BSP
-    const rooms = this.generateRooms(root, roomCount);
+    // Step 3: Template application
+    const templateResult = this.applyTemplates(layout.rooms);
 
-    // Connect rooms with corridors
-    const corridors = this.connectRooms(rooms);
+    // Step 4: Content generation (enemies + items + env objects)
+    const content = this.spawnContent(layout.rooms, floor, layout.exitPoint);
 
-    // Place spawn and exit (validate they're in walkable tiles)
-    const spawnRoom = rooms[0];
-    const spawnPoint = { x: spawnRoom.x + spawnRoom.width / 2, y: spawnRoom.y + spawnRoom.height / 2 };
-    const exitRoom = rooms[rooms.length - 1];
-    const exitPoint = { x: exitRoom.x + exitRoom.width / 2, y: exitRoom.y + exitRoom.height / 2 };
+    // Step 5: Collision grid generation
+    const gridData = this.generateGrid(layout.rooms, layout.corridors, templateResult.carvedTiles, [...templateResult.envObjects, ...content.envObjects], width, height);
 
-    // Set room types
-    rooms[0].type = 'entrance';
-    // Only last floor gets a boss room; other floors use 'exit' (normal enemies, no boss)
-    const isLastFloor = floor >= (GAME_CONFIG.FLOOR_COUNT || 5);
-    rooms[rooms.length - 1].type = isLastFloor ? 'boss' : 'exit';
+    // Force-clear spawn and exit areas
+    const cols = Math.ceil(width / TILE_SIZE);
+    const rows = Math.ceil(height / TILE_SIZE);
+    this.forceClearArea(gridData.collisionGrid, layout.spawnPoint, cols, rows);
+    this.forceClearArea(gridData.collisionGrid, layout.exitPoint, cols, rows);
 
-    // Place some treasure rooms
-    if (rooms.length > 3) {
-      const treasureRoom = rooms[Math.floor(this.random() * (rooms.length - 2)) + 1];
-      treasureRoom.type = 'treasure';
-    }
-
-    // Spawn enemies
-    const enemies = this.spawnEnemies(rooms, floor, exitPoint);
-
-    // Spawn items
-    const items = this.spawnItems(rooms);
-
-    const collisionGrid = this.generateCollisionGrid(rooms, corridors, width, height);
-    const corridorTiles = this.generateCorridorTiles(corridors, width, height);
-
-    // Validate spawn and exit points are walkable, force-clear if needed
-    const tileSize = 32;
-    const cols = Math.ceil(width / tileSize);
-    const rows = Math.ceil(height / tileSize);
-
-    // Ensure spawn area (3x3 tiles) is walkable
-    const spawnCol = Math.floor(spawnPoint.x / tileSize);
-    const spawnRow = Math.floor(spawnPoint.y / tileSize);
-    for (let r = spawnRow - 1; r <= spawnRow + 1; r++) {
-      for (let c = spawnCol - 1; c <= spawnCol + 1; c++) {
-        if (r >= 0 && r < rows && c >= 0 && c < cols) {
-          collisionGrid[r][c] = true;
-        }
-      }
-    }
-
-    // Ensure exit area is walkable
-    const exitCol = Math.floor(exitPoint.x / tileSize);
-    const exitRow = Math.floor(exitPoint.y / tileSize);
-    for (let r = exitRow - 1; r <= exitRow + 1; r++) {
-      for (let c = exitCol - 1; c <= exitCol + 1; c++) {
-        if (r >= 0 && r < rows && c >= 0 && c < cols) {
-          collisionGrid[r][c] = true;
-        }
-      }
-    }
-
-    // 验证碰撞网格
-    const walkableCount = collisionGrid.flat().filter(Boolean).length;
-    const totalCount = collisionGrid.length * (collisionGrid[0]?.length || 0);
+    // Validate grid
+    const walkableCount = gridData.collisionGrid.flat().filter(Boolean).length;
+    const totalCount = gridData.collisionGrid.length * (gridData.collisionGrid[0]?.length || 0);
     if (walkableCount === 0) {
       console.error('[DungeonGenerator] FATAL: Collision grid has 0 walkable tiles!');
     } else {
-      console.log(`[DungeonGenerator] Grid: ${walkableCount}/${totalCount} tiles walkable (${((walkableCount/totalCount)*100).toFixed(1)}%)`);
+      console.log(`[DungeonGenerator] Grid: ${walkableCount}/${totalCount} tiles walkable (${((walkableCount / totalCount) * 100).toFixed(1)}%)`);
     }
 
+    const allEnvObjects = [...templateResult.envObjects, ...content.envObjects];
+    const roomTemplates = layout.rooms.map((_, i) => templateResult.roomTemplates[i] || 'none');
+
     return {
-      rooms,
-      corridors,
-      corridorTiles,
-      spawnPoint,
-      exitPoint,
-      enemies,
-      items,
-      collisionGrid
+      rooms: layout.rooms,
+      corridors: layout.corridors,
+      corridorTiles: gridData.corridorTiles,
+      spawnPoint: layout.spawnPoint,
+      exitPoint: layout.exitPoint,
+      enemies: content.enemies,
+      items: content.items,
+      collisionGrid: gridData.collisionGrid,
+      envObjects: allEnvObjects,
+      roomTemplates,
     };
+  }
+
+  private nextEnvId(): string {
+    return `env_${++this.envObjectIdCounter}`;
+  }
+
+  // ── Step 1: Layout Generation ──
+
+  private generateLayout(floor: number, width: number, height: number): {
+    rooms: Room[]; corridors: Corridor[]; spawnPoint: { x: number; y: number }; exitPoint: { x: number; y: number };
+  } {
+    const roomCount = 6 + floor * 2;
+    const bspDepth = Math.min(2 + Math.ceil(floor / 2), 4);
+    const root = this.splitBSP(0, 0, width, height, bspDepth);
+    const rooms = this.generateRooms(root, roomCount);
+    const corridors = this.connectRooms(rooms);
+
+    // Enforce boss room minimum size
+    const lastRoom = rooms[rooms.length - 1];
+    const isLastFloor = floor >= (GAME_CONFIG.FLOOR_COUNT || 5);
+    if (isLastFloor) {
+      if (lastRoom.width < BOSS_ROOM_MIN_SIZE) lastRoom.width = BOSS_ROOM_MIN_SIZE;
+      if (lastRoom.height < BOSS_ROOM_MIN_SIZE) lastRoom.height = BOSS_ROOM_MIN_SIZE;
+      // Clamp to dungeon bounds
+      if (lastRoom.x + lastRoom.width > width) lastRoom.width = width - lastRoom.x;
+      if (lastRoom.y + lastRoom.height > height) lastRoom.height = height - lastRoom.y;
+    }
+
+    const spawnPoint = { x: rooms[0].x + rooms[0].width / 2, y: rooms[0].y + rooms[0].height / 2 };
+    const exitPoint = { x: lastRoom.x + lastRoom.width / 2, y: lastRoom.y + lastRoom.height / 2 };
+
+    return { rooms, corridors, spawnPoint, exitPoint };
+  }
+
+  // ── Step 2: Room Type Assignment ──
+
+  private assignRoomTypes(rooms: Room[], floor: number): void {
+    rooms[0].type = 'entrance';
+    const isLastFloor = floor >= (GAME_CONFIG.FLOOR_COUNT || 5);
+    rooms[rooms.length - 1].type = isLastFloor ? 'boss' : 'exit';
+
+    // Treasure room
+    if (rooms.length > 3) {
+      const idx = Math.floor(this.random() * (rooms.length - 2)) + 1;
+      rooms[idx].type = 'treasure';
+    }
+
+    // Trap rooms (Floor 2+)
+    if (floor >= 2) {
+      const trapCount = Math.floor(this.random() * (Math.min(floor - 1, 2) + 1));
+      const candidates = rooms.filter((r, i) =>
+        i > 0 && i < rooms.length - 1 && r.type === 'normal'
+      );
+      const normalCount = rooms.filter(r => r.type === 'normal').length;
+      const minNormal = Math.ceil(rooms.length * 0.5);
+
+      for (let t = 0; t < trapCount && t < candidates.length; t++) {
+        if (normalCount - t <= minNormal) break;
+        const ci = Math.floor(this.random() * candidates.length);
+        candidates[ci].type = 'trap';
+        candidates.splice(ci, 1);
+      }
+    }
+  }
+
+  // ── Step 3: Template Application ──
+
+  private applyTemplates(rooms: Room[]): { carvedTiles: { col: number; row: number }[]; envObjects: EnvObjectState[]; roomTemplates: string[] } {
+    const allCarvedTiles: { col: number; row: number }[] = [];
+    const allEnvObjects: EnvObjectState[] = [];
+    const roomTemplates: string[] = [];
+
+    for (const room of rooms) {
+      let templateName = 'none';
+
+      if (room.type === 'entrance' || room.type === 'boss') {
+        templateName = 'none';
+      } else if (room.type === 'treasure') {
+        templateName = this.random() < 0.5 ? 'none' : 'cross';
+      } else if (room.type === 'trap') {
+        templateName = 'l_shape';
+      } else {
+        // normal
+        const roll = this.random();
+        if (roll < 0.6) templateName = 'none';
+        else if (roll < 0.75) templateName = 'cross';
+        else if (roll < 0.85) templateName = 'l_shape';
+        else if (roll < 0.95) templateName = 'pillars_4';
+        else templateName = 'diamond';
+      }
+
+      const template = ROOM_TEMPLATES[templateName];
+      if (template && room.width >= template.minWidth && room.height >= template.minHeight && templateName !== 'none') {
+        const result = template.carve(room.x, room.y, room.width, room.height);
+        allCarvedTiles.push(...result.carvedTiles);
+        for (const obj of result.envObjects) {
+          allEnvObjects.push({ ...obj, id: this.nextEnvId() });
+        }
+      }
+
+      roomTemplates.push(templateName);
+    }
+
+    return { carvedTiles: allCarvedTiles, envObjects: allEnvObjects, roomTemplates };
+  }
+
+  // ── Step 4: Content Generation ──
+
+  private spawnContent(rooms: Room[], floor: number, exitPoint: { x: number; y: number }): {
+    enemies: { type: string; x: number; y: number; count: number }[];
+    items: { id: string; x: number; y: number; type: string }[];
+    envObjects: EnvObjectState[];
+  } {
+    const enemies = this.spawnEnemies(rooms, floor, exitPoint);
+    const items = this.spawnItems(rooms);
+    const envObjects: EnvObjectState[] = [];
+
+    // Boss room decorations
+    const bossRoom = rooms.find(r => r.type === 'boss');
+    if (bossRoom) {
+      // 4 pillars at corners (32px from walls)
+      const offsets = [
+        { dx: 32, dy: 32 },
+        { dx: bossRoom.width - 64, dy: 32 },
+        { dx: 32, dy: bossRoom.height - 64 },
+        { dx: bossRoom.width - 64, dy: bossRoom.height - 64 },
+      ];
+      for (let i = 0; i < offsets.length; i++) {
+        const px = Math.floor((bossRoom.x + offsets[i].dx) / TILE_SIZE) * TILE_SIZE + TILE_SIZE / 2;
+        const py = Math.floor((bossRoom.y + offsets[i].dy) / TILE_SIZE) * TILE_SIZE + TILE_SIZE / 2;
+        envObjects.push({
+          id: this.nextEnvId(),
+          type: 'pillar',
+          x: px, y: py,
+          width: PILLAR_SIZE, height: PILLAR_SIZE,
+          alive: true,
+          hp: PILLAR_HP, hpMax: PILLAR_HP,
+        });
+      }
+    }
+
+    // Trap room env objects
+    for (const room of rooms) {
+      if (room.type !== 'trap') continue;
+      const trapCount = 3 + Math.floor(this.random() * 4); // 3-6 traps
+      const trapType = this.random() < 0.6 ? 'spike' : this.random() < 0.75 ? 'fire' : 'slow';
+      const timings = TRAP_TYPES[trapType];
+      const centerX = room.x + room.width / 2;
+      const centerY = room.y + room.height / 2;
+
+      for (let t = 0; t < trapCount; t++) {
+        // Symmetric placement, avoid center 3x3
+        let tx: number, ty: number;
+        for (let attempt = 0; attempt < 20; attempt++) {
+          const angle = (t / trapCount) * Math.PI * 2 + this.random() * 0.5;
+          const dist = 64 + this.random() * (Math.min(room.width, room.height) / 2 - 80);
+          tx = Math.floor((centerX + Math.cos(angle) * dist) / TILE_SIZE) * TILE_SIZE + TILE_SIZE / 2;
+          ty = Math.floor((centerY + Math.sin(angle) * dist) / TILE_SIZE) * TILE_SIZE + TILE_SIZE / 2;
+          // Avoid center 3x3
+          if (Math.abs(tx - Math.floor(centerX / TILE_SIZE) * TILE_SIZE) < TILE_SIZE * 2 &&
+              Math.abs(ty - Math.floor(centerY / TILE_SIZE) * TILE_SIZE) < TILE_SIZE * 2) continue;
+          // Stay in room
+          if (tx >= room.x && tx < room.x + room.width && ty >= room.y && ty < room.y + room.height) break;
+        }
+        envObjects.push({
+          id: this.nextEnvId(),
+          type: 'trap',
+          x: tx!, y: ty!,
+          width: TILE_SIZE, height: TILE_SIZE,
+          alive: true,
+          trapType: trapType as 'spike' | 'fire' | 'slow',
+          trapActive: false,
+          trapCycleTimer: timings.offDuration,
+          trapOnDuration: timings.onDuration,
+          trapOffDuration: timings.offDuration,
+          triggeredEntityIds: [],
+        });
+      }
+    }
+
+    return { enemies, items, envObjects };
+  }
+
+  // ── Step 5: Grid Generation ──
+
+  private generateGrid(rooms: Room[], corridors: Corridor[], carvedTiles: { col: number; row: number }[], envObjects: EnvObjectState[], mapW: number, mapH: number): {
+    collisionGrid: boolean[][]; corridorTiles: { x: number; y: number }[];
+  } {
+    const cols = Math.ceil(mapW / TILE_SIZE);
+    const rows = Math.ceil(mapH / TILE_SIZE);
+    const grid: boolean[][] = Array.from({ length: rows }, () => Array(cols).fill(false));
+
+    // Mark rooms
+    for (const room of rooms) {
+      const sc = Math.floor(room.x / TILE_SIZE);
+      const sr = Math.floor(room.y / TILE_SIZE);
+      const ec = Math.ceil((room.x + room.width) / TILE_SIZE);
+      const er = Math.ceil((room.y + room.height) / TILE_SIZE);
+      for (let r = sr; r < er && r < rows; r++) {
+        for (let c = sc; c < ec && c < cols; c++) {
+          if (r >= 0 && c >= 0) grid[r][c] = true;
+        }
+      }
+    }
+
+    // Mark corridors
+    const corridorPadding = 1;
+    for (const corridor of corridors) {
+      const minC = Math.floor(Math.min(corridor.x1, corridor.x2) / TILE_SIZE) - corridorPadding;
+      const maxC = Math.floor(Math.max(corridor.x1, corridor.x2) / TILE_SIZE) + corridorPadding;
+      const minR = Math.floor(Math.min(corridor.y1, corridor.y2) / TILE_SIZE) - corridorPadding;
+      const maxR = Math.floor(Math.max(corridor.y1, corridor.y2) / TILE_SIZE) + corridorPadding;
+      for (let r = minR; r <= maxR && r < rows; r++) {
+        for (let c = minC; c <= maxC && c < cols; c++) {
+          if (r >= 0 && c >= 0) grid[r][c] = true;
+        }
+      }
+    }
+
+    // Apply carved tiles (template carving)
+    for (const t of carvedTiles) {
+      if (t.row >= 0 && t.row < rows && t.col >= 0 && t.col < cols) {
+        grid[t.row][t.col] = false;
+      }
+    }
+
+    // Bake pillar envObjects into grid (non-walkable)
+    for (const obj of envObjects) {
+      if (obj.type === 'pillar' && obj.alive) {
+        const col = Math.floor(obj.x / TILE_SIZE);
+        const row = Math.floor(obj.y / TILE_SIZE);
+        if (row >= 0 && row < rows && col >= 0 && col < cols) {
+          grid[row][col] = false;
+        }
+      }
+    }
+
+    const corridorTiles = this.generateCorridorTiles(corridors, mapW, mapH);
+
+    return { collisionGrid: grid, corridorTiles };
+  }
+
+  private forceClearArea(grid: boolean[][], point: { x: number; y: number }, cols: number, rows: number): void {
+    const col = Math.floor(point.x / TILE_SIZE);
+    const row = Math.floor(point.y / TILE_SIZE);
+    for (let r = row - 1; r <= row + 1; r++) {
+      for (let c = col - 1; c <= col + 1; c++) {
+        if (r >= 0 && r < rows && c >= 0 && c < cols) {
+          grid[r][c] = true;
+        }
+      }
+    }
   }
 
   private splitBSP(x: number, y: number, w: number, h: number, depth: number): BSPNode {
@@ -322,50 +539,7 @@ export class DungeonGenerator {
     return items;
   }
 
-  /**
-   * 生成 tile 级碰撞网格
-   * tileSize = 32px, 网格 25x19 (800/32 x 600/32)
-   * true = 可行走, false = 墙壁
-   */
-  private generateCollisionGrid(rooms: Room[], corridors: Corridor[], mapW: number, mapH: number): boolean[][] {
-    const tileSize = 32;
-    const cols = Math.ceil(mapW / tileSize);
-    const rows = Math.ceil(mapH / tileSize);
-
-    // 初始化全部为墙
-    const grid: boolean[][] = Array.from({ length: rows }, () => Array(cols).fill(false));
-
-    // 标记房间区域为可行走
-    for (const room of rooms) {
-      const startCol = Math.floor(room.x / tileSize);
-      const startRow = Math.floor(room.y / tileSize);
-      const endCol = Math.ceil((room.x + room.width) / tileSize);
-      const endRow = Math.ceil((room.y + room.height) / tileSize);
-
-      for (let r = startRow; r < endRow && r < rows; r++) {
-        for (let c = startCol; c < endCol && c < cols; c++) {
-          if (r >= 0 && c >= 0) grid[r][c] = true;
-        }
-      }
-    }
-
-    // 标记走廊区域为可行走（走廊宽度 = 2 tiles = 64px, 方便48px玩家通过）
-    const corridorPadding = 1; // 额外加1 tile宽度
-    for (const corridor of corridors) {
-      const minC = Math.floor(Math.min(corridor.x1, corridor.x2) / tileSize) - corridorPadding;
-      const maxC = Math.floor(Math.max(corridor.x1, corridor.x2) / tileSize) + corridorPadding;
-      const minR = Math.floor(Math.min(corridor.y1, corridor.y2) / tileSize) - corridorPadding;
-      const maxR = Math.floor(Math.max(corridor.y1, corridor.y2) / tileSize) + corridorPadding;
-
-      for (let r = minR; r <= maxR && r < rows; r++) {
-        for (let c = minC; c <= maxC && c < cols; c++) {
-          if (r >= 0 && c >= 0) grid[r][c] = true;
-        }
-      }
-    }
-
-    return grid;
-  }
+  // generateCollisionGrid removed — merged into generateGrid()
 
   /**
    * 将走廊线段光栅化为瓦片坐标列表（用于客户端渲染）

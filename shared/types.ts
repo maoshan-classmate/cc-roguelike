@@ -11,10 +11,12 @@ export interface EffectFlags {
   outgoingDamageMultiplier: number;
   invulnerable: boolean;
   forcedTarget: boolean;
+  forcedTargetSource: string;
   knockbackImmune: boolean;
   energyRegenMultiplier: number;
   cooldownMultiplier: number;
   ccImmune: boolean;
+  trapResistance: boolean;
 }
 
 export interface StatusEffectInstance {
@@ -32,6 +34,43 @@ export interface SerializedStatusEffect {
   r: number;   // remainingMs
   s: number;   // stacks
   v: number;   // value
+}
+
+// ── Game Phase ──
+
+export type GamePhase = 'LOBBY' | 'FLOOR_TRANSITION' | 'PLAYING' | 'MAZE_PLAYING' | 'ARENA_PLAYING' | 'VICTORY' | 'GAME_OVER';
+
+// ── Maze Fog ──
+
+export interface MazeFogState {
+  enabled: boolean;
+  visionRadius: number;
+  exploredTiles: string[];
+}
+
+// ── Environment Objects ──
+
+export type EnvObjectType = 'pillar' | 'trap' | 'door' | 'decoration';
+export type TrapType = 'spike' | 'fire' | 'slow';
+
+export interface EnvObjectState {
+  id: string;
+  type: EnvObjectType;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  alive: boolean;
+  hp?: number;
+  hpMax?: number;
+  trapType?: TrapType;
+  trapActive?: boolean;
+  triggeredEntityIds?: string[];
+  trapCycleTimer?: number;
+  trapOnDuration?: number;
+  trapOffDuration?: number;
+  doorOpen?: boolean;
+  spriteKey?: string;
 }
 
 // ── Entity States ──
@@ -77,6 +116,8 @@ export interface EnemyState {
   deathTimer?: number;
   lastAttackTime?: number;
   isElite?: boolean;
+  dormant?: boolean;
+  lastAttackerId?: string;
   bossPhase?: number;
   bossRangedTimer?: number;
   bossAoETimer?: number;
@@ -130,6 +171,7 @@ export interface DungeonRoom {
   width: number;
   height: number;
   type: string;
+  template?: string;
 }
 
 export interface DungeonData {
@@ -138,6 +180,10 @@ export interface DungeonData {
   spawnPoint: { x: number; y: number };
   exitPoint: { x: number; y: number };
   collisionGrid: boolean[][];
+  envObjects?: EnvObjectState[];
+  enemies?: { type: string; x: number; y: number; count: number }[];
+  items?: { id: string; x: number; y: number; type: string }[];
+  roomTemplates?: string[];
 }
 
 export interface GameState {
@@ -153,4 +199,11 @@ export interface GameState {
   bossEvents?: BossEvent[];
   floorCompleted: boolean;
   dungeon?: DungeonData;
+  phase?: GamePhase;
+  isArenaFloor?: boolean;
+  isMazeFloor?: boolean;
+  arenaWave?: number;
+  arenaTriggered?: boolean;
+  mazeTriggered?: boolean;
+  mazeFog?: MazeFogState;
 }

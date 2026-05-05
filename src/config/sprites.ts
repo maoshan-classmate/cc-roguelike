@@ -139,10 +139,12 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
   column_wall:      { category: 'SCENE', source: '0x72', atlasKey: 'column_wall',      size: 32, animated: false, frameCount: 1 },
   hole:             { category: 'SCENE', source: '0x72', atlasKey: 'hole',             size: 32, animated: false, frameCount: 1 },
   floor_spikes_anim_f0: { category: 'SCENE', source: '0x72', atlasKey: 'floor_spikes_anim_f0', size: 32, animated: false, frameCount: 1 },
+  floor_spikes_anim_f3: { category: 'SCENE', source: '0x72', atlasKey: 'floor_spikes_anim_f3', size: 32, animated: false, frameCount: 1 },
   button_red_up:    { category: 'SCENE', source: '0x72', atlasKey: 'button_red_up',    size: 32, animated: false, frameCount: 1 },
   button_blue_up:   { category: 'SCENE', source: '0x72', atlasKey: 'button_blue_up',   size: 32, animated: false, frameCount: 1 },
   lever_left:       { category: 'SCENE', source: '0x72', atlasKey: 'lever_left',       size: 32, animated: false, frameCount: 1 },
   lever_right:      { category: 'SCENE', source: '0x72', atlasKey: 'lever_right',      size: 32, animated: false, frameCount: 1 },
+  wall_banner_red:  { category: 'SCENE', source: '0x72', atlasKey: 'wall_banner_red',  size: 32, animated: false, frameCount: 1 },
 
   // ── UI ──────────────────────────────────────────────────────────────────
   ui_heart_full:   { category: 'UI', source: '0x72', atlasKey: 'ui_heart_full',   size: 26, animated: false, frameCount: 1 },

@@ -21,6 +21,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     invincible: 0,
     angle: 0,
     gold: 0, keys: 0,
+    statusEffects: [],
     ...overrides,
   }
 }
@@ -49,6 +50,7 @@ function makeEnemy(overrides: Partial<EnemyState> = {}): EnemyState {
     attack: 5,
     alive: true,
     state: 'chase',
+    statusEffects: [],
     ...overrides,
   }
 }
@@ -87,6 +89,8 @@ function makeDeps(): CombatDeps & {
     isWalkable: vi.fn(() => true),
     getPlayerStatus: vi.fn(() => new StatusManager()),
     getEnemyStatus: vi.fn(() => new StatusManager()),
+    getEnvObjects: vi.fn(() => []),
+    damageEnvObject: vi.fn(),
   }
 
   return deps

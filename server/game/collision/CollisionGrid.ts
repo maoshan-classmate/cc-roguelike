@@ -11,6 +11,20 @@ export class CollisionGrid {
     return this.grid;
   }
 
+  setTile(col: number, row: number, walkable: boolean): void {
+    if (this.isEmpty()) return;
+    const rows = this.grid.length;
+    const cols = this.grid[0]?.length || 0;
+    if (row < 0 || row >= rows || col < 0 || col >= cols) return;
+    this.grid[row][col] = walkable;
+  }
+
+  setGridPartial(tiles: Array<{ col: number; row: number; walkable: boolean }>): void {
+    for (const t of tiles) {
+      this.setTile(t.col, t.row, t.walkable);
+    }
+  }
+
   isEmpty(): boolean {
     return !this.grid || this.grid.length === 0;
   }

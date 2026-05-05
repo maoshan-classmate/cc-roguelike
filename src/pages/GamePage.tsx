@@ -24,9 +24,9 @@ interface ClientGameState {
   gold: number
   keys: number
   dungeon: DungeonData | null
+  phase?: string
 }
 import { networkClient } from '../network/socket'
-import { mainAtlasPath } from '../assets/0x72'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useParticleSystem } from '../hooks/useParticleSystem'
 import { useDamageTexts } from '../hooks/useDamageTexts'
@@ -46,9 +46,8 @@ import {
   PixelSkull,
 } from '../components/PixelIcons'
 
-// 加载精灵图（仅 0x72 TilesetII，Kenney 已废弃）
+// 加载精灵图
 const tileset2Atlas = new Image()
-tileset2Atlas.src = mainAtlasPath
 
 // 加载 AI 生成精灵 sheet
 const generatedSheets: Record<string, HTMLImageElement> = {}
@@ -56,6 +55,18 @@ for (const [name, def] of Object.entries(GENERATED_SPRITES)) {
   const img = new Image()
   img.src = def.sheetPath
   generatedSheets[name] = img
+}
+
+// 加载自定义精灵（Boss 房装饰等，已用 sharp 预处理背景透明化）
+const customSprites: Record<string, HTMLImageElement> = {}
+const CUSTOM_SPRITE_PATHS: Record<string, string> = {
+  throne: '/src/assets/custom/throne.png',
+  floor_banner: '/src/assets/custom/floor_banner.png',
+}
+for (const [name, path] of Object.entries(CUSTOM_SPRITE_PATHS)) {
+  const img = new Image()
+  img.src = path
+  customSprites[name] = img
 }
 
 // 技能图标通过 SKILL_INFO 动态加载
@@ -87,7 +98,9 @@ function DebugMenu({
   onToggleInvincible,
   isInvincible,
   onBossSlam,
-  onBossRanged
+  onBossRanged,
+  onForceArena,
+  onForceTrapFloor,
 }: {
   onTeleport: (floor: number) => void
   onKillAll: () => void
@@ -95,6 +108,8 @@ function DebugMenu({
   isInvincible: boolean
   onBossSlam: () => void
   onBossRanged: () => void
+  onForceArena: () => void
+  onForceTrapFloor: () => void
 }) {
   const [floorInput, setFloorInput] = useState('')
 
@@ -187,6 +202,23 @@ function DebugMenu({
       >
         [ 弹幕 Ranged ]
       </button>
+
+      {/* 竞技关/陷阱调试 */}
+      <div style={{ color: 'var(--pixel-gold)', marginBottom: 4, marginTop: 8, fontSize: 10 }}>房间多样化</div>
+      <button
+        onClick={onForceArena}
+        className="btn-pixel"
+        style={{ background: '#2A4494', fontSize: 11, padding: '4px 8px', width: '100%', marginBottom: 4 }}
+      >
+        [ 进入竞技关 ]
+      </button>
+      <button
+        onClick={onForceTrapFloor}
+        className="btn-pixel"
+        style={{ background: '#6B3A2A', fontSize: 11, padding: '4px 8px', width: '100%' }}
+      >
+        [ 进入迷宫关 ]
+      </button>
     </div>
   )
 }
@@ -201,11 +233,18 @@ export default function GamePage() {
     isPaused,
     isGameOver,
     isVictory,
+    isArena,
+    isMaze,
+    arenaWave,
+    arenaTriggered,
+    phase,
     setState,
     setFloor,
     setPaused,
     setGameOver,
     setLocalPlayerId,
+    setArenaState,
+    setPhase,
     reset
   } = useGameStore()
   const navigate = useNavigate()
@@ -231,7 +270,8 @@ export default function GamePage() {
     items: [],
     gold: 0,
     keys: 0,
-    dungeon: null
+    dungeon: null,
+    phase: 'LOBBY',
   })
 
   const prevDyingRef = useRef<Set<string>>(new Set())
@@ -261,6 +301,7 @@ export default function GamePage() {
     spritesLoaded,
     tileset2Atlas,
     generatedSheets,
+    customSprites,
     lastAnimTime,
     prevPositions,
     targetPositions,
@@ -401,7 +442,16 @@ export default function GamePage() {
         items: state.items || [],
         gold: state.players?.find((p: PlayerState) => p.id === user?.id)?.gold || 0,
         keys: state.players?.find((p: PlayerState) => p.id === user?.id)?.keys || 0,
-        dungeon: state.dungeon ?? null
+        dungeon: state.dungeon ?? null,
+        phase: state.phase || 'PLAYING',
+      }
+
+      // Update envObjects from dungeon data
+      if (state.dungeon?.envObjects && gameStateRef.current.dungeon) {
+        gameStateRef.current.dungeon = {
+          ...gameStateRef.current.dungeon,
+          envObjects: state.dungeon.envObjects,
+        }
       }
 
       // Boss event audio + visual effects
@@ -428,7 +478,7 @@ export default function GamePage() {
     networkClient.on(GameMessages.FLOOR_START, (data: { floor: number; gameSession: number }) => {
       prevPositions.current.clear()
       targetPositions.current.clear()
-      gameStateRef.current = { players: [], enemies: [], bullets: [], healWaves: [], items: [], gold: 0, keys: 0, dungeon: null }
+      gameStateRef.current = { players: [], enemies: [], bullets: [], healWaves: [], items: [], gold: 0, keys: 0, dungeon: null, phase: 'LOBBY' }
       floorSessionRef.current = data.floor
       gameSessionRef.current = data.gameSession
       lastStateTime.current = performance.now()
@@ -613,6 +663,14 @@ export default function GamePage() {
     networkClient.emit(GameMessages.DEBUG, { action: 'bossRanged' })
   }
 
+  const handleDebugForceArena = () => {
+    networkClient.emit(GameMessages.DEBUG, { action: 'forceArena' })
+  }
+
+  const handleDebugForceTrapFloor = () => {
+    networkClient.emit(GameMessages.DEBUG, { action: 'forceTrapFloor' })
+  }
+
   const { gold, keys } = gameStateRef.current
 
   return (
@@ -625,8 +683,13 @@ export default function GamePage() {
         <div style={{ display: 'flex', gap: 8 }}>
           <motion.div variants={hudItemVariant(0)} initial="hidden" animate="visible" className="card-pixel" style={{ padding: '6px 12px', borderColor: 'var(--pixel-gold)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <PixelCastle size={16} color="#8B4513" />
-            <span style={{ color: 'var(--pixel-gold)', fontFamily: 'Courier New', fontSize: 14, fontWeight: 'bold' }}>{floor}/5</span>
+            <span style={{ color: 'var(--pixel-gold)', fontFamily: 'Courier New', fontSize: 14, fontWeight: 'bold' }}>{isArena ? '竞技关' : isMaze ? '迷宫关' : `Floor ${floor}/5`}</span>
           </motion.div>
+          {isArena && arenaWave > 0 && (
+            <motion.div variants={hudItemVariant(1)} initial="hidden" animate="visible" className="card-pixel" style={{ padding: '6px 12px', borderColor: '#4A9EFF', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ color: '#4A9EFF', fontFamily: 'Courier New', fontSize: 14, fontWeight: 'bold' }}>Wave {arenaWave}/3</span>
+            </motion.div>
+          )}
           <motion.div variants={hudItemVariant(1)} initial="hidden" animate="visible" className="card-pixel" style={{ padding: '6px 12px', borderColor: 'var(--player-1)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <PixelSword size={16} color="#C0C0C0" />
             <span style={{ color: 'var(--success)', fontFamily: 'Courier New', fontSize: 14, fontWeight: 'bold' }}>{players.filter(p => p.alive).length}/{players.length}</span>
@@ -873,6 +936,8 @@ export default function GamePage() {
           isInvincible={isInvincible}
           onBossSlam={handleDebugBossSlam}
           onBossRanged={handleDebugBossRanged}
+          onForceArena={handleDebugForceArena}
+          onForceTrapFloor={handleDebugForceTrapFloor}
         />
       )}
     </div>

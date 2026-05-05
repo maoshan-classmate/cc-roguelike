@@ -22,6 +22,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     weapon: 'sword', characterType: charType,
     skills: CLASS_SKILLS[charType] || CLASS_SKILLS.warrior,
     alive: true, invincible: 0, angle: 0, gold: 0, keys: 0,
+    statusEffects: [],
     ...overrides,
   };
 }
@@ -30,6 +31,7 @@ function makeEnemy(overrides: Partial<EnemyState> = {}): EnemyState {
   return {
     id: 'enemy1', type: 'basic', x: 410, y: 400,
     hp: 100, hpMax: 100, attack: 5, alive: true, state: 'chase',
+    statusEffects: [],
     ...overrides,
   };
 }
@@ -73,6 +75,8 @@ function makeDeps(player: PlayerState, enemies: EnemyState[] = []): MockDeps {
     isWalkable: vi.fn(() => true),
     getPlayerStatus: vi.fn(() => _playerSm),
     getEnemyStatus: vi.fn((id: string) => _enemySms.get(id)),
+    getEnvObjects: vi.fn(() => []),
+    damageEnvObject: vi.fn(),
   };
 }
 

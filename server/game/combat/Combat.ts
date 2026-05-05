@@ -1,4 +1,4 @@
-import type { PlayerState, BulletState, GameState } from '../../../shared/types';
+import type { PlayerState, BulletState, GameState, EnvObjectState } from '../../../shared/types';
 import { ENEMY_RADIUS } from '../../../shared/constants';
 import { GAME_CONFIG, WEAPON_TEMPLATES, SKILL_TEMPLATES, type WeaponTemplate, type SkillTemplate } from '../../config/constants';
 import { Vec2 } from '../../utils/Vec2';
@@ -14,6 +14,8 @@ export interface CombatDeps {
   isWalkable(x: number, y: number): boolean;
   getPlayerStatus(playerId: string): StatusManager | undefined;
   getEnemyStatus(enemyId: string): StatusManager | undefined;
+  getEnvObjects(): EnvObjectState[];
+  damageEnvObject(id: string, damage: number, attackerId?: string): void;
 }
 
 export class Combat {
@@ -448,6 +450,26 @@ export class Combat {
             this.room.removeBullet(bullet.id);
             return;
           }
+        }
+      }
+    }
+
+    // Environment object collision (pillars and doors)
+    if (bullet.friendly) {
+      for (const envObj of this.room.getEnvObjects()) {
+        if (!envObj.alive) continue;
+        if (envObj.type !== 'pillar' && envObj.type !== 'door') continue;
+        if (envObj.type === 'door' && envObj.doorOpen) continue;
+
+        const objRadius = Math.max(envObj.width, envObj.height) / 2;
+        const dist = Math.hypot(bullet.x - envObj.x, bullet.y - envObj.y);
+        if (dist < bullet.radius + objRadius) {
+          if (envObj.type === 'pillar') {
+            this.room.damageEnvObject(envObj.id, bullet.damage, bullet.ownerId);
+          }
+          // Door: bullet destroyed, door unaffected
+          this.room.removeBullet(bullet.id);
+          return;
         }
       }
     }

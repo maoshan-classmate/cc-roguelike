@@ -1,15 +1,18 @@
 import { Database } from '../data/Database';
 import { GAME_CONFIG, FLOOR_CONFIG, WEAPON_TEMPLATES } from '../config/constants';
 import { DungeonGenerator } from './dungeon/DungeonGenerator';
+import { generateColosseum, type ArenaData } from './dungeon/ColosseumGenerator';
+import { generateBossArena } from './dungeon/BossArenaGenerator';
+import { generateMaze } from './dungeon/MazeGenerator';
 import { Combat } from './combat/Combat';
 import { CollisionGrid } from './collision/CollisionGrid';
 import { Vec2 } from '../utils/Vec2';
-import type { PlayerState, EnemyState, BulletState, GameState, HealWaveState, BossEvent, ItemState, DungeonData } from '../../shared/types';
-import { ENEMY_BASE_HP, ENEMY_BASE_ATTACK, CLASS_SPEED } from '../../shared/constants';
+import type { PlayerState, EnemyState, BulletState, GameState, HealWaveState, BossEvent, ItemState, DungeonData, GamePhase, EnvObjectState } from '../../shared/types';
+import { ENEMY_BASE_HP, ENEMY_BASE_ATTACK, ENEMY_SPEED, CLASS_SPEED, ARENA_HP_MULTIPLIER, ARENA_ATK_MULTIPLIER, ARENA_TRIGGER_CHANCE, ARENA_WAVE_INTER_DELAY, ARENA_WAVE_HP_RECOVERY, ARENA_DORMANT_SPEED_MULTIPLIER, ARENA_RING_OUTER_COL_MIN, ARENA_RING_OUTER_ROW_MIN, ARENA_RING_OUTER_COL_MAX, ARENA_RING_OUTER_ROW_MAX, MAZE_TRIGGER_CHANCE, TRAP_TYPES, TRAP_DETECTION_RADIUS, PILLAR_HP, TILE_SIZE } from '../../shared/constants';
 import { EnemyAI, type EnemyAIDeps } from './enemy/EnemyAI';
 import { StatusManager, type TickContext } from './status/StatusManager';
 
-export type { PlayerState, EnemyState, BulletState, GameState, HealWaveState, BossEvent, ItemState, DungeonData };
+export type { PlayerState, EnemyState, BulletState, GameState, HealWaveState, BossEvent, ItemState, DungeonData, GamePhase, EnvObjectState };
 
 export class GameRoom {
   private roomId: string;
@@ -30,6 +33,17 @@ export class GameRoom {
   private collisionGrid: CollisionGrid = new CollisionGrid();
   private playerStatus: Map<string, StatusManager> = new Map();
   private enemyStatus: Map<string, StatusManager> = new Map();
+
+  // State machine
+  private phase: GamePhase = 'LOBBY';
+  private arenaTriggered: boolean = false;
+  private arenaFloor: number = 0;
+  private mazeTriggered: boolean = false;
+  private mazeFloor: number = 0;
+  private currentWave: number = 0;
+  private waveDelayTimer: number = 0;
+  private envObjects: EnvObjectState[] = [];
+  private arenaDoorId: string = '';
 
   private currentFloor: number = 1;
   // Use timestamp for game session — guarantees uniqueness even across server restarts
@@ -85,7 +99,8 @@ export class GameRoom {
       invincible: 0,
       angle: 0,
       gold: 0,
-      keys: 0
+      keys: 0,
+      statusEffects: [],
     };
     this.players.set(accountId, player);
     this.playerStatus.set(accountId, new StatusManager());
@@ -99,6 +114,7 @@ export class GameRoom {
   start(): void {
     if (this.running) return;
     this.running = true;
+    this.phase = 'FLOOR_TRANSITION';
 
     // Generate seeds for all floors
     for (let i = 0; i < GAME_CONFIG.FLOOR_COUNT; i++) {
@@ -106,6 +122,7 @@ export class GameRoom {
     }
 
     this.startFloor(1);
+    this.phase = 'PLAYING';
 
     // Start game loop
     let lastTime = performance.now();
@@ -128,11 +145,24 @@ export class GameRoom {
     this.healWaves = [];
     this.bossEvents = [];
     this.items = [];
+    this.envObjects = [];
+    this.currentWave = 0;
+    this.waveDelayTimer = 0;
 
     const seed = this.floorSeeds[floor - 1];
-    const dungeon = this.dungeonGenerator.generate(floor, seed);
+
+    let dungeon: DungeonData;
+    if (floor === 5) {
+      dungeon = generateBossArena(floor, seed);
+    } else {
+      dungeon = this.dungeonGenerator.generate(floor, seed);
+    }
     this.currentDungeon = dungeon;
     this.collisionGrid.setGrid(dungeon.collisionGrid || []);
+
+    // Store env objects from dungeon
+    this.envObjects = dungeon.envObjects || [];
+
     const config = FLOOR_CONFIG[floor];
 
     // Place players at spawn
@@ -148,7 +178,7 @@ export class GameRoom {
     }
 
     // Spawn enemies
-    for (const spawnData of dungeon.enemies) {
+    for (const spawnData of (dungeon.enemies || [])) {
       for (let j = 0; j < spawnData.count; j++) {
         const enemy = this.createEnemy(spawnData.type, spawnData.x, spawnData.y, floor);
         this.enemies.set(enemy.id, enemy);
@@ -157,7 +187,7 @@ export class GameRoom {
     }
 
     // Spawn items
-    for (const item of dungeon.items) {
+    for (const item of (dungeon.items || [])) {
       this.items.push(item);
     }
   }
@@ -216,6 +246,7 @@ export class GameRoom {
       bossCasting: type === 'boss' ? null : undefined,
       bossCastTimer: type === 'boss' ? 0 : undefined,
       bossTargetAngle: type === 'boss' ? 0 : undefined,
+      statusEffects: [],
     };
   }
 
@@ -246,6 +277,7 @@ export class GameRoom {
 
   update(dt: number): void {
     if (!this.running) return;
+    if (this.phase !== 'PLAYING' && this.phase !== 'ARENA_PLAYING' && this.phase !== 'MAZE_PLAYING') return;
     this.bossEvents = [];
 
     // Update players
@@ -295,6 +327,27 @@ export class GameRoom {
         const H = GAME_CONFIG.DUNGEON_HEIGHT;
         player.x = Math.max(20, Math.min(W - 20, player.x));
         player.y = Math.max(20, Math.min(H - 20, player.y));
+
+        // Pillar collision: push player out of alive pillar rects
+        for (const obj of this.envObjects) {
+          if (obj.type !== 'pillar' || !obj.alive) continue;
+          const hw = obj.width / 2, hh = obj.height / 2;
+          const px = obj.x - hw, py = obj.y - hh;
+          // Check if player center is inside pillar rect (with player radius)
+          if (player.x + PLAYER_RADIUS > px && player.x - PLAYER_RADIUS < px + obj.width
+            && player.y + PLAYER_RADIUS > py && player.y - PLAYER_RADIUS < py + obj.height) {
+            // Push out on the axis with least overlap
+            const overlapL = (player.x + PLAYER_RADIUS) - px;
+            const overlapR = (px + obj.width) - (player.x - PLAYER_RADIUS);
+            const overlapT = (player.y + PLAYER_RADIUS) - py;
+            const overlapB = (py + obj.height) - (player.y - PLAYER_RADIUS);
+            const minOverlap = Math.min(overlapL, overlapR, overlapT, overlapB);
+            if (minOverlap === overlapL) player.x = px - PLAYER_RADIUS;
+            else if (minOverlap === overlapR) player.x = px + obj.width + PLAYER_RADIUS;
+            else if (minOverlap === overlapT) player.y = py - PLAYER_RADIUS;
+            else player.y = py + obj.height + PLAYER_RADIUS;
+          }
+        }
       }
 
       // Energy regen (respect energyRegenMultiplier from status)
@@ -348,6 +401,9 @@ export class GameRoom {
     // Separate overlapping enemies
     this.separateEnemies();
 
+    // Tick environment objects (traps, etc.)
+    this.tickEnvObjects(dt);
+
     // Update bullets
     for (const [id, bullet] of this.bullets) {
       bullet.x += bullet.vx * dt;
@@ -382,12 +438,18 @@ export class GameRoom {
     // Check floor completion
     this.checkFloorCompletion();
 
+    // Arena state check
+    if (this.phase === 'ARENA_PLAYING') {
+      this.checkArenaState(dt);
+    }
+
     // Check for game over (all players dead)
     let alivePlayers = 0;
     for (const p of this.players.values()) {
       if (p.alive) alivePlayers++;
     }
     if (alivePlayers === 0 && this.running) {
+      this.phase = 'GAME_OVER';
       this.running = false;
       if (this.tickInterval) {
         clearInterval(this.tickInterval);
@@ -432,6 +494,25 @@ export class GameRoom {
               player.defense += 10;
               setTimeout(() => { player.defense = Math.max(0, player.defense - 10); }, 10000);
               break;
+            case 'vitality_crystal': {
+              const vsm = this.playerStatus.get(player.id);
+              if (vsm && !vsm.has('vitality_crystal_effect')) {
+                vsm.apply('vitality_crystal_effect', 'item', 0, 999000);
+                player.hpMax += 15;
+                player.hp += 15;
+              }
+              break;
+            }
+            case 'power_essence': {
+              const psm = this.playerStatus.get(player.id);
+              if (psm) psm.apply('power_essence_effect', 'item', 1.15, 999000);
+              break;
+            }
+            case 'iron_rune': {
+              const ism = this.playerStatus.get(player.id);
+              if (ism) ism.apply('iron_rune_effect', 'item', 0.5, 999000);
+              break;
+            }
           }
           this.items.splice(i, 1);
         }
@@ -440,44 +521,509 @@ export class GameRoom {
   }
 
   private checkFloorCompletion(): void {
+    if (this.phase === 'MAZE_PLAYING') {
+      this.checkMazeCompletion();
+      return;
+    }
+    if (this.phase !== 'PLAYING') return;
+
     // Check if all enemies are dead
     let aliveEnemies = 0;
     for (const enemy of this.enemies.values()) {
       if (enemy.alive) aliveEnemies++;
     }
 
-    if (aliveEnemies === 0 && this.currentDungeon?.exitPoint) {
-      // Check if any player is touching the floor_stairs (exitPoint)
-      const exitX = this.currentDungeon.exitPoint.x;
-      const exitY = this.currentDungeon.exitPoint.y;
-      const exitRange = 40; // 碰撞检测范围
+    if (aliveEnemies > 0) return;
 
-      let playerAtExit = false;
+    if (!this.currentDungeon?.exitPoint) {
+      console.error('[GameRoom] exitPoint is null, cannot check floor completion');
+      return;
+    }
+
+    // Floor 5: all enemies dead → VICTORY directly
+    if (this.currentFloor >= GAME_CONFIG.FLOOR_COUNT) {
+      this.phase = 'VICTORY';
+      this.running = false;
+      if (this.tickInterval) {
+        clearInterval(this.tickInterval);
+        this.tickInterval = null;
+      }
+      this._gameOver = true;
+      this._victory = true;
+      return;
+    }
+
+    // Floor < 5: check if player is at exit
+    const exitX = this.currentDungeon.exitPoint.x;
+    const exitY = this.currentDungeon.exitPoint.y;
+    const exitRange = 40;
+
+    let playerAtExit = false;
+    for (const player of this.players.values()) {
+      if (!player.alive) continue;
+      const dist = Math.hypot(player.x - exitX, player.y - exitY);
+      if (dist < exitRange) {
+        playerAtExit = true;
+        break;
+      }
+    }
+
+    if (!playerAtExit) return;
+
+    // Transition: decide arena or next floor
+    this.phase = 'FLOOR_TRANSITION';
+    this.decideArenaOrNextFloor();
+  }
+
+  private decideArenaOrNextFloor(): void {
+    if (!this.mazeTriggered && this.currentFloor >= 1 && this.currentFloor <= 3 && Math.random() < MAZE_TRIGGER_CHANCE) {
+      this.mazeTriggered = true;
+      this.startMaze();
+    } else if (!this.arenaTriggered && this.currentFloor >= 1 && this.currentFloor <= 3 && Math.random() < ARENA_TRIGGER_CHANCE) {
+      this.arenaTriggered = true;
+      this.startArena();
+    } else {
+      this.startFloor(this.currentFloor + 1);
+      this._floorChanged = true;
+      this.phase = 'PLAYING';
+    }
+  }
+
+  private startArena(): void {
+    this.arenaFloor = this.currentFloor;
+    const arenaFloorNum = this.currentFloor + 1;
+    const seed = Math.floor(Math.random() * 0x7fffffff);
+    const arena = generateColosseum(arenaFloorNum, seed);
+
+    this.enemies.clear();
+    this.enemyStatus.clear();
+    this.bullets.clear();
+    this.healWaves = [];
+    this.bossEvents = [];
+    this.items = [];
+    this.envObjects = arena.envObjects;
+    this.arenaDoorId = arena.exitDoorId;
+    this.currentWave = 0;
+    this.waveDelayTimer = 0;
+
+    // Set up collision grid from arena
+    this.collisionGrid.setGrid(arena.collisionGrid);
+
+    // Build a minimal currentDungeon for rendering
+    this.currentDungeon = {
+      rooms: [{ x: arena.room.x, y: arena.room.y, width: arena.room.width, height: arena.room.height, type: 'arena' }],
+      corridorTiles: [],
+      spawnPoint: arena.spawnPoint,
+      exitPoint: arena.exitPoint,
+      collisionGrid: arena.collisionGrid,
+      envObjects: arena.envObjects,
+    };
+
+    // Place players at arena spawn
+    const spawn = arena.spawnPoint;
+    let i = 0;
+    for (const player of this.players.values()) {
+      player.x = spawn.x + (i * 30);
+      player.y = spawn.y;
+      player.hp = player.hpMax;
+      player.energy = player.energyMax;
+      player.alive = true;
+      i++;
+    }
+
+    // Spawn wave 1 enemies as dormant
+    const wave1Count = arenaFloorNum * 2 + 2;
+    const basicCount = Math.ceil(wave1Count * 0.6);
+    const fastCount = wave1Count - basicCount;
+    const cx = arena.room.x + arena.room.width / 2;
+    const cy = arena.room.y + arena.room.height / 2;
+
+    for (let j = 0; j < basicCount; j++) {
+      const angle = (j / basicCount) * Math.PI * 2;
+      const dist = 64 + Math.random() * 128;
+      const ex = cx + Math.cos(angle) * dist;
+      const ey = cy + Math.sin(angle) * dist;
+      const enemy = this.createArenaEnemy('basic', ex, ey, arenaFloorNum);
+      this.enemies.set(enemy.id, enemy);
+      this.enemyStatus.set(enemy.id, new StatusManager());
+    }
+    for (let j = 0; j < fastCount; j++) {
+      const angle = (j / fastCount) * Math.PI * 2 + 0.5;
+      const dist = 80 + Math.random() * 120;
+      const ex = cx + Math.cos(angle) * dist;
+      const ey = cy + Math.sin(angle) * dist;
+      const enemy = this.createArenaEnemy('fast', ex, ey, arenaFloorNum);
+      this.enemies.set(enemy.id, enemy);
+      this.enemyStatus.set(enemy.id, new StatusManager());
+    }
+
+    this.phase = 'ARENA_PLAYING';
+    console.log(`[GameRoom] Arena started at floor ${arenaFloorNum}, ${wave1Count} dormant enemies`);
+  }
+
+  private createArenaEnemy(type: string, x: number, y: number, floor: number): EnemyState {
+    const id = `arena_enemy_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const baseHp = ENEMY_BASE_HP[type] || 30;
+    const baseAtk = ENEMY_BASE_ATTACK[type] || 8;
+
+    const hp = Math.round(baseHp * (1 + (floor - 1) * 0.15) * ARENA_HP_MULTIPLIER);
+    const atk = Math.round(baseAtk * (1 + (floor - 1) * 0.1) * ARENA_ATK_MULTIPLIER);
+
+    // Clamp spawn to arena bounds (central arena area)
+    const arenaMinX = ARENA_RING_OUTER_COL_MIN * TILE_SIZE + 32;
+    const arenaMaxX = (ARENA_RING_OUTER_COL_MAX + 1) * TILE_SIZE - 32;
+    const arenaMinY = ARENA_RING_OUTER_ROW_MIN * TILE_SIZE + 32;
+    const arenaMaxY = (ARENA_RING_OUTER_ROW_MAX + 1) * TILE_SIZE - 32;
+    const spawnX = Math.max(arenaMinX, Math.min(arenaMaxX, x));
+    const spawnY = Math.max(arenaMinY, Math.min(arenaMaxY, y));
+
+    return {
+      id,
+      type,
+      x: spawnX,
+      y: spawnY,
+      hp,
+      hpMax: hp,
+      attack: atk,
+      alive: true,
+      state: 'idle',
+      dormant: true,
+      statusEffects: [],
+    };
+  }
+
+  private checkArenaState(dt: number): void {
+    // Check if player attacks dormant enemy → handled in damageEnemy()
+
+    // Wave 0 (dormant): check if player walks to exit without attacking
+    if (this.currentWave === 0) {
+      const door = this.envObjects.find(o => o.type === 'door');
+      if (door && door.doorOpen) {
+        for (const player of this.players.values()) {
+          if (!player.alive) continue;
+          const dist = Math.hypot(player.x - door.x, player.y - door.y);
+          if (dist < 40) {
+            // Safe passage — no reward
+            this.phase = 'FLOOR_TRANSITION';
+            this.startFloor(this.arenaFloor + 1);
+            this._floorChanged = true;
+            this.phase = 'PLAYING';
+            return;
+          }
+        }
+      }
+      return;
+    }
+
+    // Wave 1-3 in progress: check if all enemies dead
+    let aliveEnemies = 0;
+    for (const enemy of this.enemies.values()) {
+      if (enemy.alive) aliveEnemies++;
+    }
+    if (aliveEnemies > 0) return;
+
+    // All enemies dead
+    if (this.currentWave < 3) {
+      // Wave delay
+      this.waveDelayTimer += dt * 1000;
+      if (this.waveDelayTimer < ARENA_WAVE_INTER_DELAY) return;
+      this.waveDelayTimer = 0;
+
+      // Heal alive players 25% maxHP
       for (const player of this.players.values()) {
-        if (!player.alive) continue;
-        const dist = Math.hypot(player.x - exitX, player.y - exitY);
-        if (dist < exitRange) {
-          playerAtExit = true;
-          break;
+        if (player.alive) {
+          player.hp = Math.min(player.hpMax, player.hp + Math.round(player.hpMax * ARENA_WAVE_HP_RECOVERY));
         }
       }
 
-      if (!playerAtExit) return; // 玩家还没到楼梯，不触发
+      this.currentWave++;
+      this.spawnArenaWave(this.currentWave, this.arenaFloor + 1);
+    } else {
+      // Wave 3 cleared — open door, spawn rewards
+      const door = this.envObjects.find(o => o.type === 'door');
+      if (door && !door.doorOpen) {
+        door.doorOpen = true;
+        const col = Math.floor(door.x / TILE_SIZE);
+        const row = Math.floor(door.y / TILE_SIZE);
+        this.collisionGrid.setTile(col, row, true);
+      }
 
-      if (this.currentFloor >= GAME_CONFIG.FLOOR_COUNT) {
-        // Game complete!
-        this.running = false;
-        if (this.tickInterval) {
-          clearInterval(this.tickInterval);
-          this.tickInterval = null;
+      this.spawnArenaRewards(this.arenaFloor + 1);
+      this.currentWave = 4; // Mark as cleared
+    }
+  }
+
+  private spawnArenaWave(wave: number, floor: number): void {
+    const room = this.currentDungeon?.rooms[0];
+    if (!room) return;
+    const cx = room.x + room.width / 2;
+    const cy = room.y + room.height / 2;
+
+    if (wave === 2) {
+      const count = floor + 1;
+      const tankCount = Math.ceil(count * 0.5);
+      const ghostCount = count - tankCount;
+      for (let i = 0; i < tankCount; i++) {
+        const angle = (i / tankCount) * Math.PI * 2;
+        const dist = 64 + Math.random() * 128;
+        const enemy = this.createArenaEnemy('tank', cx + Math.cos(angle) * dist, cy + Math.sin(angle) * dist, floor);
+        enemy.dormant = false;
+        this.enemies.set(enemy.id, enemy);
+        this.enemyStatus.set(enemy.id, new StatusManager());
+      }
+      for (let i = 0; i < ghostCount; i++) {
+        const angle = (i / ghostCount) * Math.PI * 2 + 0.5;
+        const dist = 80 + Math.random() * 120;
+        const enemy = this.createArenaEnemy('ghost', cx + Math.cos(angle) * dist, cy + Math.sin(angle) * dist, floor);
+        enemy.dormant = false;
+        this.enemies.set(enemy.id, enemy);
+        this.enemyStatus.set(enemy.id, new StatusManager());
+      }
+    } else if (wave === 3) {
+      const count = floor + 2;
+      const isOddFloor = floor % 2 === 1;
+      const eliteType = isOddFloor ? 'ghost' : 'tank';
+      for (let i = 0; i < count; i++) {
+        const angle = (i / count) * Math.PI * 2;
+        const dist = 64 + Math.random() * 128;
+        const enemy = this.createArenaEnemy(eliteType, cx + Math.cos(angle) * dist, cy + Math.sin(angle) * dist, floor);
+        enemy.dormant = false;
+        enemy.hp *= 2;
+        enemy.hpMax = enemy.hp;
+        enemy.attack = Math.round(enemy.attack * 1.5);
+        enemy.isElite = true;
+        this.enemies.set(enemy.id, enemy);
+        this.enemyStatus.set(enemy.id, new StatusManager());
+      }
+    }
+  }
+
+  private spawnArenaRewards(floor: number): void {
+    const room = this.currentDungeon?.rooms[0];
+    if (!room) return;
+    const cx = room.x + room.width / 2;
+    const cy = room.y + room.height / 2;
+
+    // Guaranteed 1 arena exclusive item
+    const exclusives = ['vitality_crystal', 'power_essence', 'iron_rune'];
+    const exclusiveType = exclusives[Math.floor(Math.random() * exclusives.length)];
+    this.items.push({ id: `item_arena_excl_${Date.now()}`, x: cx, y: cy, type: exclusiveType });
+
+    // Additional items
+    const itemCount = 2 + Math.floor(Math.random() * 2) + floor - 1;
+    const normalPool = ['potion', 'shield', 'energy'];
+    for (let i = 0; i < itemCount - 1; i++) {
+      const t = normalPool[Math.floor(Math.random() * normalPool.length)];
+      const ox = (Math.random() - 0.5) * 80;
+      const oy = (Math.random() - 0.5) * 80;
+      this.items.push({ id: `item_arena_${Date.now()}_${i}`, x: cx + ox, y: cy + oy, type: t });
+    }
+
+    // Gold coins
+    const coinCount = 3 + Math.floor(Math.random() * 3) + floor;
+    for (let i = 0; i < coinCount; i++) {
+      const ox = (Math.random() - 0.5) * 80;
+      const oy = (Math.random() - 0.5) * 80;
+      this.items.push({ id: `item_arena_coin_${Date.now()}_${i}`, x: cx + ox, y: cy + oy, type: 'coin' });
+    }
+  }
+
+  private startMaze(): void {
+    this.mazeFloor = this.currentFloor;
+    const mazeFloorNum = this.currentFloor + 1;
+    const seed = Math.floor(Math.random() * 0x7fffffff);
+    const maze = generateMaze(mazeFloorNum, seed);
+
+    this.enemies.clear();
+    this.enemyStatus.clear();
+    this.bullets.clear();
+    this.healWaves = [];
+    this.bossEvents = [];
+    this.items = [];
+    this.envObjects = maze.envObjects || [];
+
+    this.collisionGrid.setGrid(maze.collisionGrid);
+
+    this.currentDungeon = maze;
+
+    // Place players at maze entrance
+    const spawn = maze.spawnPoint;
+    let i = 0;
+    for (const player of this.players.values()) {
+      player.x = spawn.x + (i * 30);
+      player.y = spawn.y;
+      player.hp = player.hpMax;
+      player.energy = player.energyMax;
+      player.alive = true;
+      i++;
+    }
+
+    // Spawn enemies from combat pocket rooms and patrol points
+    for (const room of maze.rooms) {
+      if (room.type === 'combat_pocket') {
+        const enemyCount = 2 + Math.floor(Math.random() * 2);
+        for (let j = 0; j < enemyCount; j++) {
+          const angle = (j / enemyCount) * Math.PI * 2;
+          const dist = 32 + Math.random() * 32;
+          const ex = room.x + room.width / 2 + Math.cos(angle) * dist;
+          const ey = room.y + room.height / 2 + Math.sin(angle) * dist;
+          const types = ['basic', 'fast', 'ghost'];
+          const type = types[Math.floor(Math.random() * types.length)];
+          const enemy = this.createEnemy(type, ex, ey, mazeFloorNum);
+          this.enemies.set(enemy.id, enemy);
+          this.enemyStatus.set(enemy.id, new StatusManager());
         }
-        // Store victory state for next getState call
-        this._gameOver = true;
-        this._victory = true;
-      } else {
-        // Next floor
-        this.startFloor(this.currentFloor + 1);
-        this._floorChanged = true;
+      } else if (room.type === 'maze_patrol') {
+        const types = ['basic', 'fast'];
+        const type = types[Math.floor(Math.random() * types.length)];
+        const enemy = this.createEnemy(type, room.x, room.y, mazeFloorNum);
+        this.enemies.set(enemy.id, enemy);
+        this.enemyStatus.set(enemy.id, new StatusManager());
+      }
+    }
+
+    this.phase = 'MAZE_PLAYING';
+    console.log(`[GameRoom] Maze started at floor ${mazeFloorNum}, ${this.enemies.size} enemies`);
+  }
+
+  private checkMazeCompletion(): void {
+    // All enemies must be dead
+    let aliveEnemies = 0;
+    for (const enemy of this.enemies.values()) {
+      if (enemy.alive) aliveEnemies++;
+    }
+    if (aliveEnemies > 0) return;
+
+    if (!this.currentDungeon?.exitPoint) return;
+
+    const exitX = this.currentDungeon.exitPoint.x;
+    const exitY = this.currentDungeon.exitPoint.y;
+
+    let playerAtExit = false;
+    for (const player of this.players.values()) {
+      if (!player.alive) continue;
+      const dist = Math.hypot(player.x - exitX, player.y - exitY);
+      if (dist < 40) {
+        playerAtExit = true;
+        break;
+      }
+    }
+
+    if (!playerAtExit) return;
+
+    // Maze cleared → resume normal flow from next floor
+    this.phase = 'FLOOR_TRANSITION';
+    this.startFloor(this.mazeFloor + 1);
+    this._floorChanged = true;
+    this.phase = 'PLAYING';
+    console.log(`[GameRoom] Maze cleared, resuming at floor ${this.mazeFloor + 1}`);
+  }
+
+  private triggerArenaCombat(): void {
+    // Close door
+    const door = this.envObjects.find(o => o.type === 'door');
+    if (door) {
+      door.doorOpen = false;
+      const col = Math.floor(door.x / TILE_SIZE);
+      const row = Math.floor(door.y / TILE_SIZE);
+      this.collisionGrid.setTile(col, row, false);
+    }
+
+    // Activate all dormant enemies
+    for (const enemy of this.enemies.values()) {
+      if (enemy.dormant) {
+        enemy.dormant = false;
+      }
+    }
+
+    this.currentWave = 1;
+    console.log('[GameRoom] Arena combat triggered! Wave 1 begins.');
+  }
+
+  private tickEnvObjects(dt: number): void {
+    for (const obj of this.envObjects) {
+      if (!obj.alive) continue;
+      if (obj.type !== 'trap') continue;
+
+      // Update trap cycle timer
+      obj.trapCycleTimer = (obj.trapCycleTimer || 0) - dt * 1000;
+      if (obj.trapCycleTimer! <= 0) {
+        obj.trapActive = !obj.trapActive;
+        obj.trapCycleTimer = obj.trapActive ? obj.trapOnDuration : obj.trapOffDuration;
+        if (!obj.trapActive) {
+          obj.triggeredEntityIds = [];
+        }
+      }
+
+      // Check entities in radius when active
+      if (!obj.trapActive) continue;
+
+      const checkEntities = (entities: Iterable<{ id: string; x: number; y: number; alive: boolean; hp?: number; hpMax?: number }>) => {
+        for (const entity of entities) {
+          if (!entity.alive) continue;
+          const triggered = obj.triggeredEntityIds || [];
+          if (triggered.includes(entity.id)) continue;
+
+          const dist = Math.hypot(entity.x - obj.x, entity.y - obj.y);
+          if (dist < TRAP_DETECTION_RADIUS) {
+            triggered.push(entity.id);
+            obj.triggeredEntityIds = triggered;
+
+            const trapType = obj.trapType || 'spike';
+            const trapConfig = TRAP_TYPES[trapType];
+            if (!trapConfig) continue;
+
+            // Check trapResistance for players
+            let damage = trapConfig.damage;
+            if (trapConfig.damage > 0) {
+              const player = this.players.get(entity.id);
+              if (player) {
+                const sm = this.playerStatus.get(entity.id);
+                if (sm?.getAggregatedFlags().trapResistance) {
+                  damage = Math.round(damage * 0.5);
+                }
+                this.damagePlayer(entity.id, damage);
+              } else {
+                // Enemy — direct damage
+                this.damageEnemy(entity.id, damage);
+              }
+            }
+
+            // Apply status effects
+            if (trapType === 'fire') {
+              const sm = this.playerStatus.get(entity.id) || this.enemyStatus.get(entity.id);
+              if (sm) sm.apply('burn', 'trap', 5, 3000);
+            } else if (trapType === 'slow') {
+              const sm = this.playerStatus.get(entity.id) || this.enemyStatus.get(entity.id);
+              if (sm) sm.apply('slow_trap', 'trap', 0.3, 2000);
+            }
+          }
+        }
+      };
+
+      checkEntities(this.players.values());
+      checkEntities(this.enemies.values());
+    }
+  }
+
+  getEnvObjects(): EnvObjectState[] {
+    return this.envObjects;
+  }
+
+  damageEnvObject(id: string, damage: number, attackerId?: string): void {
+    const obj = this.envObjects.find(o => o.id === id);
+    if (!obj || !obj.alive) return;
+
+    obj.hp = (obj.hp || 0) - damage;
+    if (obj.hp! <= 0) {
+      obj.alive = false;
+      // Restore collision grid tile
+      const col = Math.floor(obj.x / TILE_SIZE);
+      const row = Math.floor(obj.y / TILE_SIZE);
+      this.collisionGrid.setTile(col, row, true);
+      // 20% coin drop
+      if (Math.random() < 0.2) {
+        this.items.push({ id: `item_pillar_${Date.now()}`, x: obj.x, y: obj.y, type: 'coin' });
       }
     }
   }
@@ -522,8 +1068,20 @@ export class GameRoom {
         corridorTiles: this.currentDungeon.corridorTiles,
         spawnPoint: this.currentDungeon.spawnPoint,
         exitPoint: this.currentDungeon.exitPoint,
-        collisionGrid: this.collisionGrid.getGrid()
-      } : undefined
+        collisionGrid: this.collisionGrid.getGrid(),
+        envObjects: this.envObjects,
+      } : undefined,
+      phase: this.phase,
+      isArenaFloor: this.phase === 'ARENA_PLAYING',
+      isMazeFloor: this.phase === 'MAZE_PLAYING',
+      arenaWave: this.currentWave,
+      arenaTriggered: this.arenaTriggered,
+      mazeTriggered: this.mazeTriggered,
+      mazeFog: this.phase === 'MAZE_PLAYING' ? {
+        enabled: true,
+        visionRadius: 128,
+        exploredTiles: [],
+      } : undefined,
     };
   }
 
@@ -569,6 +1127,16 @@ export class GameRoom {
   damageEnemy(enemyId: string, damage: number, attackerId?: string): void {
     const enemy = this.enemies.get(enemyId);
     if (!enemy || !enemy.alive) return;
+
+    // Arena: dormant enemy attacked → trigger combat
+    if (enemy.dormant && this.phase === 'ARENA_PLAYING') {
+      this.triggerArenaCombat();
+    }
+
+    // Track last attacker for trap kill attribution
+    if (attackerId) {
+      enemy.lastAttackerId = attackerId;
+    }
 
     // Check invulnerable via StatusManager
     const esm = this.enemyStatus.get(enemyId);
@@ -764,6 +1332,17 @@ export class GameRoom {
             });
           }
         }
+        break;
+      }
+      case 'forceArena': {
+        this.arenaTriggered = false;
+        this.startArena();
+        break;
+      }
+      case 'forceTrapFloor': {
+        // Force start maze
+        this.mazeTriggered = false;
+        this.startMaze();
         break;
       }
     }

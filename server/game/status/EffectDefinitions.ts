@@ -127,4 +127,26 @@ export const EFFECT_DEFINITIONS: Record<string, EffectDefinition> = {
     stackPolicy: 'refresh', maxStacks: 1, priority: 0,
     flags: { ccImmune: true, knockbackImmune: true },
   },
+
+  // ── 陷阱/竞技关专用 ──
+  slow_trap: {
+    typeId: 'slow_trap', category: 'cc', name: '陷阱减速',
+    stackPolicy: 'refresh', maxStacks: 1, priority: 1,
+    flags: { speedMultiplier: 0.3 },
+  },
+  power_essence_effect: {
+    typeId: 'power_essence_effect', category: 'buff', name: '力量精华',
+    stackPolicy: 'refresh', maxStacks: 1, priority: 0,
+    flags: { outgoingDamageMultiplier: 1.15 },
+  },
+  iron_rune_effect: {
+    typeId: 'iron_rune_effect', category: 'buff', name: '铁壁符文',
+    stackPolicy: 'refresh', maxStacks: 1, priority: 0,
+    flags: { trapResistance: true },
+  },
+  vitality_crystal_effect: {
+    typeId: 'vitality_crystal_effect', category: 'special', name: '生命结晶标记',
+    stackPolicy: 'refresh', maxStacks: 1, priority: 0,
+    flags: {},
+  },
 };

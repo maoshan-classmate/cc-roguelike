@@ -164,12 +164,6 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 > 架构守卫详见 `.claude/rules/architecture-guard.md`（alwaysApply）。
 > 以下为 agent 局限性和已知同步历史
 
-**已知同步历史**：
-- `floor_stairs` → source=0x72, atlasKey=23, category=SCENE；三文件一致，但渲染路径硬编码 `drawDungeonSprite(23)` 绕过 SPRITE_REGISTRY
-- `bullet_kenney` → 已废弃，代码无引用
-- `weapon_anime_sword` → sprites.ts 有注册，代码有引用，但 HTML/MD 标记 u:false（需人工确认）
-- `weapon_mace` / `weapon_hammer` → sprites.ts 曾缺失，已补齐
-
 **sprite-audit agent 局限性**：
 - 只检查 registry 缺失条目，不检查 `u:false` 标记准确性
 - 不自动验证 HTML vs MD 坐标一致性
@@ -283,11 +277,6 @@ npx tsc --noEmit                                # TypeScript 编译检查
 3. 告知 Agent 文件名
 4. Agent 执行：**分析格式** → **移动到 `src/assets/{source}/`** → **更新 `sprites.ts` 的 SPRITE_REGISTRY** → **同步更新 `docs/sprite-inventory.md` + `sprite-viewer.html`** → **编译验证**
 
-**已有资产**（Kenney，CC0）：
-- `src/assets/kenney/Spritesheet/roguelikeChar_transparent.png` — 角色 spritesheet
-- `src/assets/kenney/Spritesheet/roguelikeDungeon_transparent.png` — 地牢/道具 spritesheet
-- `src/assets/kenney/Spritesheet/roguelikeSheet_transparent.png` — 综合 spritesheet（含怪物）
-
 **已集成资产**（0x72，PWYW 商业许可）：
 - `src/assets/0x72/main_atlas.png` — 512×512 完整精灵图集
 - `src/assets/0x72/frames/` — 280+ 预提取单帧 PNG（CHARACTER/MONSTER/WEAPON/ITEM/SCENE/UI）
@@ -296,7 +285,6 @@ npx tsc --noEmit                                # TypeScript 编译检查
 
 **⚠️ 废弃文件**（勿更新）：
 - `src/assets/0x72/index.ts` — 已废弃
-- `src/assets/kenney/index.ts` — 已废弃
 
 **Config → Registry 映射规则**：
 - `characters.ts` 的 `spriteName.front/back` = Registry key（例：`'knight_m_idle_anim_f0'`）

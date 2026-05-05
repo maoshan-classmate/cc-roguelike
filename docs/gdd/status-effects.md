@@ -489,7 +489,7 @@ shared/types.ts ← StatusManager ← GameRoom.update()
 | root | 定身 | 2000ms | blocksMovement=true | refresh | hard_cc | 2 | 无 |
 | knockback | 击退 | 瞬时(0ms) | knockbackImmune=true(self) | refresh | — | 0 | 无 |
 | taunt | 嘲讽 | 3000ms | forcedTarget=true | refresh | — | 1 | 无 |
-| slow_trap | 陷阱减速 | 3000ms | speedMultiplier=0.3 | max_duration | — | 1 | 无 |
+| slow_trap | 陷阱减速 | 2000ms | speedMultiplier=0.3 | max_duration | — | 1 | 无 |
 
 ### I2. Buff（增益）
 
@@ -539,7 +539,7 @@ shared/types.ts ← StatusManager ← GameRoom.update()
 | 道具: speed_potion | speed_boost(5000ms, 1.5x) | 加速 |
 | 道具: health_potion | heal_over_time(3000ms, value=10) | 持续回复 |
 | 中毒敌人攻击 | poison(3000ms, value=3) | 中毒 DOT |
-| 减速陷阱 | slow_trap(3000ms, 0.3x) | 竞技关陷阱强减速（独立于标准 slow） |
+| 减速陷阱 | slow_trap(2000ms, 0.3x) | 竞技关/迷宫关陷阱强减速（独立于标准 slow） |
 | 竞技关奖励: 生命结晶 | vitality_crystal_effect(999000ms) | 唯一性标记（maxHP 通过直接属性修改） |
 | 竞技关奖励: 力量精华 | power_essence_effect(999000ms, 1.15x) | 造成伤害 +15%（持续到死亡） |
 | 竞技关奖励: 铁壁符文 | iron_rune_effect(999000ms) | 陷阱伤害 -50%（持续到死亡） |
