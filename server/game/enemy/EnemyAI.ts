@@ -37,9 +37,10 @@ export class EnemyAI {
     }
 
     // Check status flags before acting
+    // Boss casting is CC-immune — stun/freeze cannot interrupt an in-progress cast
     if (sm) {
       const flags = sm.getAggregatedFlags();
-      if (flags.blocksMovement && flags.blocksAttack) return; // Stunned/Frozen — skip entirely
+      if (flags.blocksMovement && flags.blocksAttack && !enemy.bossCasting) return;
     }
 
     if (enemy.type === 'boss') {
@@ -197,7 +198,8 @@ export class EnemyAI {
       enemy.hp = Math.min(enemy.hpMax, enemy.hp + Math.round(enemy.hpMax * 0.2));
     }
 
-    if (enemy.bossCasting && canAttack) {
+    // ── 施法中：CC 免疫，锁定所有动作，强制推进计时器 ──
+    if (enemy.bossCasting) {
       enemy.bossCastTimer = (enemy.bossCastTimer || 0) + dt * 1000;
       const windup = enemy.bossCasting === 'ranged' ? RANGED_WINDUP : AOE_WINDUP;
       enemy.state = 'attack';
@@ -212,6 +214,15 @@ export class EnemyAI {
         enemy.bossCastTimer = 0;
         enemy.bossPostCastCooldown = 1000;
       }
+      return;
+    }
+
+    // ── 后摇期间：锁定移动和近战，只推进技能计时器 ──
+    if (enemy.bossPostCastCooldown && enemy.bossPostCastCooldown > 0) {
+      enemy.bossPostCastCooldown -= dt * 1000;
+      enemy.bossRangedTimer = (enemy.bossRangedTimer || 0) + dt * 1000;
+      enemy.bossAoETimer = (enemy.bossAoETimer || 0) + dt * 1000;
+      enemy.state = 'attack';
       return;
     }
 
@@ -264,11 +275,7 @@ export class EnemyAI {
       enemy.bossRangedTimer = (enemy.bossRangedTimer || 0) + dt * 1000;
       enemy.bossAoETimer = (enemy.bossAoETimer || 0) + dt * 1000;
 
-      if (enemy.bossPostCastCooldown && enemy.bossPostCastCooldown > 0) {
-        enemy.bossPostCastCooldown -= dt * 1000;
-      }
-
-      if (!enemy.bossCasting && (!enemy.bossPostCastCooldown || enemy.bossPostCastCooldown <= 0)) {
+      if (!enemy.bossCasting) {
         if (enemy.bossRangedTimer >= rangedCooldown && dist > 40) {
           enemy.bossRangedTimer = 0;
           enemy.bossCasting = 'ranged';

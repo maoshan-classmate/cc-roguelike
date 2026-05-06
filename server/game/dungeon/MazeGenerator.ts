@@ -15,6 +15,9 @@ import {
 } from '../../../shared/constants';
 import type { EnvObjectState, DungeonData, DungeonRoom } from '../../../shared/types';
 import { MathUtils } from '../../utils/MathUtils';
+import type { TerrainGenerator, TerrainData } from './types';
+import { registerTerrain } from './types';
+import { shuffleArray, clearAreaAround } from '../../utils/dungeon';
 
 // Grid dimensions (tile coordinates)
 const COLS = 32;
@@ -33,6 +36,20 @@ const EXIT_ROW = 11;     // rows 11-12
  * The maze is represented entirely as a collision grid + env objects.
  */
 export function generateMaze(floor: number, seed: number): DungeonData {
+  const terrain = mazeGenerator.generate(floor, seed);
+  return {
+    rooms: terrain.rooms ?? [],
+    corridorTiles: terrain.corridorTiles ?? [],
+    spawnPoint: terrain.spawnPoint,
+    exitPoint: terrain.exitPoint,
+    collisionGrid: terrain.collisionGrid,
+    envObjects: terrain.envObjects,
+  };
+}
+
+export const mazeGenerator: TerrainGenerator = {
+  type: 'maze',
+  generate(floor: number, seed: number): TerrainData {
   const random = MathUtils.seededRandom(seed);
   let nextEnvId = 1;
   const envId = (): string => `maze_obj_${nextEnvId++}`;
@@ -148,8 +165,8 @@ export function generateMaze(floor: number, seed: number): DungeonData {
   };
 
   // ── Step 10: Force-clear 3x3 around spawn and exit ──
-  forceClearArea(grid, 0, 11);
-  forceClearArea(grid, 30, 11);
+  clearAreaAround(grid, 0, 11);
+  clearAreaAround(grid, 30, 11);
 
   // ── Step 11: Validate ──
   const walkableCount = grid.flat().filter(Boolean).length;
@@ -192,8 +209,13 @@ export function generateMaze(floor: number, seed: number): DungeonData {
     exitPoint,
     collisionGrid: grid,
     envObjects,
+    enemySpawns: [],
+    itemSpawns: [],
   };
-}
+  },
+};
+
+registerTerrain(mazeGenerator);
 
 // ─────────────────────────────────────────────────
 // Recursive Backtracking
@@ -633,28 +655,4 @@ function findPatrolSpawnPoints(
   }
 
   return result;
-}
-
-// ─────────────────────────────────────────────────
-// Utility
-// ─────────────────────────────────────────────────
-
-function shuffleArray<T>(arr: T[], random: () => number): T[] {
-  for (let i = arr.length - 1; i > 0; i--) {
-    const j = Math.floor(random() * (i + 1));
-    [arr[i], arr[j]] = [arr[j], arr[i]];
-  }
-  return arr;
-}
-
-function forceClearArea(grid: boolean[][], col: number, row: number): void {
-  for (let dr = -1; dr <= 2; dr++) {
-    for (let dc = -1; dc <= 2; dc++) {
-      const r = row + dr;
-      const c = col + dc;
-      if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
-        grid[r][c] = true;
-      }
-    }
-  }
 }

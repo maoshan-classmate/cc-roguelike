@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import LoginPage from './pages/LoginPage'
 import LobbyPage from './pages/LobbyPage'
 import RoomPage from './pages/RoomPage'
-import GamePage from './pages/GamePage'
+import GamePage from './pages/game'
 
 function AuthErrorHandler() {
   const navigate = useNavigate()

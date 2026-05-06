@@ -27,22 +27,117 @@ interface Particle {
   alpha: number
 }
 
+// ── Unified skill visuals registry ──
+// Merges template (duration, color, particle spawner), renderer, and shake config.
+interface SkillVisual {
+  duration: number
+  color: string
+  spawnParticles?: (x: number, y: number, angle?: number) => Particle[]
+  renderer: (ctx: CanvasRenderingContext2D, fx: SkillCastEffect, progress: number) => void
+  shake?: { intensity: number; window: number }
+}
+
+const SKILL_VISUALS: Record<string, SkillVisual> = {
+  war_cry: {
+    duration: 600,
+    color: '#FFD700',
+    spawnParticles: (x, y) => spawnRingParticles(x, y, 24, 3.5, ['#FFD700', '#FFA500', '#FFE44D'], [20, 40]),
+    renderer: drawWarCry,
+    shake: { intensity: 4, window: 0.3 },
+  },
+  shield_bash: {
+    duration: 450,
+    color: '#FFaa33',
+    spawnParticles: (x, y, angle) => spawnDirectionalParticles(x, y, angle ?? 0, 18, 4, Math.PI / 3, ['#FFaa33', '#FF8800', '#FFCC44'], [15, 30]),
+    renderer: drawShieldBash,
+    shake: { intensity: 6, window: 0.4 },
+  },
+  dodge_roll: {
+    duration: 500,
+    color: '#44FFaa',
+    spawnParticles: (x, y, angle) => {
+      const dir = angle ?? 0
+      const particles: Particle[] = []
+      for (let i = 0; i < 10; i++) {
+        const t = Math.random()
+        const dist = t * 60
+        const px = x - Math.cos(dir) * dist + (Math.random() - 0.5) * 20
+        const py = y - Math.sin(dir) * dist + (Math.random() - 0.5) * 20
+        particles.push({
+          x: px,
+          y: py,
+          vx: (Math.random() - 0.5) * 1.5,
+          vy: -Math.random() * 1.2,
+          life: 15 + Math.random() * 20,
+          maxLife: 35,
+          size: 1.5 + Math.random() * 2,
+          color: ['#8B7355', '#A08060', '#6B5B3A'][Math.floor(Math.random() * 3)],
+          alpha: 0.4 + Math.random() * 0.3,
+        })
+      }
+      return particles
+    },
+    renderer: drawDodgeRoll,
+  },
+  arrow_rain: {
+    duration: 1800,
+    color: '#44AA44',
+    spawnParticles: (x, y, angle) => {
+      const tx = x + Math.cos(angle ?? 0) * 150
+      const ty = y + Math.sin(angle ?? 0) * 150
+      return spawnRingParticles(tx, ty, 20, 2, ['#88AA44', '#AADD55', '#668833'], [25, 45])
+    },
+    renderer: drawArrowRain,
+    shake: { intensity: 3, window: 0.8 },
+  },
+  frost_nova: {
+    duration: 500,
+    color: '#88DDFF',
+    spawnParticles: (x, y) => spawnRingParticles(x, y, 32, 4, ['#88DDFF', '#AAEEFF', '#66CCFF', '#FFFFFF'], [18, 35]),
+    renderer: drawFrostNova,
+    shake: { intensity: 5, window: 0.3 },
+  },
+  meteor: {
+    duration: 1800,
+    color: '#FF4400',
+    spawnParticles: (x, y, angle) => {
+      const tx = x + Math.cos(angle ?? 0) * 300
+      const ty = y + Math.sin(angle ?? 0) * 300
+      return spawnBurstParticles(tx, ty, 40, 5, ['#FF4400', '#FF6600', '#FFaa00', '#FF2200', '#FFCC00'], [25, 50])
+    },
+    renderer: drawMeteor,
+    shake: { intensity: 12, window: 0.6 },
+  },
+  holy_light: {
+    duration: 600,
+    color: '#FFDD44',
+    spawnParticles: (x, y) => spawnRingParticles(x, y, 16, 2, ['#FFDD44', '#FFFFFF', '#FFE888'], [20, 40]),
+    renderer: drawHolyLight,
+  },
+  sanctuary: {
+    duration: 1200,
+    color: '#FFD700',
+    spawnParticles: (x, y) => spawnRingParticles(x, y, 20, 1.5, ['#FFD700', '#FFE44D', '#FFF8CC'], [30, 55]),
+    renderer: drawSanctuary,
+  },
+}
+
 export function createSkillEffectStore() {
   return {
     effects: [] as SkillCastEffect[],
 
     add(type: string, x: number, y: number, angle?: number) {
-      const template = EFFECT_TEMPLATES[type]
-      if (!template) return
+      const visual = SKILL_VISUALS[type]
+      if (!visual) return
       this.effects.push({
         type,
         x,
         y,
         startTime: performance.now(),
-        duration: template.duration,
+        duration: visual.duration,
         angle,
-        color: template.color,
-        particles: template.spawnParticles ? template.spawnParticles(x, y, angle) : [],
+        color: visual.color,
+        particles: visual.spawnParticles ? visual.spawnParticles(x, y, angle) : [],
       })
     },
 
@@ -65,8 +160,8 @@ export function createSkillEffectStore() {
       const now = performance.now()
       for (const fx of this.effects) {
         const progress = (now - fx.startTime) / fx.duration
-        const renderer = EFFECT_RENDERERS[fx.type]
-        if (renderer) renderer(ctx, fx, progress)
+        const visual = SKILL_VISUALS[fx.type]
+        if (visual) visual.renderer(ctx, fx, progress)
       }
     },
 
@@ -76,9 +171,9 @@ export function createSkillEffectStore() {
       let dx = 0, dy = 0
       for (const fx of this.effects) {
         const progress = (now - fx.startTime) / fx.duration
-        const shake = SHAKE_CONFIGS[fx.type]
-        if (shake && progress < shake.window) {
-          const intensity = shake.intensity * (1 - progress / shake.window)
+        const visual = SKILL_VISUALS[fx.type]
+        if (visual?.shake && progress < visual.shake.window) {
+          const intensity = visual.shake.intensity * (1 - progress / visual.shake.window)
           dx += (Math.random() - 0.5) * intensity
           dy += (Math.random() - 0.5) * intensity
         }
@@ -89,15 +184,6 @@ export function createSkillEffectStore() {
 }
 
 export type SkillEffectStore = ReturnType<typeof createSkillEffectStore>
-
-// ── Shake configs per skill ──
-const SHAKE_CONFIGS: Record<string, { intensity: number; window: number }> = {
-  war_cry:     { intensity: 4, window: 0.3 },
-  shield_bash: { intensity: 6, window: 0.4 },
-  frost_nova:  { intensity: 5, window: 0.3 },
-  meteor:      { intensity: 12, window: 0.6 },
-  arrow_rain:  { intensity: 3, window: 0.8 },
-}
 
 // ── Particle spawners ──
 function spawnRingParticles(x: number, y: number, count: number, speed: number, colors: string[], lifeRange: [number, number]): Particle[] {
@@ -141,98 +227,6 @@ function spawnDirectionalParticles(x: number, y: number, angle: number, count: n
 
 function spawnBurstParticles(x: number, y: number, count: number, speed: number, colors: string[], lifeRange: [number, number]): Particle[] {
   return spawnRingParticles(x, y, count, speed, colors, lifeRange)
-}
-
-// ── Templates ──
-interface EffectTemplate {
-  duration: number
-  color: string
-  spawnParticles?: (x: number, y: number, angle?: number) => Particle[]
-}
-
-const EFFECT_TEMPLATES: Record<string, EffectTemplate> = {
-  war_cry: {
-    duration: 600,
-    color: '#FFD700',
-    spawnParticles: (x, y) => spawnRingParticles(x, y, 24, 3.5, ['#FFD700', '#FFA500', '#FFE44D'], [20, 40]),
-  },
-  shield_bash: {
-    duration: 450,
-    color: '#FFaa33',
-    spawnParticles: (x, y, angle) => spawnDirectionalParticles(x, y, angle ?? 0, 18, 4, Math.PI / 3, ['#FFaa33', '#FF8800', '#FFCC44'], [15, 30]),
-  },
-  dodge_roll: {
-    duration: 500,
-    color: '#44FFaa',
-    spawnParticles: (x, y, angle) => {
-      // Dust particles along the roll path
-      const dir = angle ?? 0
-      const particles: Particle[] = []
-      for (let i = 0; i < 10; i++) {
-        const t = Math.random()
-        const dist = t * 60
-        const px = x - Math.cos(dir) * dist + (Math.random() - 0.5) * 20
-        const py = y - Math.sin(dir) * dist + (Math.random() - 0.5) * 20
-        particles.push({
-          x: px,
-          y: py,
-          vx: (Math.random() - 0.5) * 1.5,
-          vy: -Math.random() * 1.2,
-          life: 15 + Math.random() * 20,
-          maxLife: 35,
-          size: 1.5 + Math.random() * 2,
-          color: ['#8B7355', '#A08060', '#6B5B3A'][Math.floor(Math.random() * 3)],
-          alpha: 0.4 + Math.random() * 0.3,
-        })
-      }
-      return particles
-    },
-  },
-  arrow_rain: {
-    duration: 1800,
-    color: '#44AA44',
-    spawnParticles: (x, y, angle) => {
-      const tx = x + Math.cos(angle ?? 0) * 150
-      const ty = y + Math.sin(angle ?? 0) * 150
-      return spawnRingParticles(tx, ty, 20, 2, ['#88AA44', '#AADD55', '#668833'], [25, 45])
-    },
-  },
-  frost_nova: {
-    duration: 500,
-    color: '#88DDFF',
-    spawnParticles: (x, y) => spawnRingParticles(x, y, 32, 4, ['#88DDFF', '#AAEEFF', '#66CCFF', '#FFFFFF'], [18, 35]),
-  },
-  meteor: {
-    duration: 1800,
-    color: '#FF4400',
-    spawnParticles: (x, y, angle) => {
-      const tx = x + Math.cos(angle ?? 0) * 300
-      const ty = y + Math.sin(angle ?? 0) * 300
-      return spawnBurstParticles(tx, ty, 40, 5, ['#FF4400', '#FF6600', '#FFaa00', '#FF2200', '#FFCC00'], [25, 50])
-    },
-  },
-  holy_light: {
-    duration: 600,
-    color: '#FFDD44',
-    spawnParticles: (x, y) => spawnRingParticles(x, y, 16, 2, ['#FFDD44', '#FFFFFF', '#FFE888'], [20, 40]),
-  },
-  sanctuary: {
-    duration: 1200,
-    color: '#FFD700',
-    spawnParticles: (x, y) => spawnRingParticles(x, y, 20, 1.5, ['#FFD700', '#FFE44D', '#FFF8CC'], [30, 55]),
-  },
-}
-
-// ── Renderers ──
-const EFFECT_RENDERERS: Record<string, (ctx: CanvasRenderingContext2D, fx: SkillCastEffect, progress: number) => void> = {
-  war_cry: drawWarCry,
-  shield_bash: drawShieldBash,
-  dodge_roll: drawDodgeRoll,
-  arrow_rain: drawArrowRain,
-  frost_nova: drawFrostNova,
-  meteor: drawMeteor,
-  holy_light: drawHolyLight,
-  sanctuary: drawSanctuary,
 }
 
 // Helper: draw particles

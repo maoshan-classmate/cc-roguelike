@@ -93,9 +93,4 @@ export const SKILL_INFO: Record<string, SkillInfo> = {
   },
 }
 
-export const CLASS_SKILLS: Record<string, string[]> = {
-  warrior: ['dash', 'war_cry', 'shield_bash'],
-  ranger:  ['dash', 'dodge_roll', 'arrow_rain'],
-  mage:    ['dash', 'frost_nova', 'meteor'],
-  cleric:  ['dash', 'holy_light', 'sanctuary'],
-}
+export { CLASS_SKILLS } from '../../shared/constants';

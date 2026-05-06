@@ -1,6 +1,6 @@
 import { useCallback, useRef } from 'react'
 import { ITEMS } from '../config/items'
-import type { PlayerState, EnemyState, BulletState, HealWaveState, ItemState, GameState as SharedGameState, DungeonData, EnvObjectState } from '@shared/types'
+import type { PlayerState, EnemyState, BulletState, HealWaveState, ItemState, GameState as SharedGameState, DungeonData, DungeonRoom, EnvObjectState } from '@shared/types'
 import { drawFallbackRect } from '../rendering/fallbackDraw'
 import { drawBossEffects, type BossEffect } from '../rendering/bossEffectRenderer'
 import { drawBullets, drawHealWaves } from '../rendering/projectileRenderer'
@@ -37,6 +37,115 @@ export function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
 }
 
+/** Context bag for environment object renderers */
+type EnvRenderCtx = {
+  ctx: CanvasRenderingContext2D
+  atlasImg: HTMLImageElement
+  customSprites: Record<string, HTMLImageElement>
+  frame: number
+  players?: PlayerState[]
+  user?: { id: string } | null
+}
+
+const ENV_RENDERERS: Record<string, (obj: EnvObjectState, ec: EnvRenderCtx) => void> = {
+  pillar(obj, ec) {
+    const { ctx, atlasImg, customSprites } = ec
+    if (!obj.alive) return
+    // 2×2 tile base: cover wall tiles with floor, add boss-room tint
+    const hw = obj.width / 2
+    const hh = obj.height / 2
+    const tileCount = Math.round(obj.width / 32)
+    for (let dr = 0; dr < tileCount; dr++) {
+      for (let dc = 0; dc < tileCount; dc++) {
+        const tx = obj.x - hw + dc * 32 + 16
+        const ty = obj.y - hh + dr * 32 + 16
+        draw0x72Sprite(ctx, atlasImg, 'floor_1', tx, ty, 32)
+      }
+    }
+    // Dark red tint for boss-room atmosphere
+    ctx.fillStyle = 'rgba(42, 10, 10, 0.4)'
+    ctx.fillRect(obj.x - hw, obj.y - hh, obj.width, obj.height)
+    // Banner sprite planted in the center
+    const bannerImg = customSprites['floor_banner']
+    if (bannerImg) {
+      const prevSmooth = ctx.imageSmoothingEnabled
+      ctx.imageSmoothingEnabled = true
+      ctx.imageSmoothingQuality = 'high'
+      ctx.drawImage(bannerImg, obj.x - hw, obj.y - hh, obj.width, obj.height)
+      ctx.imageSmoothingEnabled = prevSmooth
+    } else {
+      draw0x72Sprite(ctx, atlasImg, 'skull', obj.x, obj.y, 32)
+    }
+  },
+
+  trap(obj, ec) {
+    const { ctx, atlasImg } = ec
+    const spriteName = obj.trapActive
+      ? 'floor_spikes_anim_f3'
+      : 'floor_spikes_anim_f0';
+    if (is0x72Sprite(spriteName)) {
+      draw0x72Sprite(ctx, atlasImg, spriteName, obj.x, obj.y, obj.width);
+    }
+  },
+
+  door(obj, ec) {
+    const { ctx, atlasImg } = ec
+    if (obj.doorOpen) {
+      // Open door — invisible (stairs drawn at exitPoint by renderDungeonTiles)
+    } else {
+      // Closed door
+      const spriteName = 'doors_leaf_closed'
+      if (is0x72Sprite(spriteName)) {
+        draw0x72Sprite(ctx, atlasImg, spriteName, obj.x, obj.y, obj.width)
+      } else {
+        ctx.fillStyle = '#654321'
+        ctx.fillRect(obj.x - obj.width / 2, obj.y - obj.height / 2, obj.width, obj.height)
+      }
+    }
+  },
+
+  decoration(obj, ec) {
+    const { ctx, atlasImg, customSprites } = ec
+    if (obj.spriteKey) {
+      const customImg = customSprites[obj.spriteKey];
+      if (customImg) {
+        const drawSize = obj.width;
+        const prevSmooth = ctx.imageSmoothingEnabled;
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(customImg, obj.x - drawSize / 2, obj.y - drawSize / 2, drawSize, drawSize);
+        ctx.imageSmoothingEnabled = prevSmooth;
+      } else if (is0x72Sprite(obj.spriteKey)) {
+        draw0x72Sprite(ctx, atlasImg, obj.spriteKey, obj.x, obj.y, obj.width)
+      }
+    }
+  },
+
+  chest(obj, ec) {
+    const { ctx, atlasImg, players, user } = ec
+    const spriteKey = obj.alive ? 'chest_full_open_anim_f0' : 'chest_full_open_anim_f1';
+    if (is0x72Sprite(spriteKey)) {
+      draw0x72Sprite(ctx, atlasImg, spriteKey, obj.x, obj.y, obj.width);
+    }
+    // Interaction hint: show "approach to open" when alive and player nearby
+    if (obj.alive) {
+      const localPlayer = players?.find((p: PlayerState) => p.id === user?.id);
+      if (localPlayer) {
+        const dist = Math.hypot(localPlayer.x - obj.x, localPlayer.y - obj.y);
+        if (dist < 80) {
+          ctx.save();
+          ctx.globalAlpha = Math.min(1, Math.max(0, 1 - (dist - 30) / 50));
+          ctx.fillStyle = '#FFD700';
+          ctx.font = '10px Courier New';
+          ctx.textAlign = 'center';
+          ctx.fillText('靠近开启', obj.x, obj.y - obj.height / 2 - 6);
+          ctx.restore();
+        }
+      }
+    }
+  },
+}
+
 /** Render environment objects (pillars, traps, doors, decorations, chests) */
 function drawEnvObjects(
   ctx: CanvasRenderingContext2D,
@@ -47,101 +156,10 @@ function drawEnvObjects(
   players?: PlayerState[],
   user?: { id: string } | null,
 ): void {
+  const ec: EnvRenderCtx = { ctx, atlasImg, customSprites, frame, players, user }
   for (const obj of envObjects) {
-    switch (obj.type) {
-      case 'pillar': {
-        if (!obj.alive) break
-        // 2×2 tile base: cover wall tiles with floor, add boss-room tint
-        const hw = obj.width / 2
-        const hh = obj.height / 2
-        const tileCount = Math.round(obj.width / 32)
-        for (let dr = 0; dr < tileCount; dr++) {
-          for (let dc = 0; dc < tileCount; dc++) {
-            const tx = obj.x - hw + dc * 32 + 16
-            const ty = obj.y - hh + dr * 32 + 16
-            draw0x72Sprite(ctx, atlasImg, 'floor_1', tx, ty, 32)
-          }
-        }
-        // Dark red tint for boss-room atmosphere
-        ctx.fillStyle = 'rgba(42, 10, 10, 0.4)'
-        ctx.fillRect(obj.x - hw, obj.y - hh, obj.width, obj.height)
-        // Banner sprite planted in the center
-        const bannerImg = customSprites['floor_banner']
-        if (bannerImg) {
-          const prevSmooth = ctx.imageSmoothingEnabled
-          ctx.imageSmoothingEnabled = true
-          ctx.imageSmoothingQuality = 'high'
-          ctx.drawImage(bannerImg, obj.x - hw, obj.y - hh, obj.width, obj.height)
-          ctx.imageSmoothingEnabled = prevSmooth
-        } else {
-          draw0x72Sprite(ctx, atlasImg, 'skull', obj.x, obj.y, 32)
-        }
-        break
-      }
-      case 'trap': {
-        const spriteName = obj.trapActive
-          ? 'floor_spikes_anim_f3'
-          : 'floor_spikes_anim_f0';
-        if (is0x72Sprite(spriteName)) {
-          draw0x72Sprite(ctx, atlasImg, spriteName, obj.x, obj.y, obj.width);
-        }
-        break;
-      }
-      case 'door': {
-        if (obj.doorOpen) {
-          // Open door — invisible (stairs drawn at exitPoint by renderDungeonTiles)
-        } else {
-          // Closed door
-          const spriteName = 'doors_leaf_closed'
-          if (is0x72Sprite(spriteName)) {
-            draw0x72Sprite(ctx, atlasImg, spriteName, obj.x, obj.y, obj.width)
-          } else {
-            ctx.fillStyle = '#654321'
-            ctx.fillRect(obj.x - obj.width / 2, obj.y - obj.height / 2, obj.width, obj.height)
-          }
-        }
-        break
-      }
-      case 'decoration': {
-        if (obj.spriteKey) {
-          const customImg = customSprites[obj.spriteKey];
-          if (customImg) {
-            const drawSize = obj.width;
-            const prevSmooth = ctx.imageSmoothingEnabled;
-            ctx.imageSmoothingEnabled = true;
-            ctx.imageSmoothingQuality = 'high';
-            ctx.drawImage(customImg, obj.x - drawSize / 2, obj.y - drawSize / 2, drawSize, drawSize);
-            ctx.imageSmoothingEnabled = prevSmooth;
-          } else if (is0x72Sprite(obj.spriteKey)) {
-            draw0x72Sprite(ctx, atlasImg, obj.spriteKey, obj.x, obj.y, obj.width)
-          }
-        }
-        break
-      }
-      case 'chest': {
-        const spriteKey = obj.alive ? 'chest_full_open_anim_f0' : 'chest_full_open_anim_f1';
-        if (is0x72Sprite(spriteKey)) {
-          draw0x72Sprite(ctx, atlasImg, spriteKey, obj.x, obj.y, obj.width);
-        }
-        // Interaction hint: show "approach to open" when alive and player nearby
-        if (obj.alive) {
-          const localPlayer = players?.find((p: any) => p.id === (user as any)?.id);
-          if (localPlayer) {
-            const dist = Math.hypot(localPlayer.x - obj.x, localPlayer.y - obj.y);
-            if (dist < 80) {
-              ctx.save();
-              ctx.globalAlpha = Math.min(1, Math.max(0, 1 - (dist - 30) / 50));
-              ctx.fillStyle = '#FFD700';
-              ctx.font = '10px Courier New';
-              ctx.textAlign = 'center';
-              ctx.fillText('靠近开启', obj.x, obj.y - obj.height / 2 - 6);
-              ctx.restore();
-            }
-          }
-        }
-        break;
-      }
-    }
+    const renderer = ENV_RENDERERS[obj.type]
+    if (renderer) renderer(obj, ec)
   }
 }
 
@@ -268,11 +286,11 @@ export function useGameRenderer(
     if (dungeon && dungeon.collisionGrid && spritesLoaded && tileset2Atlas.complete) {
       const grid = dungeon.collisionGrid
       const exitKey = dungeon.exitPoint ? `${dungeon.exitPoint.x},${dungeon.exitPoint.y}` : 'noExit'
-      const roomsKey = dungeon.rooms?.map((r: any) => `${r.x},${r.y},${r.width},${r.height},${r.type || ''}`).join('|') || ''
+      const roomsKey = dungeon.rooms?.map((r: DungeonRoom) => `${r.x},${r.y},${r.width},${r.height},${r.type || ''}`).join('|') || ''
       const gridKey = grid.map((row: boolean[]) => row.join('')).join('|') + '|' + exitKey + '|' + roomsKey
 
       // Build exclude rects from all envObjects for micro-decoration cleanup
-      const pillarRects = (dungeon.envObjects || []).filter((o: any) => o.alive)
+      const pillarRects = (dungeon.envObjects || []).filter((o: EnvObjectState) => o.alive)
 
       if (!dungeonCacheRef.current || dungeonCacheRef.current.gridKey !== gridKey) {
         const offscreen = document.createElement('canvas')
@@ -317,14 +335,14 @@ export function useGameRenderer(
         ctx.restore()
       }
     } else if (dungeon && dungeon.rooms) {
-      const roomsKey = 'rooms-' + dungeon.rooms.map(r => `${r.x},${r.y},${r.width},${r.height}`).join('|')
+      const roomsKey = 'rooms-' + dungeon.rooms.map((r: DungeonRoom) => `${r.x},${r.y},${r.width},${r.height}`).join('|')
 
       if (!dungeonCacheRef.current || dungeonCacheRef.current.gridKey !== roomsKey) {
         const offscreen = document.createElement('canvas')
         offscreen.width = canvas.width
         offscreen.height = canvas.height
         const offCtx = offscreen.getContext('2d')!
-        const pillarRects = (dungeon.envObjects || []).filter((o: any) => o.alive)
+        const pillarRects = (dungeon.envObjects || []).filter((o: EnvObjectState) => o.alive)
         renderDungeonFromRooms(offCtx, dungeon.rooms, dungeon.corridorTiles, tileset2Atlas, canvas.width, canvas.height, dungeon.exitPoint, pillarRects)
         dungeonCacheRef.current = { canvas: offscreen, gridKey: roomsKey }
       }

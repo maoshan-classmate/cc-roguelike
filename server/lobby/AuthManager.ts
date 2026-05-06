@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { Database } from '../data/Database';
+import { CLASS_SKILLS } from '../../shared/constants';
 
 interface Account {
   id: string;
@@ -78,7 +79,7 @@ export class AuthManager {
 
       // Create default character
       const characterId = uuidv4();
-      const defaultSkills = JSON.stringify(AuthManager.CLASS_CONFIG.warrior.skills);
+      const defaultSkills = JSON.stringify(CLASS_SKILLS.warrior);
 
       await this.db.execute(
         `INSERT INTO characters (id, account_id, name, weapon, character_type, skills)

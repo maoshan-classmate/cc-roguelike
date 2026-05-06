@@ -1,5 +1,16 @@
 // 客户端/服务端共享类型定义（唯一数据源）
 
+// ── Type Aliases (联合类型约束) ──
+
+export type EnemyType = 'basic' | 'fast' | 'ghost' | 'tank' | 'boss';
+export type CharacterType = 'warrior' | 'ranger' | 'mage' | 'cleric';
+export type SkillId = 'dash' | 'war_cry' | 'shield_bash' | 'dodge_roll' | 'arrow_rain' | 'frost_nova' | 'meteor' | 'holy_light' | 'sanctuary';
+export type SkillType = 'dash' | 'taunt' | 'knockback' | 'dodge_roll' | 'aoe_delayed' | 'cc_aoe' | 'meteor' | 'heal_single' | 'zone_buff';
+export type ItemPickupType = 'health' | 'energy' | 'coin' | 'key' | 'potion' | 'shield' | 'vitality_crystal' | 'power_essence' | 'iron_rune';
+export type StatusEffectId = 'stun' | 'freeze' | 'root' | 'burn' | 'poison' | 'slow' | 'speed_boost' | 'invulnerable' | 'iframes' | 'taunt';
+export type TerrainType = 'dungeon' | 'colosseum' | 'boss_arena' | 'maze';
+export type EnemyAIState = 'idle' | 'chase' | 'attack' | 'dying';
+
 // ── Status Effect System ──
 
 export interface EffectFlags {
@@ -93,8 +104,8 @@ export interface PlayerState {
   speedBuff: number;
   speedBuffTimer: number;
   weapon: string;
-  characterType: string;
-  skills: string[];
+  characterType: CharacterType;
+  skills: SkillId[];
   alive: boolean;
   invincible: number;
   angle: number;
@@ -105,14 +116,14 @@ export interface PlayerState {
 
 export interface EnemyState {
   id: string;
-  type: string;
+  type: EnemyType;
   x: number;
   y: number;
   hp: number;
   hpMax: number;
   attack: number;
   alive: boolean;
-  state: string;
+  state: EnemyAIState;
   deathTimer?: number;
   lastAttackTime?: number;
   isElite?: boolean;
@@ -156,7 +167,7 @@ export interface ItemState {
   id: string;
   x: number;
   y: number;
-  type: string;
+  type: ItemPickupType;
 }
 
 export interface BossEvent {
@@ -181,8 +192,8 @@ export interface DungeonData {
   exitPoint: { x: number; y: number };
   collisionGrid: boolean[][];
   envObjects?: EnvObjectState[];
-  enemies?: { type: string; x: number; y: number; count: number }[];
-  items?: { id: string; x: number; y: number; type: string }[];
+  enemies?: { type: EnemyType; x: number; y: number; count: number }[];
+  items?: ItemState[];
   roomTemplates?: string[];
 }
 

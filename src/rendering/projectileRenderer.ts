@@ -3,6 +3,50 @@ import { drawBulletSprite, drawMagicOrb } from '../config/sprites'
 import { interpolate } from '../utils/animation/interpolate'
 import { Easing } from '../utils/animation/easing'
 
+// ── Bullet renderer registry ──
+// Keys are composite "friendly|ownerType" strings for O(1) dispatch.
+const BULLET_RENDERERS: Record<string, (ctx: CanvasRenderingContext2D, bullet: BulletState, bulletAngle: number, bulletSize: number, tileset2Atlas: HTMLImageElement) => void> = {
+  // Ranger: arrow sprite
+  'true|ranger': (ctx, bullet, bulletAngle, bulletSize, tileset2Atlas) => {
+    if (tileset2Atlas.complete) {
+      drawBulletSprite(ctx, tileset2Atlas, bullet.x, bullet.y, bulletAngle, bulletSize, 'weapon_arrow', '#4A9EFF')
+    }
+  },
+
+  // Mage: purple magic orb
+  'true|mage': (ctx, bullet, _bulletAngle, bulletSize, _tileset2Atlas) => {
+    drawMagicOrb(ctx, bullet.x, bullet.y, bulletSize * 1.2, '#9B59B6')
+  },
+
+  // Enemy: red energy orb
+  'false|enemy': (ctx, bullet, _bulletAngle, bulletSize, _tileset2Atlas) => {
+    ctx.save()
+    ctx.shadowColor = '#FF4444'
+    ctx.shadowBlur = 8
+    ctx.globalAlpha = 0.7
+    ctx.fillStyle = '#FF4444'
+    ctx.beginPath()
+    ctx.arc(bullet.x, bullet.y, bulletSize * 0.5, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.globalAlpha = 1
+    ctx.fillStyle = '#FF8888'
+    ctx.beginPath()
+    ctx.arc(bullet.x, bullet.y, bulletSize * 0.2, 0, Math.PI * 2)
+    ctx.fill()
+    ctx.restore()
+  },
+}
+
+// Fallback for unknown friendly bullets (no registry match)
+function drawFallbackBullet(ctx: CanvasRenderingContext2D, bullet: BulletState): void {
+  ctx.save()
+  ctx.fillStyle = '#4A9EFF'
+  ctx.beginPath()
+  ctx.arc(bullet.x, bullet.y, bullet.radius || 4, 0, Math.PI * 2)
+  ctx.fill()
+  ctx.restore()
+}
+
 export function drawBullets(
   ctx: CanvasRenderingContext2D,
   bullets: BulletState[],
@@ -13,46 +57,15 @@ export function drawBullets(
     const bulletAngle = Math.atan2(bullet.vy, bullet.vx)
     const bulletSize = Math.max((bullet.radius || 4) * 3, 10)
 
-    // 游侠：箭矢精灵贴图
-    if (bullet.friendly && ownerType === 'ranger') {
-      if (tileset2Atlas.complete) {
-        drawBulletSprite(ctx, tileset2Atlas, bullet.x, bullet.y, bulletAngle, bulletSize, 'weapon_arrow', '#4A9EFF')
-      }
-      continue
-    }
+    // Enemy bullets use 'enemy' as ownerType key
+    const key = bullet.friendly ? `true|${ownerType}` : 'false|enemy'
+    const renderer = BULLET_RENDERERS[key]
 
-    // 法师：紫色魔法能量弹
-    if (bullet.friendly && ownerType === 'mage') {
-      drawMagicOrb(ctx, bullet.x, bullet.y, bulletSize * 1.2, '#9B59B6')
-      continue
+    if (renderer) {
+      renderer(ctx, bullet, bulletAngle, bulletSize, tileset2Atlas)
+    } else if (bullet.friendly) {
+      drawFallbackBullet(ctx, bullet)
     }
-
-    // 敌人子弹：红色能量弹
-    if (!bullet.friendly) {
-      ctx.save()
-      ctx.shadowColor = '#FF4444'
-      ctx.shadowBlur = 8
-      ctx.globalAlpha = 0.7
-      ctx.fillStyle = '#FF4444'
-      ctx.beginPath()
-      ctx.arc(bullet.x, bullet.y, bulletSize * 0.5, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.globalAlpha = 1
-      ctx.fillStyle = '#FF8888'
-      ctx.beginPath()
-      ctx.arc(bullet.x, bullet.y, bulletSize * 0.2, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.restore()
-      continue
-    }
-
-    // 未知友好子弹 fallback
-    ctx.save()
-    ctx.fillStyle = '#4A9EFF'
-    ctx.beginPath()
-    ctx.arc(bullet.x, bullet.y, bullet.radius || 4, 0, Math.PI * 2)
-    ctx.fill()
-    ctx.restore()
   }
 }
 

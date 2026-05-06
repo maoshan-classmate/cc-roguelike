@@ -5,24 +5,139 @@ import type { SerializedStatusEffect } from '@shared/types'
 
 const TWO_PI = Math.PI * 2
 
-// Effect type → color/visual mapping
-const EFFECT_STYLES: Record<string, { color: string; glow?: string; priority: number }> = {
-  stun:      { color: '#FFD700', glow: 'rgba(255,215,0,0.3)', priority: 10 },
-  freeze:    { color: '#88DDFF', glow: 'rgba(136,221,255,0.4)', priority: 9 },
-  root:      { color: '#8B6914', glow: 'rgba(139,105,20,0.3)', priority: 8 },
-  slow:      { color: '#4488FF', glow: 'rgba(68,136,255,0.2)', priority: 5 },
-  burn:      { color: '#FF6600', glow: 'rgba(255,102,0,0.3)', priority: 6 },
-  taunt:     { color: '#FF3333', priority: 7 },
-  vulnerable: { color: '#CC44FF', glow: 'rgba(204,68,255,0.2)', priority: 4 },
-  weaken:    { color: '#9966CC', priority: 3 },
-  silence:   { color: '#888888', priority: 4 },
-  shield:    { color: '#4488FF', glow: 'rgba(68,136,255,0.25)', priority: 2 },
-  invulnerable: { color: '#FFD700', glow: 'rgba(255,215,0,0.3)', priority: 10 },
-  iframes:   { color: '#FFD700', glow: 'rgba(255,215,0,0.3)', priority: 10 },
-  heal_over_time: { color: '#44FF44', priority: 1 },
-  cc_immune: { color: '#FFFFFF', glow: 'rgba(255,255,255,0.2)', priority: 7 },
-  speed_boost: { color: '#44FFAA', priority: 1 },
-  energy_regen_boost: { color: '#AADDFF', priority: 1 },
+// ── Unified effect definition registry ──
+// Merges style metadata (color, glow, priority) with draw function.
+// Keys match the effect type strings used at runtime.
+interface EffectDef {
+  color: string
+  glow?: string
+  priority: number
+  draw: (ctx: CanvasRenderingContext2D, x: number, y: number, entityRadius: number, frame: number, color: string) => void
+}
+
+const EFFECT_DEFS: Record<string, EffectDef> = {
+  stun: {
+    color: '#FFD700',
+    glow: 'rgba(255,215,0,0.3)',
+    priority: 10,
+    draw: (ctx, x, y, _r, frame, _color) => {
+      drawStunStars(ctx, x, y - _r - 12, frame)
+    },
+  },
+  freeze: {
+    color: '#88DDFF',
+    glow: 'rgba(136,221,255,0.4)',
+    priority: 9,
+    draw: (ctx, x, y, r, _frame, _color) => {
+      drawFreezeOverlay(ctx, x, y, r)
+    },
+  },
+  root: {
+    color: '#8B6914',
+    glow: 'rgba(139,105,20,0.3)',
+    priority: 8,
+    draw: (ctx, x, y, r, frame, _color) => {
+      drawRootChains(ctx, x, y, r, frame)
+    },
+  },
+  slow: {
+    color: '#4488FF',
+    glow: 'rgba(68,136,255,0.2)',
+    priority: 5,
+    draw: (ctx, x, y, r, _frame, _color) => {
+      drawSlowIndicator(ctx, x, y, r)
+    },
+  },
+  burn: {
+    color: '#FF6600',
+    glow: 'rgba(255,102,0,0.3)',
+    priority: 6,
+    draw: (ctx, x, y, r, frame, _color) => {
+      drawBurnParticles(ctx, x, y, r, frame)
+    },
+  },
+  taunt: {
+    color: '#FF3333',
+    priority: 7,
+    draw: (ctx, x, y, _r, frame, _color) => {
+      drawTauntMark(ctx, x, y - _r - 16, frame)
+    },
+  },
+  vulnerable: {
+    color: '#CC44FF',
+    glow: 'rgba(204,68,255,0.2)',
+    priority: 4,
+    draw: (ctx, x, y, r, frame, color) => {
+      drawDebuffArrow(ctx, x, y - r - 10, frame, color)
+    },
+  },
+  weaken: {
+    color: '#9966CC',
+    priority: 3,
+    draw: (ctx, _x, _y, _r, _frame, _color) => {
+      // No visual implemented yet
+    },
+  },
+  silence: {
+    color: '#888888',
+    priority: 4,
+    draw: (ctx, x, y, r, _frame, _color) => {
+      drawSilenceIndicator(ctx, x, y - r - 8)
+    },
+  },
+  shield: {
+    color: '#4488FF',
+    glow: 'rgba(68,136,255,0.25)',
+    priority: 2,
+    draw: (ctx, x, y, r, frame, _color) => {
+      drawShieldBubble(ctx, x, y, r, frame)
+    },
+  },
+  invulnerable: {
+    color: '#FFD700',
+    glow: 'rgba(255,215,0,0.3)',
+    priority: 10,
+    draw: (ctx, x, y, r, frame, color) => {
+      drawInvulnGlow(ctx, x, y, r, frame, color)
+    },
+  },
+  iframes: {
+    color: '#FFD700',
+    glow: 'rgba(255,215,0,0.3)',
+    priority: 10,
+    draw: (ctx, x, y, r, frame, color) => {
+      drawInvulnGlow(ctx, x, y, r, frame, color)
+    },
+  },
+  heal_over_time: {
+    color: '#44FF44',
+    priority: 1,
+    draw: (ctx, x, y, r, frame, _color) => {
+      drawHealParticles(ctx, x, y, r, frame)
+    },
+  },
+  cc_immune: {
+    color: '#FFFFFF',
+    glow: 'rgba(255,255,255,0.2)',
+    priority: 7,
+    draw: (ctx, x, y, r, frame, _color) => {
+      drawCcImmuneAura(ctx, x, y, r, frame)
+    },
+  },
+  speed_boost: {
+    color: '#44FFAA',
+    priority: 1,
+    draw: (ctx, _x, _y, _r, _frame, _color) => {
+      // No visual implemented yet
+    },
+  },
+  energy_regen_boost: {
+    color: '#AADDFF',
+    priority: 1,
+    draw: (ctx, _x, _y, _r, _frame, _color) => {
+      // No visual implemented yet
+    },
+  },
 }
 
 export function drawStatusEffects(
@@ -37,54 +152,15 @@ export function drawStatusEffects(
 
   // Sort by priority (highest first) to draw most important effects on top
   const sorted = [...effects].sort((a, b) => {
-    const pa = EFFECT_STYLES[a.t]?.priority ?? 0
-    const pb = EFFECT_STYLES[b.t]?.priority ?? 0
+    const pa = EFFECT_DEFS[a.t]?.priority ?? 0
+    const pb = EFFECT_DEFS[b.t]?.priority ?? 0
     return pb - pa
   })
 
   for (const effect of sorted) {
-    const style = EFFECT_STYLES[effect.t]
-    if (!style) continue
-
-    switch (effect.t) {
-      case 'stun':
-        drawStunStars(ctx, x, y - entityRadius - 12, frame)
-        break
-      case 'freeze':
-        drawFreezeOverlay(ctx, x, y, entityRadius)
-        break
-      case 'root':
-        drawRootChains(ctx, x, y, entityRadius, frame)
-        break
-      case 'slow':
-        drawSlowIndicator(ctx, x, y, entityRadius)
-        break
-      case 'burn':
-        drawBurnParticles(ctx, x, y, entityRadius, frame)
-        break
-      case 'taunt':
-        drawTauntMark(ctx, x, y - entityRadius - 16, frame)
-        break
-      case 'invulnerable':
-      case 'iframes':
-        drawInvulnGlow(ctx, x, y, entityRadius, frame, style.color)
-        break
-      case 'shield':
-        drawShieldBubble(ctx, x, y, entityRadius, frame)
-        break
-      case 'heal_over_time':
-        drawHealParticles(ctx, x, y, entityRadius, frame)
-        break
-      case 'vulnerable':
-        drawDebuffArrow(ctx, x, y - entityRadius - 10, frame, style.color)
-        break
-      case 'silence':
-        drawSilenceIndicator(ctx, x, y - entityRadius - 8)
-        break
-      case 'cc_immune':
-        drawCcImmuneAura(ctx, x, y, entityRadius, frame)
-        break
-    }
+    const def = EFFECT_DEFS[effect.t]
+    if (!def) continue
+    def.draw(ctx, x, y, entityRadius, frame, def.color)
   }
 }
 

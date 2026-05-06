@@ -1,18 +1,18 @@
 import { Database } from '../data/Database';
-import { GAME_CONFIG, FLOOR_CONFIG, WEAPON_TEMPLATES } from '../config/constants';
+import { GAME_CONFIG, FLOOR_CONFIG } from '../config/constants';
 import { DungeonGenerator } from './dungeon/DungeonGenerator';
-import { generateColosseum, type ArenaData } from './dungeon/ColosseumGenerator';
-import { generateBossArena } from './dungeon/BossArenaGenerator';
-import { generateMaze } from './dungeon/MazeGenerator';
+import { generateColosseum, colosseumGenerator, type ArenaData } from './dungeon/ColosseumGenerator';
+import { generateBossArena, bossArenaGenerator } from './dungeon/BossArenaGenerator';
+import { generateMaze, mazeGenerator } from './dungeon/MazeGenerator';
+import { type TerrainData } from './dungeon/types';
 import { Combat } from './combat/Combat';
 import { CollisionGrid } from './collision/CollisionGrid';
-import { Vec2 } from '../utils/Vec2';
-import type { PlayerState, EnemyState, BulletState, GameState, HealWaveState, BossEvent, ItemState, DungeonData, GamePhase, EnvObjectState } from '../../shared/types';
-import { ENEMY_BASE_HP, ENEMY_BASE_ATTACK, ENEMY_SPEED, CLASS_SPEED, ARENA_HP_MULTIPLIER, ARENA_ATK_MULTIPLIER, ARENA_TRIGGER_CHANCE, ARENA_WAVE_INTER_DELAY, ARENA_WAVE_HP_RECOVERY, ARENA_DORMANT_SPEED_MULTIPLIER, ARENA_RING_OUTER_COL_MIN, ARENA_RING_OUTER_ROW_MIN, ARENA_RING_OUTER_COL_MAX, ARENA_RING_OUTER_ROW_MAX, MAZE_TRIGGER_CHANCE, TRAP_TYPES, TRAP_DETECTION_RADIUS, PILLAR_HP, TILE_SIZE } from '../../shared/constants';
+import type { PlayerState, EnemyState, BulletState, GameState, HealWaveState, BossEvent, DungeonData, GamePhase, EnvObjectState, EnemyType, ItemState, ItemPickupType } from '../../shared/types';
+import { ENEMY_BASE_HP, ENEMY_BASE_ATTACK, ENEMY_DEFS, ITEM_DEFS, CLASS_SPEED, ARENA_HP_MULTIPLIER, ARENA_ATK_MULTIPLIER, ARENA_TRIGGER_CHANCE, ARENA_WAVE_INTER_DELAY, ARENA_WAVE_HP_RECOVERY, ARENA_DORMANT_SPEED_MULTIPLIER, ARENA_RING_OUTER_COL_MIN, ARENA_RING_OUTER_ROW_MIN, ARENA_RING_OUTER_COL_MAX, ARENA_RING_OUTER_ROW_MAX, MAZE_TRIGGER_CHANCE, TRAP_TYPES, TRAP_DETECTION_RADIUS, PILLAR_HP, TILE_SIZE } from '../../shared/constants';
 import { EnemyAI, type EnemyAIDeps } from './enemy/EnemyAI';
 import { StatusManager, type TickContext } from './status/StatusManager';
 
-export type { PlayerState, EnemyState, BulletState, GameState, HealWaveState, BossEvent, ItemState, DungeonData, GamePhase, EnvObjectState };
+export type { PlayerState, EnemyState, BulletState, GameState, HealWaveState, BossEvent, DungeonData, GamePhase, EnvObjectState };
 
 export class GameRoom {
   private roomId: string;
@@ -22,7 +22,7 @@ export class GameRoom {
   private bullets: Map<string, BulletState> = new Map();
   private healWaves: HealWaveState[] = [];
   private bossEvents: BossEvent[] = [];
-  private items: { id: string; x: number; y: number; type: string }[] = [];
+  private items: ItemState[] = [];
   private dungeonGenerator: DungeonGenerator;
   private combat: Combat;
   private enemyAI: EnemyAI;
@@ -138,8 +138,7 @@ export class GameRoom {
     }, tickMs);
   }
 
-  private startFloor(floor: number): void {
-    this.currentFloor = floor;
+  private resetGameState(): void {
     this.enemies.clear();
     this.enemyStatus.clear();
     this.bullets.clear();
@@ -149,25 +148,9 @@ export class GameRoom {
     this.envObjects = [];
     this.currentWave = 0;
     this.waveDelayTimer = 0;
+  }
 
-    const seed = this.floorSeeds[floor - 1];
-
-    let dungeon: DungeonData;
-    if (floor === 5) {
-      dungeon = generateBossArena(floor, seed);
-    } else {
-      dungeon = this.dungeonGenerator.generate(floor, seed);
-    }
-    this.currentDungeon = dungeon;
-    this.collisionGrid.setGrid(dungeon.collisionGrid || []);
-
-    // Store env objects from dungeon
-    this.envObjects = dungeon.envObjects || [];
-
-    const config = FLOOR_CONFIG[floor];
-
-    // Place players at spawn
-    const spawn = dungeon.spawnPoint;
+  private placePlayersAt(spawn: { x: number; y: number }): void {
     let i = 0;
     for (const player of this.players.values()) {
       player.x = spawn.x + (i * 30);
@@ -177,25 +160,86 @@ export class GameRoom {
       player.alive = true;
       i++;
     }
+  }
 
-    // Spawn enemies
-    for (const spawnData of (dungeon.enemies || [])) {
+  private spawnEnemy(type: EnemyType | string, x: number, y: number, floor: number): EnemyState {
+    const enemy = this.createEnemy(type, x, y, floor);
+    this.enemies.set(enemy.id, enemy);
+    this.enemyStatus.set(enemy.id, new StatusManager());
+    return enemy;
+  }
+
+  private spawnArenaEnemy(type: EnemyType | string, x: number, y: number, floor: number): EnemyState {
+    const enemy = this.createArenaEnemy(type, x, y, floor);
+    this.enemies.set(enemy.id, enemy);
+    this.enemyStatus.set(enemy.id, new StatusManager());
+    return enemy;
+  }
+
+  private applyTerrainData(terrain: TerrainData): void {
+    this.currentDungeon = {
+      rooms: terrain.rooms ?? [],
+      corridorTiles: terrain.corridorTiles ?? [],
+      spawnPoint: terrain.spawnPoint,
+      exitPoint: terrain.exitPoint,
+      collisionGrid: terrain.collisionGrid,
+      envObjects: terrain.envObjects,
+      enemies: terrain.enemySpawns,
+      items: terrain.itemSpawns,
+    };
+    this.collisionGrid.setGrid(terrain.collisionGrid);
+    this.envObjects = terrain.envObjects;
+  }
+
+  private initTerrain(config: {
+    generator: { generate(floor: number, seed: number): TerrainData };
+    floor: number;
+    seed: number;
+    phase: GamePhase;
+    beforeInit?: () => void;
+    afterInit?: (terrain: TerrainData) => void;
+  }): void {
+    config.beforeInit?.();
+    this.resetGameState();
+
+    const terrain = config.generator.generate(config.floor, config.seed);
+    this.applyTerrainData(terrain);
+    this.placePlayersAt(terrain.spawnPoint);
+
+    // Default enemy spawning from terrain data
+    for (const spawnData of terrain.enemySpawns) {
       for (let j = 0; j < spawnData.count; j++) {
-        const enemy = this.createEnemy(spawnData.type, spawnData.x, spawnData.y, floor);
-        this.enemies.set(enemy.id, enemy);
-        this.enemyStatus.set(enemy.id, new StatusManager());
+        this.spawnEnemy(spawnData.type, spawnData.x, spawnData.y, config.floor);
       }
     }
 
-    // Spawn items
-    for (const item of (dungeon.items || [])) {
+    // Default item spawning from terrain data
+    for (const item of terrain.itemSpawns) {
       this.items.push(item);
     }
+
+    config.afterInit?.(terrain);
+    this.phase = config.phase;
+  }
+
+  private startFloor(floor: number): void {
+    this.currentFloor = floor;
+    const generator = floor === 5
+      ? bossArenaGenerator
+      : this.dungeonGenerator;
+    this.initTerrain({
+      generator,
+      floor,
+      seed: this.floorSeeds[floor - 1],
+      phase: 'PLAYING',
+    });
+    const _config = FLOOR_CONFIG[floor];
   }
 
   private createEnemy(type: string, x: number, y: number, floor: number = 1): EnemyState {
     const id = `enemy_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const baseHp = ENEMY_BASE_HP[type] || 30;
+    const def = ENEMY_DEFS[type as keyof typeof ENEMY_DEFS];
+    const baseHp = def?.hp ?? ENEMY_BASE_HP[type] ?? 30;
 
     // Boss: fixed HP (no floor scaling), ATK scales with floor
     let scaledHp: number;
@@ -205,12 +249,12 @@ export class GameRoom {
     if (type === 'boss') {
       scaledHp = 800;
       const floorAtkMultiplier = 1 + (floor - 1) * 0.1;
-      scaledAttack = Math.round((ENEMY_BASE_ATTACK[type] || 25) * floorAtkMultiplier);
+      scaledAttack = Math.round((def?.attack ?? ENEMY_BASE_ATTACK[type] ?? 25) * floorAtkMultiplier);
     } else {
       const floorMultiplier = 1 + (floor - 1) * 0.15;
       const floorAtkMultiplier = 1 + (floor - 1) * 0.1;
       scaledHp = Math.round(baseHp * floorMultiplier);
-      scaledAttack = Math.round((ENEMY_BASE_ATTACK[type] || 10) * floorAtkMultiplier);
+      scaledAttack = Math.round((def?.attack ?? ENEMY_BASE_ATTACK[type] ?? 10) * floorAtkMultiplier);
 
       // Elite chance
       const eliteChance = FLOOR_CONFIG[floor]?.eliteChance || 0;
@@ -477,45 +521,37 @@ export class GameRoom {
         const item = this.items[i];
         const dist = Math.hypot(player.x - item.x, player.y - item.y);
         if (dist < pickupRange) {
-          // Apply item effect
-          switch (item.type) {
-            case 'health':
-              player.hp = Math.min(player.hpMax, player.hp + 30);
-              break;
-            case 'energy':
-              player.energy = Math.min(player.energyMax, player.energy + 30);
-              break;
-            case 'coin':
-              player.gold += 1;
-              break;
-            case 'key':
-              player.keys += 1;
-              break;
-            case 'potion':
-              player.hp = Math.min(player.hpMax, player.hp + 50);
-              break;
-            case 'shield':
-              player.defense += 10;
-              setTimeout(() => { player.defense = Math.max(0, player.defense - 10); }, 10000);
-              break;
-            case 'vitality_crystal': {
-              const vsm = this.playerStatus.get(player.id);
-              if (vsm && !vsm.has('vitality_crystal_effect')) {
-                vsm.apply('vitality_crystal_effect', 'item', 0, 999000);
-                player.hpMax += 15;
-                player.hp += 15;
+          const def = ITEM_DEFS[item.type];
+          if (def) {
+            switch (def.effect) {
+              case 'heal':
+                player.hp = Math.min(player.hpMax, player.hp + def.value);
+                break;
+              case 'energy':
+                player.energy = Math.min(player.energyMax, player.energy + def.value);
+                break;
+              case 'gold':
+                player.gold += def.value;
+                break;
+              case 'key':
+                player.keys += def.value;
+                break;
+              case 'buff': {
+                const sm = this.playerStatus.get(player.id);
+                if (def.stat === 'defense' && def.duration) {
+                  player.defense += def.value;
+                  setTimeout(() => { player.defense = Math.max(0, player.defense - def.value); }, def.duration);
+                } else if (def.stat === 'hpMax' && sm && !sm.has('vitality_crystal_effect')) {
+                  sm.apply('vitality_crystal_effect', 'item', 0, 999000);
+                  player.hpMax += def.value;
+                  player.hp += def.value;
+                } else if (def.stat === 'attack' && sm) {
+                  sm.apply('power_essence_effect', 'item', 1.15, 999000);
+                } else if (def.stat === 'defense' && sm) {
+                  sm.apply('iron_rune_effect', 'item', 0.5, 999000);
+                }
+                break;
               }
-              break;
-            }
-            case 'power_essence': {
-              const psm = this.playerStatus.get(player.id);
-              if (psm) psm.apply('power_essence_effect', 'item', 1.15, 999000);
-              break;
-            }
-            case 'iron_rune': {
-              const ism = this.playerStatus.get(player.id);
-              if (ism) ism.apply('iron_rune_effect', 'item', 0.5, 999000);
-              break;
             }
           }
           this.items.splice(i, 1);
@@ -626,78 +662,59 @@ export class GameRoom {
     this.arenaFloor = this.currentFloor;
     const arenaFloorNum = this.currentFloor + 1;
     const seed = Math.floor(Math.random() * 0x7fffffff);
-    const arena = generateColosseum(arenaFloorNum, seed);
 
-    this.enemies.clear();
-    this.enemyStatus.clear();
-    this.bullets.clear();
-    this.healWaves = [];
-    this.bossEvents = [];
-    this.items = [];
-    this.envObjects = arena.envObjects;
-    this.arenaDoorId = arena.exitDoorId;
-    this.currentWave = 0;
-    this.waveDelayTimer = 0;
+    this.initTerrain({
+      generator: colosseumGenerator,
+      floor: arenaFloorNum,
+      seed,
+      phase: 'ARENA_PLAYING',
+      beforeInit: () => {
+        this.arenaFloor = this.currentFloor;
+      },
+      afterInit: (terrain) => {
+        // Store arena door ID
+        const arena = generateColosseum(arenaFloorNum, seed);
+        this.arenaDoorId = arena.exitDoorId;
 
-    // Set up collision grid from arena
-    this.collisionGrid.setGrid(arena.collisionGrid);
+        // Override currentDungeon with arena-specific rooms
+        this.currentDungeon = {
+          rooms: [{ x: terrain.rooms?.[0]?.x ?? 0, y: terrain.rooms?.[0]?.y ?? 0, width: terrain.rooms?.[0]?.width ?? 0, height: terrain.rooms?.[0]?.height ?? 0, type: 'arena' }],
+          corridorTiles: [],
+          spawnPoint: terrain.spawnPoint,
+          exitPoint: terrain.exitPoint,
+          collisionGrid: terrain.collisionGrid,
+          envObjects: terrain.envObjects,
+        };
 
-    // Build a minimal currentDungeon for rendering
-    this.currentDungeon = {
-      rooms: [{ x: arena.room.x, y: arena.room.y, width: arena.room.width, height: arena.room.height, type: 'arena' }],
-      corridorTiles: [],
-      spawnPoint: arena.spawnPoint,
-      exitPoint: arena.exitPoint,
-      collisionGrid: arena.collisionGrid,
-      envObjects: arena.envObjects,
-    };
+        // Spawn wave 1 dormant enemies (arena-specific)
+        const wave1Count = arenaFloorNum * 2 + 2;
+        const basicCount = Math.ceil(wave1Count * 0.6);
+        const fastCount = wave1Count - basicCount;
+        const room = arena.room;
+        const cx = room.x + room.width / 2;
+        const cy = room.y + room.height / 2;
 
-    // Place players at arena spawn
-    const spawn = arena.spawnPoint;
-    let i = 0;
-    for (const player of this.players.values()) {
-      player.x = spawn.x + (i * 30);
-      player.y = spawn.y;
-      player.hp = player.hpMax;
-      player.energy = player.energyMax;
-      player.alive = true;
-      i++;
-    }
+        for (let j = 0; j < basicCount; j++) {
+          const angle = (j / basicCount) * Math.PI * 2;
+          const dist = 64 + Math.random() * 128;
+          this.spawnArenaEnemy('basic', cx + Math.cos(angle) * dist, cy + Math.sin(angle) * dist, arenaFloorNum);
+        }
+        for (let j = 0; j < fastCount; j++) {
+          const angle = (j / fastCount) * Math.PI * 2 + 0.5;
+          const dist = 80 + Math.random() * 120;
+          this.spawnArenaEnemy('fast', cx + Math.cos(angle) * dist, cy + Math.sin(angle) * dist, arenaFloorNum);
+        }
 
-    // Spawn wave 1 enemies as dormant
-    const wave1Count = arenaFloorNum * 2 + 2;
-    const basicCount = Math.ceil(wave1Count * 0.6);
-    const fastCount = wave1Count - basicCount;
-    const cx = arena.room.x + arena.room.width / 2;
-    const cy = arena.room.y + arena.room.height / 2;
-
-    for (let j = 0; j < basicCount; j++) {
-      const angle = (j / basicCount) * Math.PI * 2;
-      const dist = 64 + Math.random() * 128;
-      const ex = cx + Math.cos(angle) * dist;
-      const ey = cy + Math.sin(angle) * dist;
-      const enemy = this.createArenaEnemy('basic', ex, ey, arenaFloorNum);
-      this.enemies.set(enemy.id, enemy);
-      this.enemyStatus.set(enemy.id, new StatusManager());
-    }
-    for (let j = 0; j < fastCount; j++) {
-      const angle = (j / fastCount) * Math.PI * 2 + 0.5;
-      const dist = 80 + Math.random() * 120;
-      const ex = cx + Math.cos(angle) * dist;
-      const ey = cy + Math.sin(angle) * dist;
-      const enemy = this.createArenaEnemy('fast', ex, ey, arenaFloorNum);
-      this.enemies.set(enemy.id, enemy);
-      this.enemyStatus.set(enemy.id, new StatusManager());
-    }
-
-    this.phase = 'ARENA_PLAYING';
-    console.log(`[GameRoom] Arena started at floor ${arenaFloorNum}, ${wave1Count} dormant enemies`);
+        console.log(`[GameRoom] Arena started at floor ${arenaFloorNum}, ${wave1Count} dormant enemies`);
+      },
+    });
   }
 
   private createArenaEnemy(type: string, x: number, y: number, floor: number): EnemyState {
     const id = `arena_enemy_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const baseHp = ENEMY_BASE_HP[type] || 30;
-    const baseAtk = ENEMY_BASE_ATTACK[type] || 8;
+    const def = ENEMY_DEFS[type as keyof typeof ENEMY_DEFS];
+    const baseHp = def?.hp ?? ENEMY_BASE_HP[type] ?? 30;
+    const baseAtk = def?.attack ?? ENEMY_BASE_ATTACK[type] ?? 8;
 
     const hp = Math.round(baseHp * (1 + (floor - 1) * 0.15) * ARENA_HP_MULTIPLIER);
     const atk = Math.round(baseAtk * (1 + (floor - 1) * 0.1) * ARENA_ATK_MULTIPLIER);
@@ -864,58 +881,38 @@ export class GameRoom {
     this.mazeFloor = this.currentFloor;
     const mazeFloorNum = this.currentFloor + 1;
     const seed = Math.floor(Math.random() * 0x7fffffff);
-    const maze = generateMaze(mazeFloorNum, seed);
 
-    this.enemies.clear();
-    this.enemyStatus.clear();
-    this.bullets.clear();
-    this.healWaves = [];
-    this.bossEvents = [];
-    this.items = [];
-    this.envObjects = maze.envObjects || [];
-
-    this.collisionGrid.setGrid(maze.collisionGrid);
-
-    this.currentDungeon = maze;
-
-    // Place players at maze entrance
-    const spawn = maze.spawnPoint;
-    let i = 0;
-    for (const player of this.players.values()) {
-      player.x = spawn.x + (i * 30);
-      player.y = spawn.y;
-      player.hp = player.hpMax;
-      player.energy = player.energyMax;
-      player.alive = true;
-      i++;
-    }
-
-    // Spawn enemies from combat pocket rooms and patrol points
-    for (const room of maze.rooms) {
-      if (room.type === 'combat_pocket') {
-        const enemyCount = 2 + Math.floor(Math.random() * 2);
-        for (let j = 0; j < enemyCount; j++) {
-          const angle = (j / enemyCount) * Math.PI * 2;
-          const dist = 32 + Math.random() * 32;
-          const ex = room.x + room.width / 2 + Math.cos(angle) * dist;
-          const ey = room.y + room.height / 2 + Math.sin(angle) * dist;
-          const types = ['basic', 'fast', 'ghost'];
-          const type = types[Math.floor(Math.random() * types.length)];
-          const enemy = this.createEnemy(type, ex, ey, mazeFloorNum);
-          this.enemies.set(enemy.id, enemy);
-          this.enemyStatus.set(enemy.id, new StatusManager());
+    this.initTerrain({
+      generator: mazeGenerator,
+      floor: mazeFloorNum,
+      seed,
+      phase: 'MAZE_PLAYING',
+      beforeInit: () => {
+        this.mazeFloor = this.currentFloor;
+      },
+      afterInit: (terrain) => {
+        // Spawn enemies from combat pocket rooms and patrol points
+        for (const room of (terrain.rooms ?? [])) {
+          if (room.type === 'combat_pocket') {
+            const enemyCount = 2 + Math.floor(Math.random() * 2);
+            for (let j = 0; j < enemyCount; j++) {
+              const angle = (j / enemyCount) * Math.PI * 2;
+              const dist = 32 + Math.random() * 32;
+              const ex = room.x + room.width / 2 + Math.cos(angle) * dist;
+              const ey = room.y + room.height / 2 + Math.sin(angle) * dist;
+              const types: EnemyType[] = ['basic', 'fast', 'ghost'];
+              const type = types[Math.floor(Math.random() * types.length)];
+              this.spawnEnemy(type, ex, ey, mazeFloorNum);
+            }
+          } else if (room.type === 'maze_patrol') {
+            const types: EnemyType[] = ['basic', 'fast'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            this.spawnEnemy(type, room.x, room.y, mazeFloorNum);
+          }
         }
-      } else if (room.type === 'maze_patrol') {
-        const types = ['basic', 'fast'];
-        const type = types[Math.floor(Math.random() * types.length)];
-        const enemy = this.createEnemy(type, room.x, room.y, mazeFloorNum);
-        this.enemies.set(enemy.id, enemy);
-        this.enemyStatus.set(enemy.id, new StatusManager());
-      }
-    }
-
-    this.phase = 'MAZE_PLAYING';
-    console.log(`[GameRoom] Maze started at floor ${mazeFloorNum}, ${this.enemies.size} enemies`);
+        console.log(`[GameRoom] Maze started at floor ${mazeFloorNum}, ${this.enemies.size} enemies`);
+      },
+    });
   }
 
   private checkMazeCompletion(): void {
@@ -1174,12 +1171,12 @@ export class GameRoom {
     const esm = this.enemyStatus.get(enemyId);
     if (esm?.getAggregatedFlags().invulnerable) return;
 
-    // Fast: 20% dodge chance
-    if (enemy.type === 'fast' && Math.random() < 0.2) return;
+    // Enemy special properties from ENEMY_DEFS
+    const def = ENEMY_DEFS[enemy.type];
+    if (def?.dodgeChance && Math.random() < def.dodgeChance) return;
 
-    // Tank: 40% damage reduction
     let effectiveDamage = damage;
-    if (enemy.type === 'tank') effectiveDamage = Math.round(damage * 0.6);
+    if (def?.damageReduction) effectiveDamage = Math.round(damage * (1 - def.damageReduction));
 
     // Apply damageMultiplier from StatusManager (vulnerable/shield)
     const dmgMult = esm?.getAggregatedFlags().damageMultiplier ?? 1.0;

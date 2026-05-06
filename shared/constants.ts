@@ -1,62 +1,65 @@
 // 客户端/服务端共享常量（唯一数据源）
 
+import type { EnemyType, CharacterType, SkillId, ItemPickupType } from './types';
+
 export const TILE_SIZE = 32;
+export const TWO_PI = Math.PI * 2;
 
-// 敌人基础属性
-export const ENEMY_BASE_HP: Record<string, number> = {
-  basic: 30,
-  fast: 20,
-  ghost: 40,
-  tank: 80,
-  boss: 800
+// ── 敌人属性注册表（合并 ENEMY_BASE_HP/ATTACK/SPEED/RADIUS/AGGRO/COOLDOWN） ──
+
+export const ENEMY_DEFS: Record<EnemyType, {
+  hp: number; attack: number; speed: number; radius: number;
+  aggroRange: number; attackCooldown: number; size: number;
+  damageReduction?: number; dodgeChance?: number; spriteSource?: string;
+}> = {
+  basic: { hp: 30, attack: 8, speed: 60, radius: 16, aggroRange: 200, attackCooldown: 1000, size: 40 },
+  fast:  { hp: 20, attack: 10, speed: 120, radius: 14, aggroRange: 250, attackCooldown: 800, size: 36, dodgeChance: 0.2 },
+  ghost: { hp: 40, attack: 12, speed: 70, radius: 16, aggroRange: 300, attackCooldown: 600, size: 42 },
+  tank:  { hp: 80, attack: 15, speed: 40, radius: 20, aggroRange: 150, attackCooldown: 1500, size: 48, damageReduction: 0.4, spriteSource: '0x72' },
+  boss:  { hp: 800, attack: 25, speed: 50, radius: 28, aggroRange: 400, attackCooldown: 500, size: 64, spriteSource: '0x72' },
 };
 
-export const ENEMY_BASE_ATTACK: Record<string, number> = {
-  basic: 8,
-  fast: 10,
-  ghost: 12,
-  tank: 15,
-  boss: 25
-};
+// 旧名兼容（逐步迁移后删除）
+export const ENEMY_BASE_HP: Record<string, number> = Object.fromEntries(Object.entries(ENEMY_DEFS).map(([k, v]) => [k, v.hp]));
+export const ENEMY_BASE_ATTACK: Record<string, number> = Object.fromEntries(Object.entries(ENEMY_DEFS).map(([k, v]) => [k, v.attack]));
+export const ENEMY_SPEED: Record<string, number> = Object.fromEntries(Object.entries(ENEMY_DEFS).map(([k, v]) => [k, v.speed]));
+export const ENEMY_RADIUS: Record<string, number> = Object.fromEntries(Object.entries(ENEMY_DEFS).map(([k, v]) => [k, v.radius]));
+export const ENEMY_AGGRO_RANGE: Record<string, number> = Object.fromEntries(Object.entries(ENEMY_DEFS).map(([k, v]) => [k, v.aggroRange]));
+export const ENEMY_ATTACK_COOLDOWN: Record<string, number> = Object.fromEntries(Object.entries(ENEMY_DEFS).map(([k, v]) => [k, v.attackCooldown]));
 
-export const ENEMY_SPEED: Record<string, number> = {
-  basic: 60,
-  fast: 120,
-  ghost: 70,
-  tank: 40,
-  boss: 50
-};
+// ── 职业配置注册表 ──
 
-export const ENEMY_RADIUS: Record<string, number> = {
-  basic: 16,
-  fast: 14,
-  ghost: 16,
-  tank: 20,
-  boss: 28
-};
-
-export const ENEMY_AGGRO_RANGE: Record<string, number> = {
-  basic: 200,
-  fast: 250,
-  ghost: 300,
-  tank: 150,
-  boss: 400
-};
-
-export const ENEMY_ATTACK_COOLDOWN: Record<string, number> = {
-  basic: 1000,
-  fast: 800,
-  ghost: 600,
-  tank: 1500,
-  boss: 500
-};
-
-// 职业速度
-export const CLASS_SPEED: Record<string, number> = {
+export const CLASS_SPEED: Record<CharacterType, number> = {
   warrior: 180,
   ranger: 220,
   mage: 180,
   cleric: 190
+};
+
+export const CLASS_SKILLS: Record<CharacterType, SkillId[]> = {
+  warrior: ['dash', 'war_cry', 'shield_bash'],
+  ranger: ['dash', 'dodge_roll', 'arrow_rain'],
+  mage: ['dash', 'frost_nova', 'meteor'],
+  cleric: ['dash', 'holy_light', 'sanctuary'],
+};
+
+// ── 道具效果注册表 ──
+
+export const ITEM_DEFS: Record<ItemPickupType, {
+  effect: 'heal' | 'energy' | 'gold' | 'key' | 'buff';
+  value: number;
+  duration?: number;
+  stat?: string;
+}> = {
+  health:           { effect: 'heal', value: 30 },
+  energy:           { effect: 'energy', value: 30 },
+  coin:             { effect: 'gold', value: 1 },
+  key:              { effect: 'key', value: 1 },
+  potion:           { effect: 'heal', value: 50 },
+  shield:           { effect: 'buff', value: 10, duration: 10000, stat: 'defense' },
+  vitality_crystal: { effect: 'buff', value: 20, stat: 'hpMax' },
+  power_essence:    { effect: 'buff', value: 5, stat: 'attack' },
+  iron_rune:        { effect: 'buff', value: 5, stat: 'defense' },
 };
 
 // ── 陷阱配置 ──

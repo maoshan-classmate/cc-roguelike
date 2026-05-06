@@ -1,8 +1,11 @@
 import { GAME_CONFIG, FLOOR_CONFIG } from '../../config/constants';
 import { MathUtils } from '../../utils/MathUtils';
 import { ROOM_TEMPLATES } from './RoomTemplates';
-import type { EnvObjectState } from '../../../shared/types';
+import type { EnvObjectState, EnemyType, ItemPickupType } from '../../../shared/types';
 import { PILLAR_HP, PILLAR_SIZE, BOSS_ROOM_MIN_SIZE, TRAP_TYPES, TILE_SIZE } from '../../../shared/constants';
+import type { TerrainGenerator, TerrainData } from './types';
+import { registerTerrain } from './types';
+import { clearAreaAround } from '../../utils/dungeon';
 
 interface DungeonData {
   rooms: Room[];
@@ -44,11 +47,12 @@ interface BSPNode {
   room?: Room;
 }
 
-export class DungeonGenerator {
+export class DungeonGenerator implements TerrainGenerator {
+  readonly type = 'dungeon' as const;
   private random!: () => number;
   private envObjectIdCounter = 0;
 
-  generate(floor: number, seed: number): DungeonData {
+  generate(floor: number, seed: number): TerrainData {
     this.random = MathUtils.seededRandom(seed);
     this.envObjectIdCounter = 0;
     const width = GAME_CONFIG.DUNGEON_WIDTH;
@@ -70,10 +74,8 @@ export class DungeonGenerator {
     const gridData = this.generateGrid(layout.rooms, layout.corridors, templateResult.carvedTiles, [...templateResult.envObjects, ...content.envObjects], width, height);
 
     // Force-clear spawn and exit areas
-    const cols = Math.ceil(width / TILE_SIZE);
-    const rows = Math.ceil(height / TILE_SIZE);
-    this.forceClearArea(gridData.collisionGrid, layout.spawnPoint, cols, rows);
-    this.forceClearArea(gridData.collisionGrid, layout.exitPoint, cols, rows);
+    clearAreaAround(gridData.collisionGrid, Math.floor(layout.spawnPoint.x / TILE_SIZE), Math.floor(layout.spawnPoint.y / TILE_SIZE));
+    clearAreaAround(gridData.collisionGrid, Math.floor(layout.exitPoint.x / TILE_SIZE), Math.floor(layout.exitPoint.y / TILE_SIZE));
 
     // Validate grid
     const walkableCount = gridData.collisionGrid.flat().filter(Boolean).length;
@@ -89,12 +91,11 @@ export class DungeonGenerator {
 
     return {
       rooms: layout.rooms,
-      corridors: layout.corridors,
       corridorTiles: gridData.corridorTiles,
       spawnPoint: layout.spawnPoint,
       exitPoint: layout.exitPoint,
-      enemies: content.enemies,
-      items: content.items,
+      enemySpawns: content.enemies as { type: EnemyType; x: number; y: number; count: number }[],
+      itemSpawns: content.items as { id: string; x: number; y: number; type: ItemPickupType }[],
       collisionGrid: gridData.collisionGrid,
       envObjects: allEnvObjects,
       roomTemplates,
@@ -341,18 +342,6 @@ export class DungeonGenerator {
     return { collisionGrid: grid, corridorTiles };
   }
 
-  private forceClearArea(grid: boolean[][], point: { x: number; y: number }, cols: number, rows: number): void {
-    const col = Math.floor(point.x / TILE_SIZE);
-    const row = Math.floor(point.y / TILE_SIZE);
-    for (let r = row - 1; r <= row + 1; r++) {
-      for (let c = col - 1; c <= col + 1; c++) {
-        if (r >= 0 && r < rows && c >= 0 && c < cols) {
-          grid[r][c] = true;
-        }
-      }
-    }
-  }
-
   private splitBSP(x: number, y: number, w: number, h: number, depth: number): BSPNode {
     const node: BSPNode = { x, y, width: w, height: h };
     const minLeafSize = 140; // ensure leaf nodes large enough for rooms
@@ -574,3 +563,5 @@ export class DungeonGenerator {
     });
   }
 }
+
+registerTerrain(new DungeonGenerator());
