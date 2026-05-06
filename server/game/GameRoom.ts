@@ -39,6 +39,7 @@ export class GameRoom {
   private arenaTriggered: boolean = false;
   private arenaFloor: number = 0;
   private mazeTriggered: boolean = false;
+  private mazeFogEnabled: boolean = true;
   private mazeFloor: number = 0;
   private currentWave: number = 0;
   private waveDelayTimer: number = 0;
@@ -325,8 +326,8 @@ export class GameRoom {
         // Clamp to dungeon bounds
         const W = GAME_CONFIG.DUNGEON_WIDTH;
         const H = GAME_CONFIG.DUNGEON_HEIGHT;
-        player.x = Math.max(20, Math.min(W - 20, player.x));
-        player.y = Math.max(20, Math.min(H - 20, player.y));
+        player.x = Math.max(16, Math.min(W - 16, player.x));
+        player.y = Math.max(16, Math.min(H - 16, player.y));
 
         // Pillar collision: push player out of alive pillar rects
         for (const obj of this.envObjects) {
@@ -435,6 +436,9 @@ export class GameRoom {
     // Item pickup
     this.checkItemPickup();
 
+    // Chest interaction
+    this.checkChestInteraction();
+
     // Check floor completion
     this.checkFloorCompletion();
 
@@ -515,6 +519,35 @@ export class GameRoom {
             }
           }
           this.items.splice(i, 1);
+        }
+      }
+    }
+  }
+
+  private checkChestInteraction(): void {
+    const interactRange = 50;
+    const chestLootTable = ['health', 'energy', 'coin', 'potion'];
+    for (const obj of this.envObjects) {
+      if (obj.type !== 'chest' || !obj.alive) continue;
+      for (const player of this.players.values()) {
+        if (!player.alive) continue;
+        const dist = Math.hypot(player.x - obj.x, player.y - obj.y);
+        if (dist < interactRange) {
+          obj.alive = false;
+          // Drop 2-3 random items around chest
+          const dropCount = 2 + Math.floor(Math.random() * 2);
+          for (let i = 0; i < dropCount; i++) {
+            const lootType = chestLootTable[Math.floor(Math.random() * chestLootTable.length)];
+            const angle = (Math.PI * 2 / dropCount) * i;
+            const offset = 24;
+            this.items.push({
+              id: `item_chest_${Date.now()}_${i}`,
+              x: obj.x + Math.cos(angle) * offset,
+              y: obj.y + Math.sin(angle) * offset,
+              type: lootType,
+            });
+          }
+          break;
         }
       }
     }
@@ -693,43 +726,23 @@ export class GameRoom {
   }
 
   private checkArenaState(dt: number): void {
-    // Check if player attacks dormant enemy → handled in damageEnemy()
-
-    // Wave 0 (dormant): check if player walks to exit without attacking
-    if (this.currentWave === 0) {
-      const door = this.envObjects.find(o => o.type === 'door');
-      if (door && door.doorOpen) {
-        for (const player of this.players.values()) {
-          if (!player.alive) continue;
-          const dist = Math.hypot(player.x - door.x, player.y - door.y);
-          if (dist < 40) {
-            // Safe passage — no reward
-            this.phase = 'FLOOR_TRANSITION';
-            this.startFloor(this.arenaFloor + 1);
-            this._floorChanged = true;
-            this.phase = 'PLAYING';
-            return;
-          }
-        }
-      }
-      return;
-    }
-
-    // Wave 1-3 in progress: check if all enemies dead
+    // Rule: stairs (exitPoint) only activates when ALL enemies are cleared
     let aliveEnemies = 0;
     for (const enemy of this.enemies.values()) {
       if (enemy.alive) aliveEnemies++;
     }
+
     if (aliveEnemies > 0) return;
 
-    // All enemies dead
-    if (this.currentWave < 3) {
-      // Wave delay
+    const exitPoint = this.currentDungeon?.exitPoint;
+
+    // Wave 0 (dormant enemies not yet attacked — alive count > 0, won't reach here)
+    // Waves 1-2 cleared → next wave
+    if (this.currentWave >= 1 && this.currentWave < 3) {
       this.waveDelayTimer += dt * 1000;
       if (this.waveDelayTimer < ARENA_WAVE_INTER_DELAY) return;
       this.waveDelayTimer = 0;
 
-      // Heal alive players 25% maxHP
       for (const player of this.players.values()) {
         if (player.alive) {
           player.hp = Math.min(player.hpMax, player.hp + Math.round(player.hpMax * ARENA_WAVE_HP_RECOVERY));
@@ -738,8 +751,11 @@ export class GameRoom {
 
       this.currentWave++;
       this.spawnArenaWave(this.currentWave, this.arenaFloor + 1);
-    } else {
-      // Wave 3 cleared — open door, spawn rewards
+      return;
+    }
+
+    // Wave 3 just cleared → open door, spawn rewards
+    if (this.currentWave === 3) {
       const door = this.envObjects.find(o => o.type === 'door');
       if (door && !door.doorOpen) {
         door.doorOpen = true;
@@ -749,7 +765,23 @@ export class GameRoom {
       }
 
       this.spawnArenaRewards(this.arenaFloor + 1);
-      this.currentWave = 4; // Mark as cleared
+      this.currentWave = 4;
+      return;
+    }
+
+    // Arena fully cleared (wave 4): player walks to stairs → next floor
+    if (this.currentWave >= 4 && exitPoint) {
+      for (const player of this.players.values()) {
+        if (!player.alive) continue;
+        const dist = Math.hypot(player.x - exitPoint.x, player.y - exitPoint.y);
+        if (dist < 40) {
+          this.phase = 'FLOOR_TRANSITION';
+          this.startFloor(this.arenaFloor + 1);
+          this._floorChanged = true;
+          this.phase = 'PLAYING';
+          return;
+        }
+      }
     }
   }
 
@@ -1078,7 +1110,7 @@ export class GameRoom {
       arenaTriggered: this.arenaTriggered,
       mazeTriggered: this.mazeTriggered,
       mazeFog: this.phase === 'MAZE_PLAYING' ? {
-        enabled: true,
+        enabled: this.mazeFogEnabled,
         visionRadius: 128,
         exploredTiles: [],
       } : undefined,
@@ -1343,6 +1375,10 @@ export class GameRoom {
         // Force start maze
         this.mazeTriggered = false;
         this.startMaze();
+        break;
+      }
+      case 'toggleFog': {
+        this.mazeFogEnabled = !this.mazeFogEnabled;
         break;
       }
     }

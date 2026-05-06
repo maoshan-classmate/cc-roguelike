@@ -50,7 +50,7 @@ export interface MazeFogState {
 
 // ── Environment Objects ──
 
-export type EnvObjectType = 'pillar' | 'trap' | 'door' | 'decoration';
+export type EnvObjectType = 'pillar' | 'trap' | 'door' | 'decoration' | 'chest';
 export type TrapType = 'spike' | 'fire' | 'slow';
 
 export interface EnvObjectState {

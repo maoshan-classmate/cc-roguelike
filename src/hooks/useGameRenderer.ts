@@ -37,13 +37,15 @@ export function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t
 }
 
-/** Render environment objects (pillars, traps, doors, decorations) */
+/** Render environment objects (pillars, traps, doors, decorations, chests) */
 function drawEnvObjects(
   ctx: CanvasRenderingContext2D,
   envObjects: EnvObjectState[],
   atlasImg: HTMLImageElement,
   frame: number,
   customSprites: Record<string, HTMLImageElement>,
+  players?: PlayerState[],
+  user?: { id: string } | null,
 ): void {
   for (const obj of envObjects) {
     switch (obj.type) {
@@ -87,14 +89,7 @@ function drawEnvObjects(
       }
       case 'door': {
         if (obj.doorOpen) {
-          // Open door — draw exit stairs sprite
-          const spriteName = 'floor_stairs'
-          if (is0x72Sprite(spriteName)) {
-            draw0x72Sprite(ctx, atlasImg, spriteName, obj.x, obj.y, obj.width)
-          } else {
-            ctx.fillStyle = '#445566'
-            ctx.fillRect(obj.x - obj.width / 2, obj.y - obj.height / 2, obj.width, obj.height)
-          }
+          // Open door — invisible (stairs drawn at exitPoint by renderDungeonTiles)
         } else {
           // Closed door
           const spriteName = 'doors_leaf_closed'
@@ -112,7 +107,6 @@ function drawEnvObjects(
           const customImg = customSprites[obj.spriteKey];
           if (customImg) {
             const drawSize = obj.width;
-            // Enable smooth scaling for AI-generated images (large → small)
             const prevSmooth = ctx.imageSmoothingEnabled;
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
@@ -123,6 +117,29 @@ function drawEnvObjects(
           }
         }
         break
+      }
+      case 'chest': {
+        const spriteKey = obj.alive ? 'chest_full_open_anim_f0' : 'chest_full_open_anim_f1';
+        if (is0x72Sprite(spriteKey)) {
+          draw0x72Sprite(ctx, atlasImg, spriteKey, obj.x, obj.y, obj.width);
+        }
+        // Interaction hint: show "approach to open" when alive and player nearby
+        if (obj.alive) {
+          const localPlayer = players?.find((p: any) => p.id === (user as any)?.id);
+          if (localPlayer) {
+            const dist = Math.hypot(localPlayer.x - obj.x, localPlayer.y - obj.y);
+            if (dist < 80) {
+              ctx.save();
+              ctx.globalAlpha = Math.min(1, Math.max(0, 1 - (dist - 30) / 50));
+              ctx.fillStyle = '#FFD700';
+              ctx.font = '10px Courier New';
+              ctx.textAlign = 'center';
+              ctx.fillText('靠近开启', obj.x, obj.y - obj.height / 2 - 6);
+              ctx.restore();
+            }
+          }
+        }
+        break;
       }
     }
   }
@@ -138,6 +155,7 @@ interface GameState {
   keys: number
   dungeon: DungeonData | null
   phase?: string
+  mazeFog?: { enabled?: boolean; visionRadius?: number; exploredTiles?: string[] }
 }
 
 interface RenderDeps {
@@ -253,8 +271,8 @@ export function useGameRenderer(
       const roomsKey = dungeon.rooms?.map((r: any) => `${r.x},${r.y},${r.width},${r.height},${r.type || ''}`).join('|') || ''
       const gridKey = grid.map((row: boolean[]) => row.join('')).join('|') + '|' + exitKey + '|' + roomsKey
 
-      // Build exclude rects from pillar envObjects for micro-decoration cleanup
-      const pillarRects = (dungeon.envObjects || []).filter((o: any) => o.type === 'pillar' && o.alive)
+      // Build exclude rects from all envObjects for micro-decoration cleanup
+      const pillarRects = (dungeon.envObjects || []).filter((o: any) => o.alive)
 
       if (!dungeonCacheRef.current || dungeonCacheRef.current.gridKey !== gridKey) {
         const offscreen = document.createElement('canvas')
@@ -268,7 +286,7 @@ export function useGameRenderer(
 
       // Render environment objects (collisionGrid path)
       if (dungeon.envObjects) {
-        drawEnvObjects(ctx, dungeon.envObjects, tileset2Atlas, frame, deps.customSprites)
+        drawEnvObjects(ctx, dungeon.envObjects, tileset2Atlas, frame, deps.customSprites, players, user)
       }
 
       // 出口引导：清怪后入口处淡蓝色光线
@@ -306,7 +324,7 @@ export function useGameRenderer(
         offscreen.width = canvas.width
         offscreen.height = canvas.height
         const offCtx = offscreen.getContext('2d')!
-        const pillarRects = (dungeon.envObjects || []).filter((o: any) => o.type === 'pillar' && o.alive)
+        const pillarRects = (dungeon.envObjects || []).filter((o: any) => o.alive)
         renderDungeonFromRooms(offCtx, dungeon.rooms, dungeon.corridorTiles, tileset2Atlas, canvas.width, canvas.height, dungeon.exitPoint, pillarRects)
         dungeonCacheRef.current = { canvas: offscreen, gridKey: roomsKey }
       }
@@ -314,7 +332,7 @@ export function useGameRenderer(
 
       // Render environment objects (rooms path)
       if (dungeon.envObjects) {
-        drawEnvObjects(ctx, dungeon.envObjects, tileset2Atlas, frame, deps.customSprites)
+        drawEnvObjects(ctx, dungeon.envObjects, tileset2Atlas, frame, deps.customSprites, players, user)
       }
 
       // 出口引导：清怪后入口处淡蓝色光线（rooms 路径）
@@ -455,10 +473,11 @@ export function useGameRenderer(
     }
 
     // ── Fog of war for maze ──
-    if (gameStateRef.current.phase === 'MAZE_PLAYING') {
+    const mazeFog = gameStateRef.current.mazeFog
+    if (gameStateRef.current.phase === 'MAZE_PLAYING' && mazeFog?.enabled !== false) {
       const localPlayer = players.find(p => p.id === user?.id)
       if (localPlayer) {
-        const visionRadius = 96
+        const visionRadius = mazeFog?.visionRadius ?? 128
         ctx.save()
         // Solid black overlay with circular cutout
         ctx.fillStyle = '#000000'
@@ -478,6 +497,32 @@ export function useGameRenderer(
         ctx.arc(localPlayer.x, localPlayer.y, visionRadius, 0, Math.PI * 2)
         ctx.fill()
         ctx.restore()
+
+        // Exit guide light pierces through fog (drawn after fog with additive blending)
+        if (dungeon?.exitPoint && enemies.filter(e => e.alive !== false).length === 0) {
+          const tileX = Math.floor(dungeon.exitPoint.x / 32) * 32
+          const tileY = Math.floor(dungeon.exitPoint.y / 32) * 32
+          const cx = tileX + 16
+          const cy = tileY + 16
+          const pulse = 0.5 + 0.5 * Math.sin(frame * 0.04)
+          ctx.save()
+          ctx.globalCompositeOperation = 'lighter'
+          for (let i = 0; i < 8; i++) {
+            const angle = (Math.PI * 2 / 8) * i + frame * 0.01
+            const len = 20 + pulse * 12
+            const grad = ctx.createLinearGradient(cx, cy,
+              cx + Math.cos(angle) * len, cy + Math.sin(angle) * len)
+            grad.addColorStop(0, `rgba(140, 200, 255, ${0.5 + pulse * 0.3})`)
+            grad.addColorStop(1, 'rgba(100, 170, 240, 0)')
+            ctx.strokeStyle = grad
+            ctx.lineWidth = 2
+            ctx.beginPath()
+            ctx.moveTo(cx, cy)
+            ctx.lineTo(cx + Math.cos(angle) * len, cy + Math.sin(angle) * len)
+            ctx.stroke()
+          }
+          ctx.restore()
+        }
       }
     }
   }, [canvasRef, gameStateRef, deps])

@@ -162,10 +162,14 @@ export function generateMaze(floor: number, seed: number): DungeonData {
     );
   }
 
-  // Verify path exists
+  // Verify path exists — fallback to guaranteed corridor if BFS fails
   const verifyPath = bfsShortestPath(grid, entranceTile, exitTile);
   if (verifyPath.length === 0) {
-    console.error('[MazeGenerator] FATAL: No path from entrance to exit!');
+    console.warn('[MazeGenerator] BFS failed — carving fallback corridor from entrance to exit');
+    for (let c = ENTRANCE_COL; c <= EXIT_COL + 1; c++) {
+      if (11 < ROWS) grid[11][c] = true;
+      if (12 < ROWS) grid[12][c] = true;
+    }
   }
 
   // Corridor tiles (all walkable tiles as pixel coords)

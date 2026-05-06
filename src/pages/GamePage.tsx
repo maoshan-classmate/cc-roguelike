@@ -25,6 +25,7 @@ interface ClientGameState {
   keys: number
   dungeon: DungeonData | null
   phase?: string
+  mazeFog?: { enabled?: boolean; visionRadius?: number; exploredTiles?: string[] }
 }
 import { networkClient } from '../network/socket'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -48,6 +49,7 @@ import {
 
 // 加载精灵图
 const tileset2Atlas = new Image()
+tileset2Atlas.src = '/src/assets/0x72/main_atlas.png'
 
 // 加载 AI 生成精灵 sheet
 const generatedSheets: Record<string, HTMLImageElement> = {}
@@ -101,6 +103,8 @@ function DebugMenu({
   onBossRanged,
   onForceArena,
   onForceTrapFloor,
+  onToggleFog,
+  isFogOff,
 }: {
   onTeleport: (floor: number) => void
   onKillAll: () => void
@@ -110,6 +114,8 @@ function DebugMenu({
   onBossRanged: () => void
   onForceArena: () => void
   onForceTrapFloor: () => void
+  onToggleFog: () => void
+  isFogOff: boolean
 }) {
   const [floorInput, setFloorInput] = useState('')
 
@@ -215,9 +221,21 @@ function DebugMenu({
       <button
         onClick={onForceTrapFloor}
         className="btn-pixel"
-        style={{ background: '#6B3A2A', fontSize: 11, padding: '4px 8px', width: '100%' }}
+        style={{ background: '#6B3A2A', fontSize: 11, padding: '4px 8px', width: '100%', marginBottom: 4 }}
       >
         [ 进入迷宫关 ]
+      </button>
+      <button
+        onClick={onToggleFog}
+        className="btn-pixel"
+        style={{
+          background: isFogOff ? '#4A9EFF' : '#333',
+          fontSize: 11,
+          padding: '4px 8px',
+          width: '100%',
+        }}
+      >
+        {isFogOff ? '[ 迷雾 OFF ]' : '[ 去迷雾 ON/OFF ]'}
       </button>
     </div>
   )
@@ -258,6 +276,7 @@ export default function GamePage() {
   const [spritesLoaded, setSpritesLoaded] = useState(false)
   const [showDebug, setShowDebug] = useState(false)
   const [isInvincible, setIsInvincible] = useState(false)
+  const [isFogOff, setIsFogOff] = useState(false)
   const [hoveredSkill, setHoveredSkill] = useState<number | null>(null)
   const cooldownEndRef = useRef<Map<number, number>>(new Map()) // skillIndex → end timestamp
   const [, setCooldownTick] = useState(0) // triggers re-render for cooldown display
@@ -444,6 +463,7 @@ export default function GamePage() {
         keys: state.players?.find((p: PlayerState) => p.id === user?.id)?.keys || 0,
         dungeon: state.dungeon ?? null,
         phase: state.phase || 'PLAYING',
+        mazeFog: state.mazeFog ?? undefined,
       }
 
       // Update envObjects from dungeon data
@@ -478,7 +498,7 @@ export default function GamePage() {
     networkClient.on(GameMessages.FLOOR_START, (data: { floor: number; gameSession: number }) => {
       prevPositions.current.clear()
       targetPositions.current.clear()
-      gameStateRef.current = { players: [], enemies: [], bullets: [], healWaves: [], items: [], gold: 0, keys: 0, dungeon: null, phase: 'LOBBY' }
+      gameStateRef.current = { players: [], enemies: [], bullets: [], healWaves: [], items: [], gold: 0, keys: 0, dungeon: null, phase: 'LOBBY', mazeFog: undefined }
       floorSessionRef.current = data.floor
       gameSessionRef.current = data.gameSession
       lastStateTime.current = performance.now()
@@ -669,6 +689,11 @@ export default function GamePage() {
 
   const handleDebugForceTrapFloor = () => {
     networkClient.emit(GameMessages.DEBUG, { action: 'forceTrapFloor' })
+  }
+
+  const handleDebugToggleFog = () => {
+    networkClient.emit(GameMessages.DEBUG, { action: 'toggleFog' })
+    setIsFogOff(!isFogOff)
   }
 
   const { gold, keys } = gameStateRef.current
@@ -938,6 +963,8 @@ export default function GamePage() {
           onBossRanged={handleDebugBossRanged}
           onForceArena={handleDebugForceArena}
           onForceTrapFloor={handleDebugForceTrapFloor}
+          onToggleFog={handleDebugToggleFog}
+          isFogOff={isFogOff}
         />
       )}
     </div>

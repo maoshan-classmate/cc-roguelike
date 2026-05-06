@@ -141,7 +141,7 @@ export function generateBossArena(floor: number, seed: number): DungeonData {
   const chestY = hallY + Math.floor(hallH / 2 / TILE_SIZE) * TILE_SIZE + TILE_SIZE / 2;
   envObjects.push({
     id: id(),
-    type: 'decoration',
+    type: 'chest',
     x: chestX,
     y: chestY,
     width: TILE_SIZE,
