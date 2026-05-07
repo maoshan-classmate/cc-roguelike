@@ -11,6 +11,7 @@ export interface SkillPreviewState {
   y: number
   angle: number
   startTime: number
+  followMouse?: boolean
 }
 
 interface PreviewDef {
@@ -236,8 +237,9 @@ const PREVIEW_RENDERERS: Record<string, (pc: PreviewCtx) => void> = {
     // Arrow rain: target circle with internal grid + falling arrows
     const r = def.radius!
     const range = def.range!
-    const tx = preview.x + Math.cos(preview.angle) * range
-    const ty = preview.y + Math.sin(preview.angle) * range
+    // followMouse 时 preview.x/y 已是鼠标世界坐标，否则用固定偏移
+    const tx = preview.followMouse ? preview.x : preview.x + Math.cos(preview.angle) * range
+    const ty = preview.followMouse ? preview.y : preview.y + Math.sin(preview.angle) * range
 
     // Distance line
     ctx.globalAlpha = 0.12 * breathe
@@ -366,8 +368,8 @@ const PREVIEW_RENDERERS: Record<string, (pc: PreviewCtx) => void> = {
     // Meteor: target circle + falling trajectory + crosshair
     const r = def.radius!
     const range = def.range!
-    const tx = preview.x + Math.cos(preview.angle) * range
-    const ty = preview.y + Math.sin(preview.angle) * range
+    const tx = preview.followMouse ? preview.x : preview.x + Math.cos(preview.angle) * range
+    const ty = preview.followMouse ? preview.y : preview.y + Math.sin(preview.angle) * range
 
     // Trajectory line (dotted arc from above)
     ctx.globalAlpha = 0.1 * breathe
@@ -566,7 +568,7 @@ const PREVIEW_RENDERERS: Record<string, (pc: PreviewCtx) => void> = {
   },
 }
 
-export function drawSkillPreview(ctx: CanvasRenderingContext2D, preview: SkillPreviewState) {
+export function drawSkillPreview(ctx: CanvasRenderingContext2D, preview: SkillPreviewState, playerPos?: { x: number; y: number }, mouseCanvasPos?: { x: number; y: number }) {
   if (!preview.active) return
 
   const def = PREVIEW_DEFS[preview.skillId]
@@ -576,10 +578,20 @@ export function drawSkillPreview(ctx: CanvasRenderingContext2D, preview: SkillPr
   const breathe = 0.8 + Math.sin(elapsed * 0.004) * 0.2
   const spin = elapsed * 0.001
 
+  // followMouse 模式：鼠标 canvas 坐标即世界坐标（无相机变换）
+  let effectivePreview = preview
+  if (preview.followMouse && playerPos && mouseCanvasPos) {
+    effectivePreview = {
+      ...preview,
+      x: mouseCanvasPos.x,
+      y: mouseCanvasPos.y,
+    }
+  }
+
   const renderer = PREVIEW_RENDERERS[def.type]
   if (!renderer) return
 
   ctx.save()
-  renderer({ ctx, preview, def, breathe, spin, elapsed })
+  renderer({ ctx, preview: effectivePreview, def, breathe, spin, elapsed })
   ctx.restore()
 }

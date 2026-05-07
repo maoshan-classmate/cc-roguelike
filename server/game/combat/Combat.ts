@@ -75,7 +75,8 @@ export class Combat {
     const spread = (weapon.spread || 0) * Math.PI / 180;
 
     for (let i = 0; i < count; i++) {
-      const angle = (player.aimAngle ?? player.angle) + (this.random() - 0.5) * spread;
+      const aimAngle = player.aimAngle ?? player.angle;
+      const angle = aimAngle + (this.random() - 0.5) * spread;
       this.room.spawnBullet(
         player.id,
         player.x + Math.cos(angle) * 20,
@@ -116,7 +117,7 @@ export class Combat {
     }
   }
 
-  useSkill(player: PlayerState, skillIndex: number): SkillResult {
+  useSkill(player: PlayerState, skillIndex: number, targetPos?: { x: number; y: number }): SkillResult {
     const skills = player.skills;
     if (skillIndex < 0 || skillIndex >= skills.length) {
       return { accepted: false, reason: 'invalid' };
@@ -159,7 +160,7 @@ export class Combat {
 
     // Route to handler via registry
     const handler = SKILL_HANDLERS[skill.type];
-    if (handler) handler({ player, skill, sm, deps: this.room });
+    if (handler) handler({ player, skill, sm, deps: this.room, targetPos });
 
     return { accepted: true, effectiveCooldown };
   }
@@ -169,7 +170,7 @@ export class Combat {
 
     if (bullet.friendly) {
       for (const enemy of state.enemies) {
-        if (!enemy.alive) continue;
+        if (!enemy.alive || enemy.state === 'dying') continue;
 
         // Check invulnerable via StatusManager
         const esm = this.room.getEnemyStatus(enemy.id);

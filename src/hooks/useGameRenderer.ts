@@ -199,6 +199,7 @@ interface RenderDeps {
   attackFlashRef?: React.MutableRefObject<number>
   skillEffectStore?: SkillEffectStore
   skillPreviewRef?: React.MutableRefObject<SkillPreviewState | null>
+  mouseRef?: React.MutableRefObject<{ x: number; y: number; down: boolean }>
 }
 
 export function useGameRenderer(
@@ -427,9 +428,9 @@ export function useGameRenderer(
       if (localPlayer) {
         preview.x = localPlayer.x
         preview.y = localPlayer.y
-        if (localPlayer.angle !== undefined) preview.angle = localPlayer.angle
+        if (localPlayer.angle !== undefined) preview.angle = localPlayer.aimAngle ?? localPlayer.angle
       }
-      drawSkillPreview(ctx, preview)
+      drawSkillPreview(ctx, preview, localPlayer, deps.mouseRef?.current)
     }
 
     // 绘制敌人

@@ -355,10 +355,10 @@ export function drawPlayers(
         ctx.save()
         ctx.translate(ppos.x, ppos.y)
         ctx.scale(-1, 1)
-        drawWeaponSprite(ctx, tileset2Atlas, wSprite, 0, 0, 0, 48, flashVal, isMelee)
+        drawWeaponSprite(ctx, tileset2Atlas, wSprite, 0, 0, -pAngle, 48, flashVal, isMelee)
         ctx.restore()
       } else {
-        drawWeaponSprite(ctx, tileset2Atlas, wSprite, ppos.x, ppos.y, 0, 48, flashVal, isMelee)
+        drawWeaponSprite(ctx, tileset2Atlas, wSprite, ppos.x, ppos.y, pAngle, 48, flashVal, isMelee)
       }
     }
 

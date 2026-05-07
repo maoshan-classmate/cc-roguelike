@@ -325,7 +325,7 @@ export class GameRoom {
     }
 
     if (input.skill !== undefined) {
-      const result = this.combat.useSkill(player, input.skill);
+      const result = this.combat.useSkill(player, input.skill, input.targetPos);
       if (emitEvent && result) {
         if (result.accepted) {
           emitEvent(GameMessages.SKILL_ACCEPTED, {

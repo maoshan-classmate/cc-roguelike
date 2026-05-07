@@ -167,6 +167,7 @@ export default function GamePage() {
     screenShakeRef,
     skillEffectStore: skillEffectStoreRef.current,
     skillPreviewRef,
+    mouseRef,
   }
 
   const { render } = useGameRenderer(canvasRef, gameStateRef, renderDeps)
@@ -412,6 +413,7 @@ export default function GamePage() {
     playDash, play, onSkillCast: handleSkillCast,
     onSkillPreview: (preview) => { skillPreviewRef.current = preview },
     getLocalPlayer,
+    isSkillOnCooldown: (skillIndex: number) => Date.now() < (cooldownEndRef.current.get(skillIndex) ?? 0),
   })
 
   // Game loop
@@ -437,16 +439,16 @@ export default function GamePage() {
         return
       }
 
-      // 鼠标独立瞄准：aimAngle 基于鼠标相对 canvas 中心的偏移
+      // 鼠标独立瞄准：aimAngle 基于鼠标相对玩家位置的偏移
+      // 地牢=canvas 尺寸(1024×768)，无相机变换，玩家世界坐标=屏幕坐标
       const canvasEl = canvasRef.current
       if (canvasEl) {
-        const cx = canvasEl.width / 2
-        const cy = canvasEl.height / 2
+        const px = localPlayer.x
+        const py = localPlayer.y
         const mx = mouseRef.current.x
         const my = mouseRef.current.y
-        // 鼠标在 canvas 中心时 atan2(0,0)=0，保持上一帧 aimAngle
-        if (mx !== cx || my !== cy) {
-          aimAngleRef.current = Math.atan2(my - cy, mx - cx)
+        if (mx !== px || my !== py) {
+          aimAngleRef.current = Math.atan2(my - py, mx - px)
         }
       }
       const aimAngle = aimAngleRef.current

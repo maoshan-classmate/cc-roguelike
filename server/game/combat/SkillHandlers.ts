@@ -9,6 +9,7 @@ export interface SkillContext {
   skill: SkillTemplate;
   sm: StatusManager | undefined;
   deps: CombatDeps;
+  targetPos?: { x: number; y: number };
 }
 
 export type SkillHandler = (ctx: SkillContext) => void;
@@ -152,15 +153,32 @@ function handleDodgeRoll(ctx: SkillContext): void {
 }
 
 function handleArrowRain(ctx: SkillContext): void {
-  const { player, skill, deps } = ctx;
+  const { player, skill, deps, targetPos } = ctx;
   const radius = skill.radius || 160;
   const waves = skill.waves || 3;
   const damageMult = skill.damageMult || 0.5;
   const delay = 500;
+  const maxRange = 300;
 
-  const aimAngle = player.aimAngle ?? player.angle;
-  const targetX = player.x + Math.cos(aimAngle) * 150;
-  const targetY = player.y + Math.sin(aimAngle) * 150;
+  let targetX: number;
+  let targetY: number;
+  if (targetPos) {
+    const dx = targetPos.x - player.x;
+    const dy = targetPos.y - player.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > maxRange) {
+      const scale = maxRange / dist;
+      targetX = player.x + dx * scale;
+      targetY = player.y + dy * scale;
+    } else {
+      targetX = targetPos.x;
+      targetY = targetPos.y;
+    }
+  } else {
+    const aimAngle = player.aimAngle ?? player.angle;
+    targetX = player.x + Math.cos(aimAngle) * 150;
+    targetY = player.y + Math.sin(aimAngle) * 150;
+  }
 
   const pAttack = player.attack;
   const pId = player.id;
@@ -206,7 +224,7 @@ function handleFrostNova(ctx: SkillContext): void {
 }
 
 function handleMeteor(ctx: SkillContext): void {
-  const { player, skill, deps } = ctx;
+  const { player, skill, deps, targetPos } = ctx;
   const radius = skill.radius || 150;
   const damageMult = skill.damageMult || 2.5;
   const dotDmg = skill.dotDmg || 5;
@@ -214,11 +232,26 @@ function handleMeteor(ctx: SkillContext): void {
   const delay = skill.duration || 1000;
   const maxRange = skill.range || 300;
 
-  const aimAngle = player.aimAngle ?? player.angle;
-  const meteorTarget = clampToDungeon(
-    player.x + Math.cos(aimAngle) * maxRange,
-    player.y + Math.sin(aimAngle) * maxRange,
-  );
+  let rawX: number;
+  let rawY: number;
+  if (targetPos) {
+    const dx = targetPos.x - player.x;
+    const dy = targetPos.y - player.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist > maxRange) {
+      const scale = maxRange / dist;
+      rawX = player.x + dx * scale;
+      rawY = player.y + dy * scale;
+    } else {
+      rawX = targetPos.x;
+      rawY = targetPos.y;
+    }
+  } else {
+    const aimAngle = player.aimAngle ?? player.angle;
+    rawX = player.x + Math.cos(aimAngle) * maxRange;
+    rawY = player.y + Math.sin(aimAngle) * maxRange;
+  }
+  const meteorTarget = clampToDungeon(rawX, rawY);
   const targetX = meteorTarget.x;
   const targetY = meteorTarget.y;
 

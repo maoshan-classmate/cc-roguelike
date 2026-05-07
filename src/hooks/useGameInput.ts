@@ -11,6 +11,7 @@ export interface SkillPreviewState {
   y: number
   angle: number
   startTime: number
+  followMouse?: boolean
 }
 
 // AoE skills: key-down preview + key-up fire
@@ -28,10 +29,11 @@ interface UseGameInputDeps {
   onSkillCast?: (skillIndex: number) => void
   onSkillPreview?: (preview: SkillPreviewState | null) => void
   getLocalPlayer?: () => { x: number; y: number; aimAngle: number; skills: string[] } | undefined
+  isSkillOnCooldown?: (skillIndex: number) => boolean
 }
 
 export function useGameInput(deps: UseGameInputDeps): void {
-  const { canvasRef, keysRef, mouseRef, isPaused, setPaused, setShowDebug, playDash, play, onSkillCast, onSkillPreview, getLocalPlayer } = deps
+  const { canvasRef, keysRef, mouseRef, isPaused, setPaused, setShowDebug, playDash, play, onSkillCast, onSkillPreview, getLocalPlayer, isSkillOnCooldown } = deps
 
   useEffect(() => {
     const skillKeysDown = new Set<string>()
@@ -62,9 +64,11 @@ export function useGameInput(deps: UseGameInputDeps): void {
             y: player.y,
             angle: player.aimAngle,
             startTime: performance.now(),
+            followMouse: true,
           })
         } else {
           // Instant skill: fire immediately on key-down
+          if (isSkillOnCooldown?.(skillIndex)) return
           networkClient.emit(GameMessages.INPUT, { skill: skillIndex })
           onSkillCast?.(skillIndex)
           switch (skillId) {
@@ -93,7 +97,20 @@ export function useGameInput(deps: UseGameInputDeps): void {
 
         if (AOE_SKILLS.has(skillId)) {
           // AoE skill: fire on key-up with target position from aimAngle
-          networkClient.emit(GameMessages.INPUT, { skill: skillIndex })
+          if (isSkillOnCooldown?.(skillIndex)) {
+            onSkillPreview?.(null)
+            return
+          }
+          // 鼠标 canvas 坐标即世界坐标（无相机变换）
+          let targetPos: { x: number; y: number } | undefined
+          const canvas = canvasRef.current
+          if (canvas && player) {
+            targetPos = {
+              x: mouseRef.current.x,
+              y: mouseRef.current.y,
+            }
+          }
+          networkClient.emit(GameMessages.INPUT, { skill: skillIndex, targetPos })
           onSkillCast?.(skillIndex)
           onSkillPreview?.(null)
           play(SFX_IDS.SKILL_HEAL)
@@ -108,8 +125,9 @@ export function useGameInput(deps: UseGameInputDeps): void {
       const canvas = canvasRef.current
       if (canvas) {
         const rect = canvas.getBoundingClientRect()
-        mouseRef.current.x = e.clientX - rect.left
-        mouseRef.current.y = e.clientY - rect.top
+        // rect 包含 border，需减去 border 宽度才能得到 canvas 内部坐标
+        mouseRef.current.x = e.clientX - rect.left - canvas.clientLeft
+        mouseRef.current.y = e.clientY - rect.top - canvas.clientTop
       }
     }
 
