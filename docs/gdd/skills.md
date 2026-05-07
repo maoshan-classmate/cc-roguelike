@@ -186,7 +186,7 @@ healPerSecond = 5  // 5 HP/s，持续 5s = 25 HP 总量
 | Combat | `damageEnemy()` / `spawnBullet()` | 伤害计算和弹丸生成 |
 | GameRoom | `isWalkable()` / `addBullet()` | 碰撞检测和弹丸管理 |
 | shared/types.ts | PlayerState / EnemyState | 技能数组、能量、冷却时间 |
-| shared/constants.ts | CLASS_SPEED | 移动速度基础值 |
+| shared/character-definitions.ts | CHARACTER_DEFS | 移动速度基础值 |
 
 ### 下游依赖
 

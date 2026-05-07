@@ -12,43 +12,48 @@
 
 ### 角色数据架构
 
-角色属性数据散落在多处，通过以下链路汇聚到运行时 `PlayerState`：
+角色和敌人数据通过两套独立的模板注册表统一管理，消除散落多处的硬编码映射。
 
 ```
-shared/constants.ts          server/lobby/AuthManager.ts       server/network/SocketServer.ts
-┌─────────────────┐         ┌──────────────────────┐          ┌──────────────────────┐
-│ CLASS_STATS      │ ──spreads──▶ │ CLASS_CONFIG              │          │ handleRoomStart()     │
-│ (attack/defense/ │         │ (+ weapon/skills)     │          │ 优先用 lobby 选中的    │
-│  hp/energy)      │         │                       │          │ characterType 覆盖 DB │
-└─────────────────┘         └──────────┬───────────┘          └──────────┬───────────┘
-                                       │ register()                      │
-                                       │ updateCharacterType()           │
-                                       ▼                                 ▼
-                              ┌─────────────────┐              ┌─────────────────┐
-                              │ MySQL characters │ ◀──read──── │ addPlayer()      │
-                              │ 表               │              │ → PlayerState    │
-                              └─────────────────┘              └─────────────────┘
+shared/character-definitions.ts         shared/enemy-definitions.ts
+┌─────────────────────────┐             ┌─────────────────────────┐
+│ CHARACTER_DEFS           │             │ ENEMY_DEFS               │
+│ (CharacterDef 注册表)     │             │ (EnemyDef 注册表)         │
+│ 11 维度合一：             │             │ 战斗+视觉+掉落合一：      │
+│  hp/atk/def/energy/speed │             │  hp/atk/speed/radius/     │
+│  skills/weapon/          │             │  aggroRange/cooldown/     │
+│  attackType/weaponSprite │             │  damageReduction/dodge/   │
+│  bulletKey/avatar/       │             │  spriteIndex/dropTable    │
+│  attackSfx/sprites       │             │                          │
+└───────────┬─────────────┘             └───────────┬─────────────┘
+            │                                       │
+            ▼                                       ▼
+  server/ → CHARACTER_DEFS[type]          server/ → ENEMY_DEFS[type]
+  src/   → CHARACTER_DEFS[type]          src/   → ENEMY_DEFS[type]
+            │                                       │
+            ▼                                       ▼
+  派生：AuthManager.CLASS_CONFIG          派生：src/config/enemies.ts ENEMIES
+        src/config/characters.ts CHARACTERS
 ```
 
-**关键常量：**
+**权威注册表（唯一数据源）：**
 
-| 常量 | 位置 | 内容 |
-|------|------|------|
-| `CLASS_STATS` | `shared/constants.ts` | 4 职业基础属性（attack/defense/hp/hpMax/energy/energyMax） |
-| `CLASS_SPEED` | `shared/constants.ts` | 4 职业移动速度（px/s） |
-| `CLASS_SKILLS` | `shared/constants.ts` | 4 职业技能列表（SkillId[]） |
-| `CLASS_CONFIG` | `AuthManager.ts` | 合并以上三项 + weapon，用于 DB 读写 |
+| 注册表 | 位置 | 内容 |
+|--------|------|------|
+| `CHARACTER_DEFS` | `shared/character-definitions.ts` | 4 职业完整定义（11 维度：stats/speed/skills/weapon/attackType/weaponSprite/bulletKey/avatar/attackSfx/sprites） |
+| `ENEMY_DEFS` | `shared/enemy-definitions.ts` | 5 种敌人完整定义（战斗属性+视觉+掉落表） |
 | `WEAPON_TEMPLATES` | `server/config/constants.ts` | 武器行为（damage/cooldown/type/range/arc） |
 | `SKILL_TEMPLATES` | `server/config/constants.ts` | 技能行为（damageMult/cooldown/radius/duration 等） |
 
-**客户端镜像（仅显示用，非权威）：**
+**派生配置（从注册表读取，非独立数据源）：**
 
-| 常量 | 位置 | 内容 |
-|------|------|------|
-| `CHARACTERS` | `src/config/characters.ts` | 精灵/颜色/描述 + hp/attack/defense（显示用） |
-| `WEAPON_SPRITE` | `src/rendering/entityRenderer.ts` | 职业→武器贴图映射 |
+| 配置 | 位置 | 数据源 |
+|------|------|--------|
+| `CLASS_CONFIG` | `AuthManager.ts` | 从 `CHARACTER_DEFS` 派生 |
+| `CHARACTERS` | `src/config/characters.ts` | 从 `CHARACTER_DEFS` 派生（speed 保持动画倍率） |
+| `ENEMIES` | `src/config/enemies.ts` | 从 `ENEMY_DEFS` 派生 |
 
-> ⚠️ `CHARACTERS` 中的 hp/attack/defense 仅用于客户端显示，服务端以 `CLASS_STATS` 为准。
+> ⚠️ 所有消费方直接 import `CHARACTER_DEFS` / `ENEMY_DEFS`，不通过 `shared/constants.ts` 中转。
 
 ### 职业攻击路径（五条独立，不可混用）
 - **warrior**: sword 近战，不产生子弹，挥砍范围检测
@@ -57,7 +62,10 @@ shared/constants.ts          server/lobby/AuthManager.ts       server/network/So
 - **cleric**: `spawnHealWave()` AoE 治疗波（maxRadius=80px）
 - **enemy**: 红色能量弹
 
-> 攻击路径按 `weapon.type`（melee/gun）路由，cleric 通过 `characterType === 'cleric'` 特判走治疗波。
+> 攻击路径通过 `CHARACTER_DEFS[type].attackType` 数据驱动路由，`Combat.ts` 的 `ATTACK_HANDLERS` 注册表按 `attackType` 分发：
+> - `melee` → `executeMelee()`（近战弧形检测）
+> - `ranged_bullet` → `fireGun()`（发射弹丸）
+> - `ranged_heal` → `spawnHealWave()`（AoE 治疗波）
 
 ### 技能系统
 - 每职业 **3 个技能槽**（按键 1/2/3）：槽 1 = Dash（共享），槽 2-3 = 职业独特技能
@@ -122,8 +130,8 @@ enemy→player:
 damage = max(1, weapon.damage - target.def * 0.5)
 ```
 
-- 启用前需同步修改 `Combat.ts` 的 `damageEnemy()` 和 `damagePlayer()`
-- 当前 DEF 值：warrior=10, ranger=5, mage=3, cleric=6
+- 已实现于 `Combat.ts` 的 `damageEnemy()` 和 `GameRoom.ts` 的 `damagePlayer()`
+- 当前 DEF 值（`CHARACTER_DEFS[type].defense`）：warrior=10, ranger=5, mage=3, cleric=6
 
 **TODO — 伤害计算优化计划**：
 
@@ -139,7 +147,7 @@ damage = max(1, weapon.damage - target.def * 0.5)
 
 **当前实现（固定值，无缩放）：**
 
-玩家 HP（服务端 `GameRoom.ts`，与 `characters.ts` 一致）：
+玩家 HP（服务端 `CHARACTER_DEFS[type].hp`，`shared/character-definitions.ts`）：
 
 | 职业 | HP |
 |------|-----|
@@ -148,7 +156,7 @@ damage = max(1, weapon.damage - target.def * 0.5)
 | mage | 60 |
 | cleric | 70 |
 
-敌人 HP（服务端 `ENEMY_BASE_HP`，`GameRoom.ts`）：
+敌人 HP（服务端 `ENEMY_DEFS[type].hp`，`shared/enemy-definitions.ts`）：
 
 | 类型 | HP |
 |------|-----|
@@ -161,12 +169,12 @@ damage = max(1, weapon.damage - target.def * 0.5)
 - **Floor 缩放已启用**（见 progression.md）：`enemy_hp = base × (1 + (floor-1) × 0.15)`
 - 难度递增通过属性缩放 + 敌人类型组合 + 数量实现
 
-**客户端配置差异（已知）**：`src/config/enemies.ts` 的 ATK 值可能与服务端不一致。以 `shared/constants.ts` ENEMY_BASE_ATTACK 为准（basic=8, fast=10, ghost=12, tank=15, boss=25）。
+**客户端配置差异（已消除）**：`src/config/enemies.ts` 现从 `ENEMY_DEFS` 派生，数值与服务端一致。
 
 **Floor 缩放公式（✅ 已启用）：**
 
 ```
-enemy_hp = ENEMY_BASE_HP[type] × (1 + (floor - 1) × 0.15)
+enemy_hp = ENEMY_DEFS[type].hp × (1 + (floor - 1) × 0.15)
 ```
 
 - Floor 1: ×1.0（不变）
@@ -178,7 +186,7 @@ enemy_hp = ENEMY_BASE_HP[type] × (1 + (floor - 1) × 0.15)
 
 | 优先级 | 优化项 | 描述 | 预期效果 |
 |--------|--------|------|---------|
-| P0 | **启用 Floor 缩放** ✅ 2026-05-03 | `enemy_hp = ENEMY_BASE_HP × (1 + (floor-1) × 0.15)`，已实现于 `GameRoom.ts createEnemy()` | 后期 floor 敌人不再"纸糊" |
+| P0 | **启用 Floor 缩放** ✅ 2026-05-03 | `enemy_hp = ENEMY_DEFS[type].hp × (1 + (floor-1) × 0.15)`，已实现于 `GameRoom.ts createEnemy()` | 后期 floor 敌人不再"纸糊" |
 | P1 | **玩家 HP 随等级增长** | 每过 1 floor +10 HP（warrior Floor 5=140 HP） | 补偿后期敌人伤害增长 |
 | P1 | **Boss HP 多阶段** | Boss HP 低于 50% 进入 P2，回复 20% HP + 攻击模式变化 | Boss 战更有层次感 |
 | P2 | **难度自适应** | 根据存活玩家数动态调整敌人 HP（1人=0.7x, 4人=1.0x） | 单人/满员都平衡 |
@@ -188,8 +196,8 @@ enemy_hp = ENEMY_BASE_HP[type] × (1 + (floor - 1) × 0.15)
 **当前实现（固定速度 × dt）：**
 
 ```
-player_displacement = CLASS_SPEED[type] × speedMultiplier × dt
-enemy_displacement  = ENEMY_SPEED[type] × dt
+player_displacement = CHARACTER_DEFS[type].speed × speedMultiplier × dt
+enemy_displacement  = ENEMY_DEFS[type].speed × dt
 bullet_displacement = BULLET_SPEED × dt
 ```
 
@@ -197,7 +205,7 @@ bullet_displacement = BULLET_SPEED × dt
 - 无加速度、无摩擦、无惯性——输入停止时瞬间静止
 - 所有运动在服务端 tick（20Hz）计算，客户端 10Hz 插值
 
-**速度值（服务端 `GameRoom.ts`）：**
+**速度值（服务端 `CHARACTER_DEFS` / `ENEMY_DEFS`，px/s）：**
 
 | 实体 | 速度(px/s) |
 |------|-----------|
@@ -212,7 +220,7 @@ bullet_displacement = BULLET_SPEED × dt
 | boss | 50 |
 | 所有弹丸 | 400 |
 
-**碰撞半径：**
+**碰撞半径（`ENEMY_DEFS[type].radius`）：**
 - 玩家：16px
 - 敌人：basic=16, fast=14, ghost=16, tank=20, boss=28
 

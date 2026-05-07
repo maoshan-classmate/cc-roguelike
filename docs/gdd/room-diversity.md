@@ -469,13 +469,13 @@ PLAYING (Floor N) → 全敌清除 → 玩家到达出口
 ### 竞技关敌人缩放
 
 ```
-arena_enemy_hp = Math.round(ENEMY_BASE_HP × (1 + (floor-1) × 0.15) × 1.2)
-arena_enemy_atk = Math.round(ENEMY_BASE_ATK × (1 + (floor-1) × 0.1) × 1.1)
+arena_enemy_hp = Math.round(ENEMY_DEFS[type].hp × (1 + (floor-1) × 0.15) × 1.2)
+arena_enemy_atk = Math.round(ENEMY_DEFS[type].attack × (1 + (floor-1) × 0.1) × 1.1)
 ```
 
 | 变量 | 类型 | 范围 | 说明 |
 |------|------|------|------|
-| ENEMY_BASE_HP | int | 20-80 | 敌人基础 HP（按类型） |
+| ENEMY_DEFS[type].hp | int | 20-80 | 敌人基础 HP（按类型，`shared/enemy-definitions.ts`） |
 | floor | int | 1-4 | 竞技关所在楼层（Floor 1 无竞技关） |
 | 1.2 | float | 1.0-1.5 | 竞技关 HP 难度加成 |
 | 1.1 | float | 1.0-1.3 | 竞技关 ATK 难度加成 |
@@ -492,11 +492,11 @@ arena_enemy_atk = Math.round(ENEMY_BASE_ATK × (1 + (floor-1) × 0.1) × 1.1)
 
 **Elite 双重缩放说明**：elite 倍率 (HP×2, ATK×1.5) 作用于**已缩放后**的值。Floor 4 elite tank 总倍率 = 1.45 × 1.2 × 2 = 3.48x base HP。这是有意设计——elite 是最终波次的压轴威胁。
 
-**⚠️ 缩放来源说明**：上述公式中的 `ENEMY_BASE_HP` 和 `ENEMY_BASE_ATK` 是**原始常量**（如 basic HP=30, fast HP=20），不经过 `createEnemy()` 的 floor 缩放。竞技关使用独立的敌人生成路径，直接从基础常量计算，避免与 `createEnemy()` 的 `(1 + (floor-1) × 0.15)` 缩放重复叠加。
+**⚠️ 缩放来源说明**：上述公式中的 `ENEMY_DEFS[type].hp` 和 `ENEMY_DEFS[type].attack` 是**原始常量**（如 basic HP=30, fast HP=20），不经过 `createEnemy()` 的 floor 缩放。竞技关使用独立的敌人生成路径，直接从基础常量计算，避免与 `createEnemy()` 的 `(1 + (floor-1) × 0.15)` 缩放重复叠加。
 
 ### 竞技关 ATK 缩放验证表
 
-`arena_enemy_atk = Math.round(ENEMY_BASE_ATK × (1 + (floor-1) × 0.1) × 1.1)`
+`arena_enemy_atk = Math.round(ENEMY_DEFS[type].attack × (1 + (floor-1) × 0.1) × 1.1)`
 
 | 敌人 | Base ATK | Floor 2 (×1.21) | Floor 3 (×1.32) | Floor 4 (×1.43) | Elite (×1.5) |
 |------|----------|-----------------|-----------------|-----------------|--------------|
@@ -505,7 +505,7 @@ arena_enemy_atk = Math.round(ENEMY_BASE_ATK × (1 + (floor-1) × 0.1) × 1.1)
 | ghost | 12 | 15 | 16 | 17 | 26 |
 | tank | 15 | 18 | 20 | 21 | 32 |
 
-**⚠️ Base ATK 来源**：与 `shared/constants.ts` ENEMY_BASE_ATTACK 一致（fast=10, basic=8, ghost=12, tank=15）。注意 enemy-ai.md 的 ATK 值（basic=5, fast=8, tank=10）与服务端代码不一致，以代码为准。
+**⚠️ Base ATK 来源**：与 `shared/enemy-definitions.ts` `ENEMY_DEFS[type].attack` 一致（fast=10, basic=8, ghost=12, tank=15）。
 
 ### 竞技关波次敌人数
 

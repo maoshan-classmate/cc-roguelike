@@ -12,13 +12,13 @@
 
 ### 敌人类型
 
-| 类型 | HP | ATK | 速度 | 尺寸 | 碰撞半径 | 贴图源 |
-|------|-----|-----|------|------|---------|--------|
-| basic | 30 | 8 | 1.0 | 40 | 16 | generated |
-| fast | 20 | 10 | 2.0 | 36 | 14 | generated |
-| ghost | 40 | 12 | 1.2 | 42 | -- | generated |
-| tank | 80 | 15 | 0.5 | 48 | 20 | 0x72 |
-| boss | 800 | 25×(1+(floor-1)×0.1) | 0.8 | 64 | 28 | 0x72 |
+| 类型 | HP | ATK | 速度(px/s) | 尺寸 | 碰撞半径 | 贴图源 |
+|------|-----|-----|-----------|------|---------|--------|
+| basic | 30 | 8 | 60 | 40 | 16 | sheet |
+| fast | 20 | 10 | 120 | 36 | 14 | sheet |
+| ghost | 40 | 12 | 70 | 42 | 16 | sheet |
+| tank | 80 | 15 | 40 | 48 | 20 | sheet |
+| boss | 800 | 25×(1+(floor-1)×0.1) | 50 | 64 | 28 | sheet |
 
 ### 客户端/服务端 ID 匹配
 - 客户端/服务端 ID 必须匹配（`slime`≠`basic`, `health_pack`≠`health`）
@@ -61,7 +61,7 @@
 **Boss 状态机**：
 | 状态 | 转换条件 | 说明 |
 |------|---------|------|
-| idle | 脱战（>400px 无蓄力） | 重置技能计时器 |
+| idle | 脱战（>`ENEMY_DEFS.boss.aggroRange` 即 400px，无蓄力） | 重置技能计时器 |
 | chase | 有玩家在 aggroRange 内 | 速度 50px/s |
 | casting | 蓄力中（弹幕500ms/震地800ms） | 不可被脱战中断 |
 | attack | 近战冷却 500ms | 距离 ≤ 40px |
@@ -75,8 +75,8 @@
 
 | 优先级 | 优化项 | 描述 | 预期效果 |
 |--------|--------|------|---------|
-| P0 | **仇恨范围** ✅ 2026-05-03 | 已实现于 `GameRoom.ts updateEnemy()`，ENEMY_AGGRO_RANGE static 配置 | 避免"全图感知"，增加潜行/策略空间 |
-| P0 | **攻击冷却** ✅ 2026-05-03 | 已实现，EnemyState 新增 `lastAttackTime`，ENEMY_ATTACK_COOLDOWN static 配置 | 敌人间攻击节奏差异化 |
+| P0 | **仇恨范围** ✅ 2026-05-03 | 已实现于 `GameRoom.ts updateEnemy()`，`ENEMY_DEFS[type].aggroRange` 配置 | 避免"全图感知"，增加潜行/策略空间 |
+| P0 | **攻击冷却** ✅ 2026-05-03 | 已实现，EnemyState 新增 `lastAttackTime`，`ENEMY_DEFS[type].attackCooldown` 配置 | 敌人间攻击节奏差异化 |
 | P0 | **Ghost 穿墙** ✅ 2026-05-03 | ghost 类型跳过 `isWalkableRadius`，仅检查地图边界 | 差异化敌人行为，增加战术压力 |
 | P1 | **Boss 攻击模式** ✅ 2026-05-03 | `updateBossEnemy()` 实现3种攻击（近战+5颗扇形弹幕+震地AoE）+两阶段切换(HP<50%回复20%+加速)+蓄力前摇(弹幕500ms/震地800ms)+避障逃逸+脱战机制+动作切换(idle/run/casting帧) | Boss 战成为 floor 高潮而非大号普通怪 |
 | P1 | **分类型 AI** ✅ 2026-05-03 | boss独立AI方法，tank减伤40%，fast闪避20%，ghost穿墙，basic/fast共用追击 | 每种敌人有独特体验 |
@@ -88,7 +88,7 @@
 
 - `killAll` 设 `enemy.alive = false` 但不删除
 - 判断"无活怪"必须用 `enemies.filter((e: any) => e.alive !== false).length === 0`
-- ghost 类型碰撞半径为 `--`（可能穿透墙壁？）
+- ghost 类型碰撞半径为 16px（但 AI 中跳过墙壁碰撞检测，可穿透墙壁）
 
 ## Dependencies
 
@@ -102,7 +102,7 @@
 |------|--------|------|------|
 | basic HP | 30 | 20-50 | 炮灰耐久 |
 | basic ATK | 8 | 3-15 | 基础威胁 |
-| basic 速度 | 1.0 | 0.5-2.0 | 移动速率 |
+| basic 速度 | 60 px/s | 30-120 | 移动速率 |
 | boss HP | 800 | 200-1000 | Boss 战时长 |
 | boss ATK | 25 | 10-50 | Boss 伤害 |
 

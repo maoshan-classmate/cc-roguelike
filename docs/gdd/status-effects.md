@@ -377,7 +377,8 @@ if (effects.size >= MAX_ACTIVE_EFFECTS):
 | 系统 | 提供什么 | 接口 |
 |------|---------|------|
 | shared/types.ts | PlayerState, EnemyState | 已有，需新增 statusEffects 字段 |
-| shared/constants.ts | CLASS_SPEED, ENEMY_SPEED | 已有，只读 |
+| shared/character-definitions.ts | CHARACTER_DEFS | 角色移动速度基础值 |
+| shared/enemy-definitions.ts | ENEMY_DEFS | 敌人移动速度基础值 |
 | server/config/constants.ts | GAME_CONFIG, SKILL_TEMPLATES | 已有，只读 |
 | GameRoom | tick 驱动、isWalkable | 已有，需集成 StatusManager |
 | Combat | damagePlayer/damageEnemy | 已有，需改用 flags 查询 |
