@@ -92,5 +92,3 @@ export const SKILL_INFO: Record<string, SkillInfo> = {
     cooldown: 12,
   },
 }
-
-export { CLASS_SKILLS } from '../../shared/constants';

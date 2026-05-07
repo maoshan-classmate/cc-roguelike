@@ -1,5 +1,6 @@
 import type { PlayerState, EnemyState, BulletState, BossEvent } from '../../../shared/types';
-import { ENEMY_RADIUS, ENEMY_SPEED, ENEMY_AGGRO_RANGE, ENEMY_ATTACK_COOLDOWN, ARENA_DORMANT_SPEED_MULTIPLIER } from '../../../shared/constants';
+import { ENEMY_DEFS } from '../../../shared/enemy-definitions';
+import { ARENA_DORMANT_SPEED_MULTIPLIER } from '../../../shared/constants';
 import { GAME_CONFIG } from '../../config/constants';
 import type { StatusManager } from '../status/StatusManager';
 
@@ -21,11 +22,11 @@ export class EnemyAI {
   update(enemy: EnemyState, dt: number, sm?: StatusManager): void {
     // Dormant: slow patrol, no chase, no attack
     if (enemy.dormant) {
-      const speed = (ENEMY_SPEED[enemy.type] || 60) * dt * ARENA_DORMANT_SPEED_MULTIPLIER;
+      const speed = (ENEMY_DEFS[enemy.type]?.speed || 60) * dt * ARENA_DORMANT_SPEED_MULTIPLIER;
       // Slow random drift based on enemy id for deterministic direction
       const seed = enemy.id.charCodeAt(enemy.id.length - 1) || 0;
       const angle = (seed * 1.7 + Date.now() * 0.0003) % (Math.PI * 2);
-      const radius = ENEMY_RADIUS[enemy.type] || 16;
+      const radius = ENEMY_DEFS[enemy.type]?.radius || 16;
       const newX = enemy.x + Math.cos(angle) * speed;
       const newY = enemy.y + Math.sin(angle) * speed;
       if (this.deps.isWalkableRadius(newX, newY, radius)) {
@@ -51,10 +52,10 @@ export class EnemyAI {
   }
 
   private updateRegular(enemy: EnemyState, dt: number, sm?: StatusManager): void {
-    const speed = (ENEMY_SPEED[enemy.type] || 60) * dt;
-    const radius = ENEMY_RADIUS[enemy.type] || 16;
-    const aggroRange = ENEMY_AGGRO_RANGE[enemy.type] || 200;
-    const attackCooldown = ENEMY_ATTACK_COOLDOWN[enemy.type] || 1000;
+    const speed = (ENEMY_DEFS[enemy.type]?.speed || 60) * dt;
+    const radius = ENEMY_DEFS[enemy.type]?.radius || 16;
+    const aggroRange = ENEMY_DEFS[enemy.type]?.aggroRange || 200;
+    const attackCooldown = ENEMY_DEFS[enemy.type]?.attackCooldown || 1000;
     const isGhost = enemy.type === 'ghost';
     const flags = sm?.getAggregatedFlags();
 
@@ -146,27 +147,22 @@ export class EnemyAI {
       enemy.state = 'attack';
       const now = Date.now();
       const lastAttack = enemy.lastAttackTime || 0;
-      if (now - lastAttack >= attackCooldown && nearestPlayer.invincible <= 0) {
-        const finalDamage = Math.max(1, (enemy.attack || 10) - nearestPlayer.defense * 0.5);
-        nearestPlayer.hp -= finalDamage;
-        nearestPlayer.invincible = 0.5;
+      if (now - lastAttack >= attackCooldown) {
+        this.deps.damagePlayer(nearestPlayer.id, enemy.attack || 10);
         enemy.lastAttackTime = now;
-        if (nearestPlayer.hp <= 0) {
-          nearestPlayer.alive = false;
-        }
       }
     }
   }
 
   private updateBoss(enemy: EnemyState, dt: number, sm?: StatusManager): void {
-    const speed = ENEMY_SPEED.boss * dt;
-    const radius = ENEMY_RADIUS.boss;
+    const speed = ENEMY_DEFS.boss.speed * dt;
+    const radius = ENEMY_DEFS.boss.radius;
     const phase = enemy.bossPhase || 1;
     const rangedCooldown = phase === 2 ? 2000 : 4000;
     const aoeCooldown = phase === 2 ? 7000 : 10000;
     const aoeDamage = phase === 2 ? 40 : 30;
     const aoeRange = 100;
-    const aggroRange = ENEMY_AGGRO_RANGE.boss;
+    const aggroRange = ENEMY_DEFS.boss.aggroRange;
     const RANGED_WINDUP = 500;
     const AOE_WINDUP = 800;
     const flags = sm?.getAggregatedFlags();
@@ -263,12 +259,9 @@ export class EnemyAI {
 
     const now = Date.now();
     const lastAttack = enemy.lastAttackTime || 0;
-    if (dist <= 40 && canAttack && now - lastAttack >= 500 && nearestPlayer.invincible <= 0) {
-      const finalDamage = Math.max(1, (enemy.attack || 25) - nearestPlayer.defense * 0.5);
-      nearestPlayer.hp -= finalDamage;
-      nearestPlayer.invincible = 0.5;
+    if (dist <= 40 && canAttack && now - lastAttack >= 500) {
+      this.deps.damagePlayer(nearestPlayer.id, enemy.attack || 25);
       enemy.lastAttackTime = now;
-      if (nearestPlayer.hp <= 0) nearestPlayer.alive = false;
     }
 
     if (canAttack) {
@@ -319,13 +312,10 @@ export class EnemyAI {
   private bossFireAoE(enemy: EnemyState, aoeRange: number, aoeDamage: number): void {
     this.deps.pushBossEvent({ type: 'aoe', x: enemy.x, y: enemy.y });
     for (const player of this.deps.getPlayers()) {
-      if (!player.alive || player.invincible > 0) continue;
+      if (!player.alive) continue;
       const pDist = Math.hypot(player.x - enemy.x, player.y - enemy.y);
       if (pDist <= aoeRange) {
-        const finalDamage = Math.max(1, aoeDamage - player.defense * 0.5);
-        player.hp -= finalDamage;
-        player.invincible = 0.5;
-        if (player.hp <= 0) player.alive = false;
+        this.deps.damagePlayer(player.id, aoeDamage);
       }
     }
   }

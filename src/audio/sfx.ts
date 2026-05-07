@@ -1,4 +1,6 @@
 import { soundEngine } from './SoundEngine'
+import { CHARACTER_DEFS } from '@shared/character-definitions'
+import type { CharacterType } from '@shared/types'
 
 const SFX_BASE = '/src/assets/sfx'
 
@@ -159,20 +161,8 @@ export function playSfx(id: SfxId): void {
 }
 
 export function playAttackSfx(characterClass: string): void {
-  switch (characterClass) {
-    case 'warrior':
-      playSfx(SFX_IDS.WARRIOR_SLASH)
-      break
-    case 'ranger':
-      playSfx(SFX_IDS.RANGER_SHOOT)
-      break
-    case 'mage':
-      playSfx(SFX_IDS.MAGE_CAST)
-      break
-    case 'cleric':
-      playSfx(SFX_IDS.CLERIC_CAST)
-      break
-  }
+  const sfxId = CHARACTER_DEFS[characterClass as CharacterType]?.attackSfx as SfxId | undefined
+  if (sfxId) playSfx(sfxId)
 }
 
 export function playEnemyDieSfx(enemyType: string): void {

@@ -1,4 +1,5 @@
-import type { BulletState, HealWaveState } from '@shared/types'
+import type { BulletState, HealWaveState, CharacterType } from '@shared/types'
+import { CHARACTER_DEFS } from '@shared/character-definitions'
 import { drawBulletSprite, drawMagicOrb } from '../config/sprites'
 import { interpolate } from '../utils/animation/interpolate'
 import { Easing } from '../utils/animation/easing'
@@ -54,11 +55,12 @@ export function drawBullets(
 ): void {
   for (const bullet of bullets) {
     const ownerType = bullet.ownerType || 'warrior'
+    const bulletKey = CHARACTER_DEFS[ownerType as CharacterType]?.bulletKey ?? ownerType
     const bulletAngle = Math.atan2(bullet.vy, bullet.vx)
     const bulletSize = Math.max((bullet.radius || 4) * 3, 10)
 
     // Enemy bullets use 'enemy' as ownerType key
-    const key = bullet.friendly ? `true|${ownerType}` : 'false|enemy'
+    const key = bullet.friendly ? `true|${bulletKey}` : 'false|enemy'
     const renderer = BULLET_RENDERERS[key]
 
     if (renderer) {

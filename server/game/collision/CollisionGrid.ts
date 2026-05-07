@@ -1,4 +1,5 @@
-import { TILE_SIZE, ENEMY_RADIUS } from '../../../shared/constants';
+import { TILE_SIZE } from '../../../shared/constants';
+import { ENEMY_DEFS } from '../../../shared/enemy-definitions';
 
 export class CollisionGrid {
   private grid: boolean[][] = [];
@@ -55,7 +56,7 @@ export class CollisionGrid {
     for (let i = 0; i < enemies.length; i++) {
       for (let j = i + 1; j < enemies.length; j++) {
         const e1 = enemies[i], e2 = enemies[j];
-        const r1 = ENEMY_RADIUS[e1.type] || 16, r2 = ENEMY_RADIUS[e2.type] || 16;
+        const r1 = ENEMY_DEFS[e1.type]?.radius || 16, r2 = ENEMY_DEFS[e2.type]?.radius || 16;
         const minDist = r1 + r2;
         const dx = e2.x - e1.x, dy = e2.y - e1.y;
         const dist = Math.hypot(dx, dy);

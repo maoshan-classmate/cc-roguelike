@@ -1,32 +1,30 @@
 /**
- * 角色职业配置表
+ * 角色职业配置表（从 CHARACTER_DEFS 派生）
  *
- * 资源审计结论：roguelikeChar 角色只有正面+背面两个精灵（成对排列），
- * 没有左右朝向精灵。左右朝向通过 Canvas 水平翻转正面精灵实现。
+ * speed 字段是动画倍率（1/1.5），不是移动速度（CHARACTER_DEFS.speed 是 px/s）。
+ * 其余字段（hp/attack/defense/spriteName/spriteRun/spriteHit/color）均来自 CHARACTER_DEFS。
  */
+
+import { CHARACTER_DEFS } from '@shared/character-definitions'
+import type { CharacterType } from '@shared/types'
 
 export interface CharacterConfig {
   id: string
   name: string
   spriteIndex: {
-    front: number  // 正面精灵索引 (Kenney spritesheet)
-    back: number   // 背面精灵索引 (Kenney spritesheet)
+    front: number
+    back: number
   }
-  /** 0x72 精灵名 (TilesetII) - 优先使用 */
   spriteName?: {
-    /** idle 动画帧数组（front 方向，4帧）*/
-    front: string[]  // e.g. ['knight_m_idle_anim_f0', 'knight_m_idle_anim_f1', 'knight_m_idle_anim_f2', 'knight_m_idle_anim_f3']
-    /** idle 动画帧数组（back 方向，4帧）*/
+    front: string[]
     back: string[]
   }
-  /** 奔跑动画帧 */
   spriteRun?: {
-    front: string[]  // e.g. ['knight_m_run_anim_f0', 'knight_m_run_anim_f1', ...]
+    front: string[]
     back: string[]
   }
-  /** 受击动画帧 */
   spriteHit?: {
-    front: string   // e.g. 'knight_m_hit_anim_f0'
+    front: string
     back: string
   }
   color: string
@@ -37,96 +35,22 @@ export interface CharacterConfig {
   description: string
 }
 
-export const CHARACTERS: Record<string, CharacterConfig> = {
-  warrior: {
-    id: 'warrior',
-    name: '战士',
-    // Kenney 索引 0,1 (保留兼容)
-    spriteIndex: { front: 0, back: 1 },
-    // 0x72 TilesetII - 骑士男性 (4帧 idle 动画)
-    spriteName: {
-      front: ['knight_m_idle_anim_f0', 'knight_m_idle_anim_f1', 'knight_m_idle_anim_f2', 'knight_m_idle_anim_f3'],
-      back: ['knight_m_idle_anim_f0', 'knight_m_idle_anim_f1', 'knight_m_idle_anim_f2', 'knight_m_idle_anim_f3']
-    },
-    spriteRun: {
-      front: ['knight_m_run_anim_f0', 'knight_m_run_anim_f1', 'knight_m_run_anim_f2', 'knight_m_run_anim_f3'],
-      back: ['knight_m_run_anim_f0', 'knight_m_run_anim_f1', 'knight_m_run_anim_f2', 'knight_m_run_anim_f3']
-    },
-    spriteHit: { front: 'knight_m_hit_anim_f0', back: 'knight_m_hit_anim_f0' },
-    color: '#4A9EFF',
-    hp: 100,
-    attack: 15,
-    defense: 10,
-    speed: 1,
-    description: '近战战士，持剑攻击'
-  },
-  ranger: {
-    id: 'ranger',
-    name: '游侠',
-    // Kenney 索引 162,163
-    spriteIndex: { front: 162, back: 163 },
-    // 0x72 TilesetII - 精灵男性 (4帧 idle 动画)
-    spriteName: {
-      front: ['elf_m_idle_anim_f0', 'elf_m_idle_anim_f1', 'elf_m_idle_anim_f2', 'elf_m_idle_anim_f3'],
-      back: ['elf_m_idle_anim_f0', 'elf_m_idle_anim_f1', 'elf_m_idle_anim_f2', 'elf_m_idle_anim_f3']
-    },
-    spriteRun: {
-      front: ['elf_m_run_anim_f0', 'elf_m_run_anim_f1', 'elf_m_run_anim_f2', 'elf_m_run_anim_f3'],
-      back: ['elf_m_run_anim_f0', 'elf_m_run_anim_f1', 'elf_m_run_anim_f2', 'elf_m_run_anim_f3']
-    },
-    spriteHit: { front: 'elf_m_hit_anim_f0', back: 'elf_m_hit_anim_f0' },
-    color: '#51CF66',
-    hp: 80,
-    attack: 12,
-    defense: 5,
-    speed: 1.5,
-    description: '远程弓箭手，机动性强'
-  },
-  mage: {
-    id: 'mage',
-    name: '法师',
-    // Kenney 索引 108,109
-    spriteIndex: { front: 108, back: 109 },
-    // 0x72 TilesetII - 男巫 (4帧 idle 动画)
-    spriteName: {
-      front: ['wizzard_m_idle_anim_f0', 'wizzard_m_idle_anim_f1', 'wizzard_m_idle_anim_f2', 'wizzard_m_idle_anim_f3'],
-      back: ['wizzard_m_idle_anim_f0', 'wizzard_m_idle_anim_f1', 'wizzard_m_idle_anim_f2', 'wizzard_m_idle_anim_f3']
-    },
-    spriteRun: {
-      front: ['wizzard_m_run_anim_f0', 'wizzard_m_run_anim_f1', 'wizzard_m_run_anim_f2', 'wizzard_m_run_anim_f3'],
-      back: ['wizzard_m_run_anim_f0', 'wizzard_m_run_anim_f1', 'wizzard_m_run_anim_f2', 'wizzard_m_run_anim_f3']
-    },
-    spriteHit: { front: 'wizzard_m_hit_anim_f0', back: 'wizzard_m_hit_anim_f0' },
-    color: '#FFA500',
-    hp: 60,
-    attack: 20,
-    defense: 3,
-    speed: 1,
-    description: '魔法攻击，伤害高但防御弱'
-  },
-  cleric: {
-    id: 'cleric',
-    name: '牧师',
-    // Kenney 索引 378,379
-    spriteIndex: { front: 378, back: 379 },
-    // 0x72 TilesetII - 矮人男性 (4帧 idle 动画，区别于法师 wizzard_m)
-    spriteName: {
-      front: ['dwarf_m_idle_anim_f0', 'dwarf_m_idle_anim_f1', 'dwarf_m_idle_anim_f2', 'dwarf_m_idle_anim_f3'],
-      back: ['dwarf_m_idle_anim_f0', 'dwarf_m_idle_anim_f1', 'dwarf_m_idle_anim_f2', 'dwarf_m_idle_anim_f3']
-    },
-    spriteRun: {
-      front: ['dwarf_m_run_anim_f0', 'dwarf_m_run_anim_f1', 'dwarf_m_run_anim_f2', 'dwarf_m_run_anim_f3'],
-      back: ['dwarf_m_run_anim_f0', 'dwarf_m_run_anim_f1', 'dwarf_m_run_anim_f2', 'dwarf_m_run_anim_f3']
-    },
-    spriteHit: { front: 'dwarf_m_hit_anim_f0', back: 'dwarf_m_hit_anim_f0' },
-    color: '#9B59B6',
-    hp: 70,
-    attack: 8,
-    defense: 6,
-    speed: 1,
-    description: '治疗辅助，可为队友恢复'
-  }
-}
+export const CHARACTERS: Record<string, CharacterConfig> = Object.fromEntries(
+  (Object.entries(CHARACTER_DEFS) as [CharacterType, typeof CHARACTER_DEFS[CharacterType]][]).map(([k, v]) => [k, {
+    id: k,
+    name: v.name,
+    spriteIndex: v.spriteIndex,
+    spriteName: v.spriteName,
+    spriteRun: v.spriteRun,
+    spriteHit: v.spriteHit,
+    color: v.color,
+    hp: v.hp,
+    attack: v.attack,
+    defense: v.defense,
+    speed: k === 'ranger' ? 1.5 : 1,
+    description: v.description,
+  }])
+)
 
 export const CHARACTER_LIST = Object.values(CHARACTERS)
 

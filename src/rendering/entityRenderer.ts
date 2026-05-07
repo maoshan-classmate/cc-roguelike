@@ -1,5 +1,6 @@
 import { CHARACTERS } from '../config/characters'
 import { ENEMIES } from '../config/enemies'
+import { CHARACTER_DEFS } from '@shared/character-definitions'
 import { drawFallbackRect } from './fallbackDraw'
 import {
   draw0x72Sprite,
@@ -13,14 +14,7 @@ import {
 import { isGeneratedSprite, drawGeneratedSprite } from '../config/generatedSprites'
 import { spring } from '../utils/animation/spring'
 import { interpolate } from '../utils/animation/interpolate'
-import type { PlayerState, EnemyState } from '@shared/types'
-
-const WEAPON_SPRITE: Record<string, string> = {
-  warrior: 'weapon_knight_sword',
-  ranger:  'weapon_bow',
-  mage:    'weapon_red_magic_staff',
-  cleric:  'weapon_green_magic_staff',
-}
+import type { PlayerState, EnemyState, CharacterType } from '@shared/types'
 
 interface AnimRefs {
   frame: number
@@ -352,8 +346,9 @@ export function drawPlayers(
 
     const pAngle = player.angle ?? 0
     const facingRight = pAngle > -Math.PI / 2 && pAngle <= Math.PI / 2
-    const wSprite = WEAPON_SPRITE[player.characterType] || 'weapon_knight_sword'
-    const isMelee = player.characterType === 'warrior'
+    const charDef = CHARACTER_DEFS[player.characterType as CharacterType]
+    const wSprite = charDef?.weaponSprite || 'weapon_knight_sword'
+    const isMelee = charDef?.attackType === 'melee'
     const flashVal = isLocal ? attackFlashRef?.current || 0 : 0
     if (tileset2Atlas.complete) {
       if (!facingRight) {

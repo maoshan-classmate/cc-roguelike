@@ -10,6 +10,46 @@
 
 ## Detailed Rules
 
+### 角色数据架构
+
+角色属性数据散落在多处，通过以下链路汇聚到运行时 `PlayerState`：
+
+```
+shared/constants.ts          server/lobby/AuthManager.ts       server/network/SocketServer.ts
+┌─────────────────┐         ┌──────────────────────┐          ┌──────────────────────┐
+│ CLASS_STATS      │ ──spreads──▶ │ CLASS_CONFIG              │          │ handleRoomStart()     │
+│ (attack/defense/ │         │ (+ weapon/skills)     │          │ 优先用 lobby 选中的    │
+│  hp/energy)      │         │                       │          │ characterType 覆盖 DB │
+└─────────────────┘         └──────────┬───────────┘          └──────────┬───────────┘
+                                       │ register()                      │
+                                       │ updateCharacterType()           │
+                                       ▼                                 ▼
+                              ┌─────────────────┐              ┌─────────────────┐
+                              │ MySQL characters │ ◀──read──── │ addPlayer()      │
+                              │ 表               │              │ → PlayerState    │
+                              └─────────────────┘              └─────────────────┘
+```
+
+**关键常量：**
+
+| 常量 | 位置 | 内容 |
+|------|------|------|
+| `CLASS_STATS` | `shared/constants.ts` | 4 职业基础属性（attack/defense/hp/hpMax/energy/energyMax） |
+| `CLASS_SPEED` | `shared/constants.ts` | 4 职业移动速度（px/s） |
+| `CLASS_SKILLS` | `shared/constants.ts` | 4 职业技能列表（SkillId[]） |
+| `CLASS_CONFIG` | `AuthManager.ts` | 合并以上三项 + weapon，用于 DB 读写 |
+| `WEAPON_TEMPLATES` | `server/config/constants.ts` | 武器行为（damage/cooldown/type/range/arc） |
+| `SKILL_TEMPLATES` | `server/config/constants.ts` | 技能行为（damageMult/cooldown/radius/duration 等） |
+
+**客户端镜像（仅显示用，非权威）：**
+
+| 常量 | 位置 | 内容 |
+|------|------|------|
+| `CHARACTERS` | `src/config/characters.ts` | 精灵/颜色/描述 + hp/attack/defense（显示用） |
+| `WEAPON_SPRITE` | `src/rendering/entityRenderer.ts` | 职业→武器贴图映射 |
+
+> ⚠️ `CHARACTERS` 中的 hp/attack/defense 仅用于客户端显示，服务端以 `CLASS_STATS` 为准。
+
 ### 职业攻击路径（五条独立，不可混用）
 - **warrior**: sword 近战，不产生子弹，挥砍范围检测
 - **ranger**: weapon_arrow 箭矢，直线飞行+碰撞
@@ -17,10 +57,11 @@
 - **cleric**: `spawnHealWave()` AoE 治疗波（maxRadius=80px）
 - **enemy**: 红色能量弹
 
+> 攻击路径按 `weapon.type`（melee/gun）路由，cleric 通过 `characterType === 'cleric'` 特判走治疗波。
+
 ### 技能系统
-- 4 技能槽: dash/shield/heal/speed_boost
-- 按职业不同排列
-- 技能有冷却时间
+- 每职业 **3 个技能槽**（按键 1/2/3）：槽 1 = Dash（共享），槽 2-3 = 职业独特技能
+- 详见 `skills.md` 完整设计
 
 ### 碰撞检测
 - `isWalkableRadius(x,y,r)` 检查中心+4角共5点
@@ -33,20 +74,32 @@
 
 ### 伤害计算
 
-**当前实现（纯平减）：**
+**当前实现：**
 
 ```
-player→enemy:  damage = weapon.damage
-               enemy.hp -= damage
+player→enemy（普攻）:
+  damage = weapon.damage × outgoingDamageMultiplier
+  finalDamage = max(1, damage - enemy.defense × 0.5)
+  enemy.hp -= finalDamage
 
-enemy→player:  damage = enemy.attack
-               player.hp -= damage
-               player.invincible = 0.5s
+player→enemy（技能）:
+  damage = player.attack × skill.damageMult × outgoingDamageMultiplier
+  finalDamage = max(1, damage - enemy.defense × 0.5)
+  enemy.hp -= finalDamage
+
+enemy→player:
+  rawDamage = enemy.attack
+  damageMultiplier = player.statusManager.getAggregatedFlags().damageMultiplier  // shield/vulnerable
+  finalDamage = max(1, rawDamage × damageMultiplier - (player.defense + defenseBonus) × 0.5)
+  player.hp -= finalDamage
+  // iframes/invulnerable 检查由 damagePlayer() 统一处理
 ```
 
-- ATK/DEF 属性存在于 `PlayerState` 和 `characters.ts` 配置中，但**当前未被伤害公式引用**
-- 无护甲、无减伤、无暴击
+- `outgoingDamageMultiplier`：聚合自 StatusManager（weaken=0.6, power_essence=1.15 等）
+- `damageMultiplier`：聚合自 StatusManager（shield 使用 effect.value 动态值, vulnerable 同理）
+- `defenseBonus`：来自 defense_buff 状态效果（shield 道具触发）
 - 玩家受击后 0.5s 无敌帧（`player.invincible = 0.5`）
+- 所有 enemy→player 伤害统一走 `GameRoom.damagePlayer()`，确保 invulnerable/shield/能量回复闭环
 
 **武器伤害值（服务端 `WEAPON_TEMPLATES`）：**
 

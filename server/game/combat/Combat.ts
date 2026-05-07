@@ -1,9 +1,26 @@
-import type { PlayerState, BulletState, GameState, EnvObjectState } from '../../../shared/types';
-import { ENEMY_RADIUS } from '../../../shared/constants';
+import type { PlayerState, BulletState, GameState, EnvObjectState, CharacterType } from '../../../shared/types';
+import type { AttackType } from '../../../shared/character-definitions';
+import { CHARACTER_DEFS } from '../../../shared/character-definitions';
+import { ENEMY_DEFS } from '../../../shared/enemy-definitions';
 import { GAME_CONFIG, WEAPON_TEMPLATES, SKILL_TEMPLATES, type WeaponTemplate } from '../../config/constants';
 import { normalizeAngleDiff } from '../../utils/math';
 import type { StatusManager } from '../status/StatusManager';
 import { SKILL_HANDLERS } from './SkillHandlers';
+
+// ── 攻击类型路由注册表（数据驱动，替代 characterType 硬编码特判） ──
+type AttackHandler = (player: PlayerState, weapon: WeaponTemplate, combat: Combat) => void;
+
+const ATTACK_HANDLERS: Record<AttackType, AttackHandler> = {
+  melee: (player, weapon, combat) => {
+    combat.executeMelee(player, weapon);
+  },
+  ranged_bullet: (player, weapon, combat) => {
+    combat.fireGun(player, weapon);
+  },
+  ranged_heal: (player, weapon, combat) => {
+    combat.room.spawnHealWave(player.id, player.x, player.y, weapon.damage);
+  },
+};
 
 export interface CombatDeps {
   getState(): GameState;
@@ -38,21 +55,15 @@ export class Combat {
     player.energy -= weapon.energyCost;
     this.lastAttackTime.set(player.id, now);
 
-    if (weapon.type === 'gun') {
-      this.fireGun(player, weapon);
-    } else {
-      this.executeMelee(player, weapon);
-    }
+    const def = CHARACTER_DEFS[player.characterType as CharacterType];
+    const handler = ATTACK_HANDLERS[def?.attackType ?? 'ranged_bullet'];
+    handler(player, weapon, this);
   }
 
   private fireGun(player: PlayerState, weapon: WeaponTemplate): void {
-    const isHealer = player.characterType === 'cleric';
-
-    if (isHealer) {
-      // 牧师：AoE 治疗波（不产生飞行弹体）
-      this.room.spawnHealWave(player.id, player.x, player.y, weapon.damage);
-      return;
-    }
+    const sm = this.room.getPlayerStatus(player.id);
+    const outMult = sm?.getAggregatedFlags().outgoingDamageMultiplier ?? 1.0;
+    const effectiveDamage = Math.round(weapon.damage * outMult);
 
     const count = weapon.bulletCount || 1;
     const spread = (weapon.spread || 0) * Math.PI / 180;
@@ -64,7 +75,7 @@ export class Combat {
         player.x + Math.cos(angle) * 20,
         player.y + Math.sin(angle) * 20,
         angle,
-        weapon.damage,
+        effectiveDamage,
         true,
         player.characterType
       );
@@ -75,7 +86,10 @@ export class Combat {
     const range = weapon.range || GAME_CONFIG.MELEE_RANGE;
     const arc = weapon.arc || GAME_CONFIG.MELEE_ARC;
 
-    // Check enemies in arc
+    const sm = this.room.getPlayerStatus(player.id);
+    const outMult = sm?.getAggregatedFlags().outgoingDamageMultiplier ?? 1.0;
+    const effectiveDamage = Math.round(weapon.damage * outMult);
+
     const state = this.room.getState();
 
     for (const enemy of state.enemies) {
@@ -91,7 +105,7 @@ export class Combat {
       const diff = normalizeAngleDiff(angle, player.angle);
 
       if (Math.abs(diff) < arc / 2) {
-        this.room.damageEnemy(enemy.id, weapon.damage);
+        this.room.damageEnemy(enemy.id, effectiveDamage);
       }
     }
   }
@@ -137,7 +151,7 @@ export class Combat {
         const esm = this.room.getEnemyStatus(enemy.id);
         if (esm?.getAggregatedFlags().invulnerable) continue;
 
-        const enemyRadius = ENEMY_RADIUS[enemy.type] || 16;
+        const enemyRadius = ENEMY_DEFS[enemy.type]?.radius || 16;
         const dist = Math.hypot(bullet.x - enemy.x, bullet.y - enemy.y);
         if (dist < bullet.radius + enemyRadius) {
           this.room.damageEnemy(enemy.id, bullet.damage, bullet.ownerId);

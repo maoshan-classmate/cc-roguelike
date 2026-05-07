@@ -2,7 +2,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { v4 as uuidv4 } from 'uuid';
 import { Database } from '../data/Database';
-import { CLASS_SKILLS } from '../../shared/constants';
+import { CHARACTER_DEFS } from '../../shared/character-definitions';
+import type { CharacterType } from '../../shared/types';
 
 interface Account {
   id: string;
@@ -77,14 +78,17 @@ export class AuthManager {
         [accountId, username, passwordHash]
       );
 
-      // Create default character
+      // Create default character (warrior)
       const characterId = uuidv4();
-      const defaultSkills = JSON.stringify(CLASS_SKILLS.warrior);
+      const defaultConfig = AuthManager.CLASS_CONFIG.warrior;
+      const defaultSkills = JSON.stringify(defaultConfig.skills);
 
       await this.db.execute(
-        `INSERT INTO characters (id, account_id, name, weapon, character_type, skills)
-         VALUES (?, ?, ?, 'pistol', 'warrior', ?)`,
-        [characterId, accountId, username, defaultSkills]
+        `INSERT INTO characters (id, account_id, name, weapon, character_type, skills, attack, defense, hp, hp_max, energy, energy_max)
+         VALUES (?, ?, ?, ?, 'warrior', ?, ?, ?, ?, ?, ?, ?)`,
+        [characterId, accountId, username, defaultConfig.weapon, defaultSkills,
+         defaultConfig.attack, defaultConfig.defense, defaultConfig.hp, defaultConfig.hpMax,
+         defaultConfig.energy, defaultConfig.energyMax]
       );
 
       // Generate token
@@ -103,16 +107,16 @@ export class AuthManager {
             level: 1,
             exp: 0,
             gold: 0,
-            hp: 100,
-            hp_max: 100,
-            energy: 50,
-            energy_max: 50,
-            attack: 10,
-            defense: 5,
+            hp: defaultConfig.hp,
+            hp_max: defaultConfig.hpMax,
+            energy: defaultConfig.energy,
+            energy_max: defaultConfig.energyMax,
+            attack: defaultConfig.attack,
+            defense: defaultConfig.defense,
             speed: 5.0,
             x: 0,
             y: 0,
-            weapon: 'pistol',
+            weapon: defaultConfig.weapon,
             character_type: 'warrior',
             skills: defaultSkills,
             inventory: '[]',
@@ -159,9 +163,10 @@ export class AuthManager {
 
       const token = this.generateToken(account.id, account.username);
 
-      // Migrate old skill IDs (shield/heal/speed_boost → class-specific skills)
+      // Migrate old skill IDs and stats
       if (characters.length > 0) {
         await this.migrateSkillsIfNeeded(characters[0]);
+        await this.migrateStatsIfNeeded(characters[0]);
       }
 
       return {
@@ -224,13 +229,16 @@ export class AuthManager {
     }
   }
 
-  // 职业→武器/技能映射
-  public static readonly CLASS_CONFIG: Record<string, { weapon: string; skills: string[] }> = {
-    warrior: { weapon: 'sword',  skills: ['dash', 'war_cry', 'shield_bash'] },
-    ranger:  { weapon: 'pistol', skills: ['dash', 'dodge_roll', 'arrow_rain'] },
-    mage:    { weapon: 'pistol', skills: ['dash', 'frost_nova', 'meteor'] },
-    cleric:  { weapon: 'pistol', skills: ['dash', 'holy_light', 'sanctuary'] },
-  };
+  // 职业→武器/技能/属性映射（从 CHARACTER_DEFS 派生）
+  public static readonly CLASS_CONFIG: Record<string, {
+    weapon: string; skills: string[];
+    attack: number; defense: number; hp: number; hpMax: number; energy: number; energyMax: number;
+  }> = Object.fromEntries(
+    (Object.entries(CHARACTER_DEFS) as [CharacterType, typeof CHARACTER_DEFS[CharacterType]][]).map(([k, v]) => [k, {
+      weapon: v.weapon, skills: v.skills,
+      attack: v.attack, defense: v.defense, hp: v.hp, hpMax: v.hpMax, energy: v.energy, energyMax: v.energyMax,
+    }])
+  );
 
   async updateCharacterType(accountId: string, characterType: string): Promise<void> {
     const config = AuthManager.CLASS_CONFIG[characterType] || AuthManager.CLASS_CONFIG.warrior;
@@ -240,13 +248,31 @@ export class AuthManager {
     );
     if (characters.length > 0) {
       await this.db.execute(
-        'UPDATE characters SET character_type = ?, weapon = ?, skills = ? WHERE account_id = ?',
-        [characterType, config.weapon, JSON.stringify(config.skills), accountId]
+        `UPDATE characters SET character_type = ?, weapon = ?, skills = ?,
+         attack = ?, defense = ?, hp = ?, hp_max = ?, energy = ?, energy_max = ?
+         WHERE account_id = ?`,
+        [characterType, config.weapon, JSON.stringify(config.skills),
+         config.attack, config.defense, config.hp, config.hpMax,
+         config.energy, config.energyMax, accountId]
       );
     }
   }
 
   private static readonly OLD_SKILL_IDS = new Set(['shield', 'heal', 'speed_boost']);
+
+  private async migrateStatsIfNeeded(character: Character): Promise<void> {
+    try {
+      const config = AuthManager.CLASS_CONFIG[character.character_type] || AuthManager.CLASS_CONFIG.warrior;
+      if (character.attack === config.attack) return;
+      await this.db.execute(
+        'UPDATE characters SET attack = ?, defense = ?, hp = ?, hp_max = ?, energy = ?, energy_max = ? WHERE id = ?',
+        [config.attack, config.defense, config.hp, config.hpMax, config.energy, config.energyMax, character.id]
+      );
+      console.log(`[AuthManager] Migrated stats for ${character.id} (${character.character_type}): ATK ${character.attack}→${config.attack}`);
+    } catch {
+      // Non-critical: if migration fails, game will still work with old stats
+    }
+  }
 
   private async migrateSkillsIfNeeded(character: { id: string; character_type: string; skills: string }): Promise<void> {
     try {

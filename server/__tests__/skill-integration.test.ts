@@ -1,16 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Combat, type CombatDeps } from '../game/combat/Combat';
 import type { PlayerState, EnemyState, GameState } from '../../shared/types';
+import { CHARACTER_DEFS } from '../../shared/character-definitions';
 import { StatusManager } from '../game/status/StatusManager';
-
-// ── 辅助函数 ──
-
-const CLASS_SKILLS: Record<string, string[]> = {
-  warrior: ['dash', 'war_cry', 'shield_bash'],
-  ranger: ['dash', 'dodge_roll', 'arrow_rain'],
-  mage: ['dash', 'frost_nova', 'meteor'],
-  cleric: ['dash', 'holy_light', 'sanctuary'],
-};
 
 function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
   const charType = overrides.characterType || 'warrior';
@@ -20,7 +12,7 @@ function makePlayer(overrides: Partial<PlayerState> = {}): PlayerState {
     hp: 100, hpMax: 100, energy: 50, energyMax: 50,
     attack: 15, defense: 5, speed: 180, speedBuff: 1.0, speedBuffTimer: 0,
     weapon: 'sword', characterType: charType,
-    skills: CLASS_SKILLS[charType] || CLASS_SKILLS.warrior,
+    skills: CHARACTER_DEFS[charType as keyof typeof CHARACTER_DEFS]?.skills || CHARACTER_DEFS.warrior.skills,
     alive: true, invincible: 0, angle: 0, gold: 0, keys: 0,
     statusEffects: [],
     ...overrides,

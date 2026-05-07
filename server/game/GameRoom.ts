@@ -8,7 +8,9 @@ import { type TerrainData } from './dungeon/types';
 import { Combat } from './combat/Combat';
 import { CollisionGrid } from './collision/CollisionGrid';
 import type { PlayerState, EnemyState, BulletState, GameState, HealWaveState, BossEvent, DungeonData, GamePhase, EnvObjectState, EnemyType, ItemState, ItemPickupType } from '../../shared/types';
-import { ENEMY_BASE_HP, ENEMY_BASE_ATTACK, ENEMY_DEFS, ITEM_DEFS, CLASS_SPEED, ARENA_HP_MULTIPLIER, ARENA_ATK_MULTIPLIER, ARENA_TRIGGER_CHANCE, ARENA_WAVE_INTER_DELAY, ARENA_WAVE_HP_RECOVERY, ARENA_DORMANT_SPEED_MULTIPLIER, ARENA_RING_OUTER_COL_MIN, ARENA_RING_OUTER_ROW_MIN, ARENA_RING_OUTER_COL_MAX, ARENA_RING_OUTER_ROW_MAX, MAZE_TRIGGER_CHANCE, TRAP_TYPES, TRAP_DETECTION_RADIUS, PILLAR_HP, TILE_SIZE } from '../../shared/constants';
+import { CHARACTER_DEFS } from '../../shared/character-definitions';
+import { ENEMY_DEFS } from '../../shared/enemy-definitions';
+import { ITEM_DEFS, ARENA_HP_MULTIPLIER, ARENA_ATK_MULTIPLIER, ARENA_TRIGGER_CHANCE, ARENA_WAVE_INTER_DELAY, ARENA_WAVE_HP_RECOVERY, ARENA_DORMANT_SPEED_MULTIPLIER, ARENA_RING_OUTER_COL_MIN, ARENA_RING_OUTER_ROW_MIN, ARENA_RING_OUTER_COL_MAX, ARENA_RING_OUTER_ROW_MAX, MAZE_TRIGGER_CHANCE, TRAP_TYPES, TRAP_DETECTION_RADIUS, PILLAR_HP, TILE_SIZE } from '../../shared/constants';
 import { EnemyAI, type EnemyAIDeps } from './enemy/EnemyAI';
 import { StatusManager, type TickContext } from './status/StatusManager';
 
@@ -86,13 +88,7 @@ export class GameRoom {
         const parsed: string[] = JSON.parse(charData.skills || '["dash","shield"]');
         // Migrate old 4-skill format to new 3-skill per-class format
         if (parsed.length === 4 || parsed.some(s => ['shield', 'heal', 'speed_boost'].includes(s))) {
-          const classConfig = {
-            warrior: ['dash', 'war_cry', 'shield_bash'],
-            ranger: ['dash', 'dodge_roll', 'arrow_rain'],
-            mage: ['dash', 'frost_nova', 'meteor'],
-            cleric: ['dash', 'holy_light', 'sanctuary'],
-          };
-          return classConfig[(charData.character_type || 'warrior') as keyof typeof classConfig] || classConfig.warrior;
+          return CHARACTER_DEFS[(charData.character_type || 'warrior') as keyof typeof CHARACTER_DEFS]?.skills || CHARACTER_DEFS.warrior.skills;
         }
         return parsed;
       })(),
@@ -239,7 +235,7 @@ export class GameRoom {
   private createEnemy(type: string, x: number, y: number, floor: number = 1): EnemyState {
     const id = `enemy_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const def = ENEMY_DEFS[type as keyof typeof ENEMY_DEFS];
-    const baseHp = def?.hp ?? ENEMY_BASE_HP[type] ?? 30;
+    const baseHp = def?.hp ?? 30;
 
     // Boss: fixed HP (no floor scaling), ATK scales with floor
     let scaledHp: number;
@@ -249,12 +245,12 @@ export class GameRoom {
     if (type === 'boss') {
       scaledHp = 800;
       const floorAtkMultiplier = 1 + (floor - 1) * 0.1;
-      scaledAttack = Math.round((def?.attack ?? ENEMY_BASE_ATTACK[type] ?? 25) * floorAtkMultiplier);
+      scaledAttack = Math.round((def?.attack ?? 25) * floorAtkMultiplier);
     } else {
       const floorMultiplier = 1 + (floor - 1) * 0.15;
       const floorAtkMultiplier = 1 + (floor - 1) * 0.1;
       scaledHp = Math.round(baseHp * floorMultiplier);
-      scaledAttack = Math.round((def?.attack ?? ENEMY_BASE_ATTACK[type] ?? 10) * floorAtkMultiplier);
+      scaledAttack = Math.round((def?.attack ?? 10) * floorAtkMultiplier);
 
       // Elite chance
       const eliteChance = FLOOR_CONFIG[floor]?.eliteChance || 0;
@@ -346,7 +342,7 @@ export class GameRoom {
       // Movement — use StatusManager speedMultiplier
       const flags = sm?.getAggregatedFlags();
       const speedMultiplier = flags?.speedMultiplier ?? (player.speedBuff || 1.0);
-      const baseSpeed = CLASS_SPEED[player.characterType] || 180;
+      const baseSpeed = CHARACTER_DEFS[player.characterType as keyof typeof CHARACTER_DEFS]?.speed || 180;
 
       // Skip movement if blocksMovement flag is set
       if (!flags?.blocksMovement) {
@@ -539,8 +535,7 @@ export class GameRoom {
               case 'buff': {
                 const sm = this.playerStatus.get(player.id);
                 if (def.stat === 'defense' && def.duration) {
-                  player.defense += def.value;
-                  setTimeout(() => { player.defense = Math.max(0, player.defense - def.value); }, def.duration);
+                  sm?.apply('defense_buff', 'item', def.value, def.duration);
                 } else if (def.stat === 'hpMax' && sm && !sm.has('vitality_crystal_effect')) {
                   sm.apply('vitality_crystal_effect', 'item', 0, 999000);
                   player.hpMax += def.value;
@@ -713,8 +708,8 @@ export class GameRoom {
   private createArenaEnemy(type: string, x: number, y: number, floor: number): EnemyState {
     const id = `arena_enemy_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const def = ENEMY_DEFS[type as keyof typeof ENEMY_DEFS];
-    const baseHp = def?.hp ?? ENEMY_BASE_HP[type] ?? 30;
-    const baseAtk = def?.attack ?? ENEMY_BASE_ATTACK[type] ?? 8;
+    const baseHp = def?.hp ?? 30;
+    const baseAtk = def?.attack ?? 8;
 
     const hp = Math.round(baseHp * (1 + (floor - 1) * 0.15) * ARENA_HP_MULTIPLIER);
     const atk = Math.round(baseAtk * (1 + (floor - 1) * 0.1) * ARENA_ATK_MULTIPLIER);
@@ -1221,7 +1216,8 @@ export class GameRoom {
     if (player.invincible > 0) return;
 
     // GDD DEF formula: damage = max(1, raw_damage - target.def * 0.5)
-    let finalDamage = Math.max(1, damage - player.defense * 0.5);
+    const defenseBonus = sm?.getValue('defense_buff') ?? 0;
+    let finalDamage = Math.max(1, damage - (player.defense + defenseBonus) * 0.5);
 
     // Apply damageMultiplier from StatusManager (vulnerable/shield)
     const dmgMult = sm?.getAggregatedFlags().damageMultiplier ?? 1.0;

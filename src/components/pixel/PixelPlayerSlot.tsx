@@ -1,5 +1,7 @@
 import { motion } from 'framer-motion'
 import { PixelSword, PixelShield, PixelGem, PixelCrown, PixelStar } from '../PixelIcons'
+import { CHARACTER_DEFS } from '@shared/character-definitions'
+import type { CharacterType } from '@shared/types'
 
 const FONT_UI = '"Kenney Mini Square Mono", monospace'
 const FONT_TITLE = '"Kenney Pixel", monospace'
@@ -9,13 +11,6 @@ const PLAYER_COLORS: Record<number, string> = {
   1: '#51CF66',
   2: '#FFA500',
   3: '#9B59B6',
-}
-
-const CLASS_AVATARS: Record<string, string> = {
-  warrior: 'PixelSword',
-  ranger: 'PixelShield',
-  mage: 'PixelStar',
-  cleric: 'PixelGem',
 }
 
 const avatarComponents: Record<string, React.ComponentType<{ size?: number; color?: string }>> = {
@@ -61,7 +56,7 @@ export function PixelPlayerSlot({
         {player && (
           <>
             {(() => {
-              const AvatarComp = avatarComponents[CLASS_AVATARS[avatarClass]] || PixelSword
+              const AvatarComp = avatarComponents[CHARACTER_DEFS[avatarClass as CharacterType]?.avatar ?? ''] || PixelSword
               return <AvatarComp size={32} color={color} />
             })()}
             {player.ready && (

@@ -241,7 +241,7 @@ npx tsc --noEmit                                # TypeScript 编译检查
 ## Playwright MCP 验证流程
 
 登录→创建房间→选择职业→准备→开始冒险（完整流程覆盖）
-
+账号：admin  密码：123456
 ## 验证规范
 
 - **编译检查**：`npx tsc --noEmit`（零 error 即通过，弃用警告可忽略）
