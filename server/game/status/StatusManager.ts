@@ -171,7 +171,12 @@ export class StatusManager {
         result.speedMultiplier *= f.speedMultiplier;
       }
       if (f.damageMultiplier !== undefined && f.damageMultiplier !== 1.0) {
-        result.damageMultiplier *= f.damageMultiplier;
+        // shield/vulnerable 使用 effect 实例的 value 字段（动态值）
+        if (effect.typeId === 'shield' || effect.typeId === 'vulnerable') {
+          if (effect.value !== 0) result.damageMultiplier *= effect.value;
+        } else {
+          result.damageMultiplier *= f.damageMultiplier;
+        }
       }
       if (f.outgoingDamageMultiplier !== undefined && f.outgoingDamageMultiplier !== 1.0) {
         result.outgoingDamageMultiplier *= f.outgoingDamageMultiplier;

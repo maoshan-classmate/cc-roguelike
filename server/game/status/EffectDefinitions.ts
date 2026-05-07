@@ -62,7 +62,7 @@ export const EFFECT_DEFINITIONS: Record<string, EffectDefinition> = {
   shield: {
     typeId: 'shield', category: 'buff', name: '护盾',
     stackPolicy: 'max_duration', maxStacks: 1, exclusiveGroup: 'damage_reduction', priority: 2,
-    flags: { damageMultiplier: 0.5 },
+    flags: { damageMultiplier: 1.0 }, // 实际值由 apply() 的 value 参数决定
   },
   invulnerable: {
     typeId: 'invulnerable', category: 'buff', name: '绝对无敌',
@@ -79,6 +79,11 @@ export const EFFECT_DEFINITIONS: Record<string, EffectDefinition> = {
     typeId: 'energy_regen_boost', category: 'buff', name: '能量回复',
     stackPolicy: 'refresh', maxStacks: 1, priority: 0,
     flags: { energyRegenMultiplier: 2.0 },
+  },
+  defense_buff: {
+    typeId: 'defense_buff', category: 'buff', name: '防御强化',
+    stackPolicy: 'refresh', maxStacks: 1, priority: 0,
+    flags: {},
   },
 
   // ── Debuff ──
@@ -103,7 +108,7 @@ export const EFFECT_DEFINITIONS: Record<string, EffectDefinition> = {
   vulnerable: {
     typeId: 'vulnerable', category: 'debuff', name: '易伤',
     stackPolicy: 'max_stacks', maxStacks: 3, priority: 1,
-    flags: { damageMultiplier: 1.5 },
+    flags: { damageMultiplier: 1.0 }, // 实际值由 apply() 的 value 参数决定
   },
   weaken: {
     typeId: 'weaken', category: 'debuff', name: '虚弱',

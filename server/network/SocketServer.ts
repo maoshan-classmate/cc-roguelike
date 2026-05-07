@@ -311,11 +311,16 @@ export class SocketServer {
           // 优先用内存中的 characterType（lobby）覆盖 DB 值，解决 selectClass 异步竞态
           if (player.characterType) {
             character.character_type = player.characterType;
-            // 同时更新 weapon 为该职业的默认武器
             const config = AuthManager.CLASS_CONFIG[player.characterType];
             if (config) {
               character.weapon = config.weapon;
               character.skills = JSON.stringify(config.skills);
+              character.attack = config.attack;
+              character.defense = config.defense;
+              character.hp = config.hp;
+              character.hp_max = config.hpMax;
+              character.energy = config.energy;
+              character.energy_max = config.energyMax;
             }
           }
           gameRoom.addPlayer(player.id, player.name, character);

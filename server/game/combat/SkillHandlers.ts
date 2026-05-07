@@ -156,11 +156,15 @@ function handleArrowRain(ctx: SkillContext): void {
   const damageMult = skill.damageMult || 0.5;
   const delay = 500;
 
-  // Target position: in front of player
   const targetX = player.x + Math.cos(player.angle) * 150;
   const targetY = player.y + Math.sin(player.angle) * 150;
 
-  // Schedule waves via setTimeout
+  const pAttack = player.attack;
+  const pId = player.id;
+  const sm = deps.getPlayerStatus(pId);
+  const outMult = sm?.getAggregatedFlags().outgoingDamageMultiplier ?? 1.0;
+  const dmg = Math.round(pAttack * damageMult * outMult);
+
   for (let w = 0; w < waves; w++) {
     setTimeout(() => {
       const state = deps.getState();
@@ -168,7 +172,7 @@ function handleArrowRain(ctx: SkillContext): void {
         if (!enemy.alive) continue;
         const dist = Math.hypot(enemy.x - targetX, enemy.y - targetY);
         if (dist <= radius) {
-          deps.damageEnemy(enemy.id, Math.round(player.attack * damageMult), player.id);
+          deps.damageEnemy(enemy.id, dmg, pId);
         }
       }
     }, delay + w * 300);
@@ -176,19 +180,21 @@ function handleArrowRain(ctx: SkillContext): void {
 }
 
 function handleFrostNova(ctx: SkillContext): void {
-  const { player, skill, deps } = ctx;
+  const { player, skill, sm, deps } = ctx;
   const radius = skill.radius || 120;
   const freezeDuration = skill.freezeDuration || 500;
   const slowDuration = skill.duration || 3000;
   const slowMult = skill.slowMult || 0.5;
   const damageMult = skill.damageMult || 0.8;
+  const outMult = sm?.getAggregatedFlags().outgoingDamageMultiplier ?? 1.0;
+  const dmg = Math.round(player.attack * damageMult * outMult);
   const state = deps.getState();
 
   for (const enemy of state.enemies) {
     if (!enemy.alive) continue;
     const dist = Math.hypot(enemy.x - player.x, enemy.y - player.y);
     if (dist <= radius) {
-      deps.damageEnemy(enemy.id, Math.round(player.attack * damageMult), player.id);
+      deps.damageEnemy(enemy.id, dmg, player.id);
       const esm = deps.getEnemyStatus(enemy.id);
       esm?.apply('freeze', player.id, 0, freezeDuration);
       esm?.apply('slow', player.id, slowMult, slowDuration);
@@ -205,7 +211,6 @@ function handleMeteor(ctx: SkillContext): void {
   const delay = skill.duration || 1000;
   const maxRange = skill.range || 300;
 
-  // Target position: toward player facing direction, clamped to maxRange
   const meteorTarget = clampToDungeon(
     player.x + Math.cos(player.angle) * maxRange,
     player.y + Math.sin(player.angle) * maxRange,
@@ -213,20 +218,19 @@ function handleMeteor(ctx: SkillContext): void {
   const targetX = meteorTarget.x;
   const targetY = meteorTarget.y;
 
-  const px = player.x;
-  const py = player.y;
   const pAttack = player.attack;
   const pId = player.id;
+  const sm = deps.getPlayerStatus(pId);
+  const outMult = sm?.getAggregatedFlags().outgoingDamageMultiplier ?? 1.0;
+  const dmg = Math.round(pAttack * damageMult * outMult);
 
-  // Delayed impact
   setTimeout(() => {
     const state = deps.getState();
     for (const enemy of state.enemies) {
       if (!enemy.alive) continue;
       const dist = Math.hypot(enemy.x - targetX, enemy.y - targetY);
       if (dist <= radius) {
-        deps.damageEnemy(enemy.id, Math.round(pAttack * damageMult), pId);
-        // Apply burn DOT
+        deps.damageEnemy(enemy.id, dmg, pId);
         const esm = deps.getEnemyStatus(enemy.id);
         esm?.apply('burn', pId, dotDmg, dotDuration);
       }
@@ -276,7 +280,8 @@ function handleSanctuary(ctx: SkillContext): void {
     if (dist <= radius) {
       const psm = deps.getPlayerStatus(p.id);
       psm?.apply('shield', player.id, 1 - damageReduction, duration);
-      psm?.apply('heal_over_time', player.id, healPerSec, duration);
+      const healPerTick = healPerSec / 2; // tick 每 500ms，2次/秒
+      psm?.apply('heal_over_time', player.id, healPerTick, duration);
     }
   }
 }
