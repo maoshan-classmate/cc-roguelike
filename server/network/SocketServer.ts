@@ -371,7 +371,7 @@ export class SocketServer {
     });
   }
 
-  private handleGameInput(socket: Socket, data: { dx: number; dy: number; angle: number; attack?: boolean; skill?: number; mouseX?: number; mouseY?: number }): void {
+  private handleGameInput(socket: Socket, data: { dx: number; dy: number; angle: number; aimAngle?: number; attack?: boolean; skill?: number; targetPos?: { x: number; y: number }; mouseX?: number; mouseY?: number }): void {
     this.requireAuth(socket, (session) => {
       if (!session.currentRoom) return;
 
@@ -379,7 +379,9 @@ export class SocketServer {
       if (!gameRoom) return;
       if (!gameRoom.isRunning()) return;
 
-      gameRoom.handlePlayerInput(session.accountId, data);
+      gameRoom.handlePlayerInput(session.accountId, data, (event: string, eventData: unknown) => {
+        socket.emit(event, eventData);
+      });
     });
   }
 

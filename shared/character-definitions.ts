@@ -17,6 +17,8 @@ export interface CharacterDef {
   energyMax: number;
   // 移动（原 CLASS_SPEED，px/s）
   speed: number;
+  // 加速度趋近速率（加速/减速共用，指数趋近模型）
+  accelRate: number;
   // 技能（原 CLASS_SKILLS）
   skills: SkillId[];
   // 武器（原 AuthManager.CLASS_CONFIG.weapon，→ WEAPON_TEMPLATES 的 key）
@@ -45,7 +47,7 @@ export interface CharacterDef {
 export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
   warrior: {
     hp: 100, hpMax: 100, attack: 15, defense: 10, energy: 50, energyMax: 50,
-    speed: 180,
+    speed: 180, accelRate: 50,
     skills: ['dash', 'war_cry', 'shield_bash'],
     weapon: 'sword',
     attackType: 'melee',
@@ -69,7 +71,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
   },
   ranger: {
     hp: 80, hpMax: 80, attack: 12, defense: 5, energy: 50, energyMax: 50,
-    speed: 220,
+    speed: 220, accelRate: 60,
     skills: ['dash', 'dodge_roll', 'arrow_rain'],
     weapon: 'pistol',
     attackType: 'ranged_bullet',
@@ -93,7 +95,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
   },
   mage: {
     hp: 60, hpMax: 60, attack: 20, defense: 3, energy: 60, energyMax: 60,
-    speed: 180,
+    speed: 180, accelRate: 50,
     skills: ['dash', 'frost_nova', 'meteor'],
     weapon: 'pistol',
     attackType: 'ranged_bullet',
@@ -117,7 +119,7 @@ export const CHARACTER_DEFS: Record<CharacterType, CharacterDef> = {
   },
   cleric: {
     hp: 70, hpMax: 70, attack: 8, defense: 6, energy: 50, energyMax: 50,
-    speed: 190,
+    speed: 190, accelRate: 50,
     skills: ['dash', 'holy_light', 'sanctuary'],
     weapon: 'pistol',
     attackType: 'ranged_heal',

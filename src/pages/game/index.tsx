@@ -128,7 +128,9 @@ export default function GamePage() {
   const lastStateTime = useRef(performance.now())
   const lastAnimTime = useRef(performance.now())
   const lastSentAngleRef = useRef<number | null>(null)
-  const facingAngleRef = useRef<number | null>(null)
+  const aimAngleRef = useRef(0)  // 当前鼠标瞄准角度
+  const skillBufferRef = useRef<{ skillIndex: number; timestamp: number } | null>(null)  // 输入缓冲
+  const predictionRef = useRef<Map<number, number>>(new Map())  // skillIndex → prediction timeout id
   const attackFlashRef = useRef(0)
   const bossEffectsRef = useRef<BossVisualEffect[]>([])
   const screenShakeRef = useRef({ intensity: 0, endTime: 0 })
@@ -347,10 +349,34 @@ export default function GamePage() {
       }
     })
 
+    // 技能拒绝：回滚预测冷却 + 存入输入缓冲
+    networkClient.on(GameMessages.SKILL_REJECTED, (data: { skillIndex: number; reason: string }) => {
+      predictionRef.current.delete(data.skillIndex)
+      cooldownEndRef.current.delete(data.skillIndex)
+      // 如果是 cooldown/energy 拒绝，存入缓冲等待重试
+      if (data.reason === 'cooldown' || data.reason === 'energy') {
+        skillBufferRef.current = { skillIndex: data.skillIndex, timestamp: performance.now() }
+      }
+    })
+
+    // 技能确认：用服务端冷却校正本地预测
+    networkClient.on(GameMessages.SKILL_ACCEPTED, (data: { skillIndex: number; serverTimestamp: number; effectiveCooldown: number }) => {
+      const localEnd = cooldownEndRef.current.get(data.skillIndex)
+      const serverEnd = Date.now() + data.effectiveCooldown
+      // 取更晚的那个（更保守），防止本地预测过早结束
+      if (!localEnd || serverEnd > localEnd) {
+        cooldownEndRef.current.set(data.skillIndex, serverEnd)
+      }
+      predictionRef.current.delete(data.skillIndex)
+      skillBufferRef.current = null
+    })
+
     return () => {
       networkClient.off(GameMessages.STATE)
       networkClient.off(GameMessages.FLOOR_START)
       networkClient.off(GameMessages.END)
+      networkClient.off(GameMessages.SKILL_REJECTED)
+      networkClient.off(GameMessages.SKILL_ACCEPTED)
       floorSessionRef.current = 0
       gameSessionRef.current = 0
     }
@@ -362,17 +388,23 @@ export default function GamePage() {
     if (!localPlayer) return
     const skillId = localPlayer.skills[skillIndex]
     if (!skillId) return
-    skillEffectStoreRef.current.add(skillId, localPlayer.x, localPlayer.y, localPlayer.angle)
-    // Record cooldown end time
+    skillEffectStoreRef.current.add(skillId, localPlayer.x, localPlayer.y, localPlayer.aimAngle ?? localPlayer.angle)
+    // 冷却预测：本地立即设置，100ms 后若未收到服务端确认则回滚
     const info = SKILL_INFO[skillId]
     if (info) {
-      cooldownEndRef.current.set(skillIndex, Date.now() + info.cooldown * 1000)
+      const localEnd = Date.now() + info.cooldown * 1000
+      cooldownEndRef.current.set(skillIndex, localEnd)
+      const timeoutId = window.setTimeout(() => {
+        // 100ms 超时未收到 accepted/rejected → 回滚预测
+        predictionRef.current.delete(skillIndex)
+      }, 100)
+      predictionRef.current.set(skillIndex, timeoutId)
     }
   }, [user])
 
   const getLocalPlayer = useCallback(() => {
     const p = gameStateRef.current.players.find(p => p.id === user?.id)
-    return p ? { x: p.x, y: p.y, angle: p.angle, skills: p.skills } : undefined
+    return p ? { x: p.x, y: p.y, aimAngle: p.aimAngle ?? p.angle, skills: p.skills } : undefined
   }, [user])
 
   useGameInput({
@@ -405,22 +437,40 @@ export default function GamePage() {
         return
       }
 
-      // 角色朝向跟随移动方向，而非鼠标位置
-      const isMoving = dx !== 0 || dy !== 0
-      let angle: number
-      if (isMoving) {
-        angle = Math.atan2(dy, dx)
-        facingAngleRef.current = angle
-      } else {
-        angle = facingAngleRef.current ?? Math.atan2(mouseRef.current.y - localPlayer.y, mouseRef.current.x - localPlayer.x)
+      // 鼠标独立瞄准：aimAngle 基于鼠标相对 canvas 中心的偏移
+      const canvasEl = canvasRef.current
+      if (canvasEl) {
+        const cx = canvasEl.width / 2
+        const cy = canvasEl.height / 2
+        const mx = mouseRef.current.x
+        const my = mouseRef.current.y
+        // 鼠标在 canvas 中心时 atan2(0,0)=0，保持上一帧 aimAngle
+        if (mx !== cx || my !== cy) {
+          aimAngleRef.current = Math.atan2(my - cy, mx - cx)
+        }
+      }
+      const aimAngle = aimAngleRef.current
+
+      // 输入缓冲重试：条件满足时自动重发被拒绝的技能
+      const buffer = skillBufferRef.current
+      if (buffer && performance.now() - buffer.timestamp < 150) {
+        const canRetry = (localPlayer.cooldowns?.[buffer.skillIndex] ?? 0) <= 0
+          && localPlayer.energy > 0 && localPlayer.alive
+        if (canRetry) {
+          networkClient.emit(GameMessages.INPUT, { skill: buffer.skillIndex })
+          skillBufferRef.current = null
+        }
+      } else if (buffer) {
+        // 缓冲过期，丢弃
+        skillBufferRef.current = null
       }
 
       const now = performance.now()
       if (now - lastInputTime >= 33) {
-        const angleChanged = lastSentAngleRef.current === null || Math.abs(angle - lastSentAngleRef.current) > 0.087
-        if (angleChanged) lastSentAngleRef.current = angle
+        const angleChanged = lastSentAngleRef.current === null || Math.abs(aimAngle - lastSentAngleRef.current) > 0.087
+        if (angleChanged) lastSentAngleRef.current = aimAngle
         lastInputTime = now
-        networkClient.emit(GameMessages.INPUT, { dx, dy, angle, attack: mouseRef.current.down })
+        networkClient.emit(GameMessages.INPUT, { dx, dy, aimAngle, attack: mouseRef.current.down })
       }
 
       const isAttacking = mouseRef.current.down

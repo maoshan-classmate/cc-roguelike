@@ -55,9 +55,11 @@ else (Floor 5):                         → VICTORY
 - 迷宫关和竞技关不计入 1-5 层数
 
 **Floor 过关后**：
-- `startFloor(floor + 1)` — 清除所有敌人/子弹/道具，重新生成地牢
 - 所有玩家（含已死亡）复活并传送到新出生点
 - HP/能量恢复满
+- **楼层成长加成**：每通过一个 floor，玩家永久获得 +10% ATK 和 +15% HP（基于基础值叠加）。Floor 5 结束时玩家拥有 1.4× ATK 和 1.6× HP，与敌人缩放曲线匹配
+- **楼层商店**：FLOOR_TRANSITION 状态期间显示商店界面，玩家可用金币购买道具/增益（详见 items.md "楼层商店" 章节）
+- `startFloor(floor + 1)` — 清除所有敌人/子弹/道具，重新生成地牢
 
 **迷宫关通过后**：
 - `startFloor(N+1)` — N 为进入迷宫前的 floor 编号
@@ -120,14 +122,14 @@ enemyType = randomChoice(FLOOR_CONFIG[floor].enemyTypes)
 - `enemy_atk = base × (1 + (floor-1) × 0.1)`
 - Boss HP 固定 800，ATK = 25 × (1 + (floor-1) × 0.1)
 
-**竞技关缩放公式**（独立路径，详见 room-diversity.md）：
-- `arena_enemy_hp = Math.round(base × (1 + (floor-1) × 0.15) × 1.2)`
-- `arena_enemy_atk = Math.round(base × (1 + (floor-1) × 0.1) × 1.1)`
-- Elite 额外倍率：HP×2, ATK×1.5（作用于已缩放值之上）
+**玩家成长公式**（每 floor 通过后应用）：
+- `player_hpMax = CHARACTER_DEFS[type].hp × (1 + (floorsCleared) × 0.15)`
+- `player_atk = CHARACTER_DEFS[type].atk × (1 + (floorsCleared) × 0.1)`
+- 与敌人缩放曲线对称：Floor 5 时玩家 1.6× HP / 1.4× ATK vs 敌人 1.6× HP / 1.4× ATK
+- 实现位置：`startFloor()` 时根据 `floorsCleared` 计算并更新 `player.hpMax` 和 `player.atk`
+- 注：竞技关/迷宫关不计入 floorsCleared（它们不增加楼层数）
 
-**触发概率**：
-- 迷宫关：20%（`roll ∈ [0.1, 0.3)` 且 `!mazeTriggered` 且 `floor ∈ {1,2,3}`）
-- 竞技关：10%（`roll < 0.1` 且 `!arenaTriggered` 且 `floor ∈ {1,2,3}`）
+**竞技关/迷宫关**：缩放公式、触发概率、Elite 倍率等详见 `room-diversity.md`（权威源）。本 GDD 不重复定义。
 
 ## Edge Cases
 
@@ -152,11 +154,8 @@ enemyType = randomChoice(FLOOR_CONFIG[floor].enemyTypes)
 | Floor 数量 | 5 | 3-10 | 游戏总时长 |
 | 房间数公式 | 6+floor×2 | 4+floor×1 ~ 8+floor×3 | 地牢复杂度 |
 | 出口检测距离 | 40 px | 30-60 | 过关触发灵敏度 |
-| 掉落率 | 30% | 10%-50% | 道具稀缺性 |
-| 竞技关触发概率 | 10% | 0-30% | 竞技关出现频率 |
-| 迷宫关触发概率 | 20% | 0-40% | 迷宫关出现频率 |
-| 竞技关 HP 加成 | 1.2 | 1.0-1.5 | 竞技关难度 |
-| 竞技关 ATK 加成 | 1.1 | 1.0-1.3 | 竞技关伤害 |
+| 掉落率 | 30% | 10%-50% | 道具稀缺性（权威源：items.md） |
+| 竞技关/迷宫关参数 | — | — | 触发概率、HP/ATK 加成等详见 room-diversity.md（权威源） |
 
 ## Acceptance Criteria
 

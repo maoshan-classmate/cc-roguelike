@@ -13,6 +13,9 @@ export interface SkillPreviewState {
   startTime: number
 }
 
+// AoE skills: key-down preview + key-up fire
+const AOE_SKILLS = new Set(['arrow_rain', 'meteor', 'sanctuary'])
+
 interface UseGameInputDeps {
   canvasRef: React.RefObject<HTMLCanvasElement | null>
   keysRef: React.MutableRefObject<Set<string>>
@@ -24,7 +27,7 @@ interface UseGameInputDeps {
   play: (id: SfxId) => void
   onSkillCast?: (skillIndex: number) => void
   onSkillPreview?: (preview: SkillPreviewState | null) => void
-  getLocalPlayer?: () => { x: number; y: number; angle: number; skills: string[] } | undefined
+  getLocalPlayer?: () => { x: number; y: number; aimAngle: number; skills: string[] } | undefined
 }
 
 export function useGameInput(deps: UseGameInputDeps): void {
@@ -42,21 +45,35 @@ export function useGameInput(deps: UseGameInputDeps): void {
       const skillKey = e.key
       if (['1', '2', '3'].includes(skillKey) && !skillKeysDown.has(skillKey)) {
         skillKeysDown.add(skillKey)
-        // Show preview on keydown (don't fire yet)
         const player = getLocalPlayer?.()
-        if (player) {
-          const skillIndex = parseInt(skillKey) - 1
-          const skillId = player.skills[skillIndex]
-          if (skillId) {
-            onSkillPreview?.({
-              active: true,
-              skillType: skillKey,
-              skillId,
-              x: player.x,
-              y: player.y,
-              angle: player.angle,
-              startTime: performance.now(),
-            })
+        if (!player) return
+
+        const skillIndex = parseInt(skillKey) - 1
+        const skillId = player.skills[skillIndex]
+        if (!skillId) return
+
+        if (AOE_SKILLS.has(skillId)) {
+          // AoE skill: show preview on key-down, fire on key-up
+          onSkillPreview?.({
+            active: true,
+            skillType: skillKey,
+            skillId,
+            x: player.x,
+            y: player.y,
+            angle: player.aimAngle,
+            startTime: performance.now(),
+          })
+        } else {
+          // Instant skill: fire immediately on key-down
+          networkClient.emit(GameMessages.INPUT, { skill: skillIndex })
+          onSkillCast?.(skillIndex)
+          switch (skillId) {
+            case 'dash': playDash(); break
+            case 'war_cry': play(SFX_IDS.SKILL_SHIELD_ON); break
+            case 'shield_bash': play(SFX_IDS.SKILL_SHIELD_ON); break
+            case 'dodge_roll': playDash(); break
+            case 'holy_light': play(SFX_IDS.SKILL_HEAL); break
+            default: play(SFX_IDS.SKILL_HEAL); break
           }
         }
       }
@@ -67,15 +84,22 @@ export function useGameInput(deps: UseGameInputDeps): void {
       const skillKey = e.key
       if (['1', '2', '3'].includes(skillKey) && skillKeysDown.has(skillKey)) {
         skillKeysDown.delete(skillKey)
-        // Fire skill on key release
+        const player = getLocalPlayer?.()
+        if (!player) return
+
         const skillIndex = parseInt(skillKey) - 1
-        networkClient.emit(GameMessages.INPUT, { skill: skillIndex })
-        onSkillCast?.(skillIndex)
-        onSkillPreview?.(null) // clear preview
-        switch (skillKey) {
-          case '1': playDash(); break
-          case '2': play(SFX_IDS.SKILL_SHIELD_ON); break
-          case '3': play(SFX_IDS.SKILL_HEAL); break
+        const skillId = player.skills[skillIndex]
+        if (!skillId) return
+
+        if (AOE_SKILLS.has(skillId)) {
+          // AoE skill: fire on key-up with target position from aimAngle
+          networkClient.emit(GameMessages.INPUT, { skill: skillIndex })
+          onSkillCast?.(skillIndex)
+          onSkillPreview?.(null)
+          play(SFX_IDS.SKILL_HEAL)
+        } else {
+          // Instant skill: clear preview on key-up (already fired on key-down)
+          onSkillPreview?.(null)
         }
       }
     }

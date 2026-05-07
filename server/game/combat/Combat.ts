@@ -36,6 +36,12 @@ export interface CombatDeps {
   damageEnvObject(id: string, damage: number, attackerId?: string): void;
 }
 
+export interface SkillResult {
+  accepted: boolean;
+  reason?: 'cooldown' | 'energy' | 'stunned' | 'silenced' | 'dead' | 'invalid' | 'blocked';
+  effectiveCooldown?: number;
+}
+
 export class Combat {
   private room: CombatDeps;
   private lastAttackTime: Map<string, number> = new Map();
@@ -69,7 +75,7 @@ export class Combat {
     const spread = (weapon.spread || 0) * Math.PI / 180;
 
     for (let i = 0; i < count; i++) {
-      const angle = player.angle + (this.random() - 0.5) * spread;
+      const angle = (player.aimAngle ?? player.angle) + (this.random() - 0.5) * spread;
       this.room.spawnBullet(
         player.id,
         player.x + Math.cos(angle) * 20,
@@ -102,7 +108,7 @@ export class Combat {
       if (dist > range + 20) continue;
 
       let angle = Math.atan2(dy, dx);
-      const diff = normalizeAngleDiff(angle, player.angle);
+      const diff = normalizeAngleDiff(angle, player.aimAngle ?? player.angle);
 
       if (Math.abs(diff) < arc / 2) {
         this.room.damageEnemy(enemy.id, effectiveDamage);
@@ -110,34 +116,52 @@ export class Combat {
     }
   }
 
-  useSkill(player: PlayerState, skillIndex: number): void {
+  useSkill(player: PlayerState, skillIndex: number): SkillResult {
     const skills = player.skills;
-    if (skillIndex < 0 || skillIndex >= skills.length) return;
+    if (skillIndex < 0 || skillIndex >= skills.length) {
+      return { accepted: false, reason: 'invalid' };
+    }
 
     const skillId = skills[skillIndex];
     const skill = SKILL_TEMPLATES[skillId];
-    if (!skill) return;
+    if (!skill) {
+      return { accepted: false, reason: 'invalid' };
+    }
+
+    // Check dead
+    if (!player.alive) {
+      return { accepted: false, reason: 'dead' };
+    }
 
     // Check blocksSkill via StatusManager
     const sm = this.room.getPlayerStatus(player.id);
-    if (sm?.getAggregatedFlags().blocksSkill) return;
+    if (sm?.getAggregatedFlags().blocksSkill) {
+      return { accepted: false, reason: 'silenced' };
+    }
 
-    const now = Date.now();
-    const lastUse = this.lastAttackTime.get(`${player.id}_skill_${skillIndex}`) || 0;
-
-    // Apply cooldown multiplier from StatusManager
+    // Check cooldown (server-authoritative via player.cooldowns[])
     const cooldownMult = sm?.getAggregatedFlags().cooldownMultiplier ?? 1.0;
     const effectiveCooldown = skill.cooldown * cooldownMult;
+    const remainingCooldown = player.cooldowns[skillIndex] ?? 0;
 
-    if (now - lastUse < effectiveCooldown) return;
-    if (player.energy < skill.energyCost) return;
+    if (remainingCooldown > 0) {
+      return { accepted: false, reason: 'cooldown' };
+    }
 
+    // Check energy
+    if (player.energy < skill.energyCost) {
+      return { accepted: false, reason: 'energy' };
+    }
+
+    // Execute
     player.energy -= skill.energyCost;
-    this.lastAttackTime.set(`${player.id}_skill_${skillIndex}`, now);
+    player.cooldowns[skillIndex] = effectiveCooldown;
 
     // Route to handler via registry
     const handler = SKILL_HANDLERS[skill.type];
     if (handler) handler({ player, skill, sm, deps: this.room });
+
+    return { accepted: true, effectiveCooldown };
   }
 
   checkBulletCollision(bullet: BulletState): void {

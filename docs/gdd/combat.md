@@ -86,19 +86,19 @@ shared/character-definitions.ts         shared/enemy-definitions.ts
 
 ```
 player→enemy（普攻）:
-  damage = weapon.damage × outgoingDamageMultiplier
-  finalDamage = max(1, damage - enemy.defense × 0.5)
+  damage = weapon.damage
+  finalDamage = max(1, damage - enemy.defense × 0.5) × outgoingDamageMultiplier
   enemy.hp -= finalDamage
 
 player→enemy（技能）:
-  damage = player.attack × skill.damageMult × outgoingDamageMultiplier
-  finalDamage = max(1, damage - enemy.defense × 0.5)
+  damage = player.attack × skill.damageMult
+  finalDamage = max(1, damage - enemy.defense × 0.5) × outgoingDamageMultiplier
   enemy.hp -= finalDamage
 
 enemy→player:
   rawDamage = enemy.attack
   damageMultiplier = player.statusManager.getAggregatedFlags().damageMultiplier  // shield/vulnerable
-  finalDamage = max(1, rawDamage × damageMultiplier - (player.defense + defenseBonus) × 0.5)
+  finalDamage = max(1, rawDamage - (player.defense + defenseBonus) × 0.5) × damageMultiplier
   player.hp -= finalDamage
   // iframes/invulnerable 检查由 damagePlayer() 统一处理
 ```
@@ -120,7 +120,7 @@ enemy→player:
 | axe | 近战 | 45 | 600 | 15 | 范围 55px，90° 弧 |
 | staff | 近战 | 22 | 450 | 10 | 范围 55px，60° 弧 |
 
-**近战命中判定**：`dist < range + 20` 且角度差 `< arc / 2`
+**近战命中判定**：`dist < range + 20` 且角度差 `< arc / 2`（角度以 `player.aimAngle` 为弧形中心线，非移动方向 — 详见 player-control.md 子系统二）
 
 **弹丸命中判定**：`dist < bullet.radius + 15`（bullet.radius = 4px，有效碰撞距离 19px）
 

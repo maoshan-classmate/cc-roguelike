@@ -48,6 +48,28 @@ export const RoomMessages = {
   SETTINGS_PUSH: 'room:settings:push'
 } as const;
 
+// ── 游戏输入接口 ──
+export interface GameInput {
+  dx: number;           // 移动方向 X（-1 to 1）
+  dy: number;           // 移动方向 Y（-1 to 1）
+  aimAngle: number;     // 瞄准角度（弧度，来自鼠标位置）
+  attack?: boolean;     // 攻击状态
+  skill?: number;       // 技能索引（即时技能 key-down 直接发送）
+  targetPos?: { x: number; y: number };  // AoE 技能目标位置
+}
+
+// ── 技能拒绝/确认接口 ──
+export interface SkillRejected {
+  skillIndex: number;
+  reason: 'cooldown' | 'energy' | 'stunned' | 'silenced' | 'dead' | 'invalid' | 'blocked';
+}
+
+export interface SkillAccepted {
+  skillIndex: number;
+  serverTimestamp: number;
+  effectiveCooldown: number;  // 冷却时长（ms）
+}
+
 // 游戏消息
 export const GameMessages = {
   INPUT: 'game:input',
@@ -68,7 +90,9 @@ export const GameMessages = {
   ARENA_CLEARED: 'game:arena:cleared',
   MAZE_ENTERED: 'game:maze:entered',
   TRAP_TRIGGERED: 'game:trap:triggered',
-  DOOR_STATE: 'game:door:state'
+  DOOR_STATE: 'game:door:state',
+  SKILL_REJECTED: 'skill:rejected',
+  SKILL_ACCEPTED: 'skill:accepted'
 } as const;
 
 // 聊天消息

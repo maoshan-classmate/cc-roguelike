@@ -230,9 +230,12 @@ const effectiveDamage = rawDamage * flags.damageMultiplier;
 #### 移动系统
 
 ```typescript
-// GameRoom.update() 中：
-const speedMult = player.statusManager.getAggregatedFlags().speedMultiplier;
-const speed = baseSpeed * speedMult * dt;
+// GameRoom.update() 中（与 player-control.md F1/F5 对齐）：
+const flags = player.statusManager.getAggregatedFlags();
+const targetSpeed = baseSpeed * product_of_speed_multipliers; // px/s，不含 * dt
+// 速度更新：指数趋近模型（详见 player-control.md F1）
+// 位置更新：x += velocity.x * dt（dt 仅在此处乘一次）
+// blocksMovement=true 时速度直接归零
 ```
 
 #### 技能使用
@@ -248,12 +251,15 @@ if (flags.blocksSkill) return; // 被沉默/眩晕，无法使用技能
 ### D1. 速度倍率计算
 
 ```
-effectiveSpeed = baseSpeed * product(all speedMultiplier flags) * dt
+targetSpeed = baseSpeed * product(all speedMultiplier flags)
+// 注意：不含 * dt。dt 仅在位置更新步骤中乘一次（newX = x + velocity.x * dt）
+// 与 player-control.md F5 对齐 — 速度单位为 px/s，非 px/tick
 ```
 
 **边界保护**：
 - 最终速度 >= baseSpeed * 0.1（防止完全停止，除非 blocksMovement=true）
-- 最终速度 <= baseSpeed * 3.0（防止速度溢出）
+- 最终速度 <= baseSpeed * 2.0（硬约束：碰撞安全，详见 player-control.md F5）
+- blocksMovement=true 时速度直接归零（绕过 clamp）
 
 **示例**：
 - 基础速度 180，slow(0.5) + speed_boost(1.5) → 180 * 0.75 = 135 px/s
@@ -439,7 +445,7 @@ shared/types.ts ← StatusManager ← GameRoom.update()
 | cc_immune.after_cc.ms | 2000 | 1000-5000 | gate | Boss CC 后免疫时间 |
 | dot.tick.interval.ms | 500 | 250-1000 | gate | DOT tick 频率 |
 | speed.floor.multiplier | 0.1 | 0.05-0.2 | gate | 速度下限倍率 |
-| speed.ceil.multiplier | 3.0 | 2.0-5.0 | gate | 速度上限倍率 |
+| speed.ceil.multiplier | 2.0 | 硬约束 | gate | 速度上限倍率（不可调：player-control.md F5 碰撞安全推导，maxSpeed × dt_max < tileWidth/√2。提高此值会导致碰撞绕过） |
 | boss.cc.duration.multiplier | 0.5 | 0.3-0.7 | gate | Boss CC 持续时间缩放 |
 
 所有调参存放在 `server/config/status-effect-config.ts`，不在 StatusManager 中硬编码。
@@ -485,7 +491,7 @@ shared/types.ts ← StatusManager ← GameRoom.update()
 | typeId | name | duration | flags | stackPolicy | exclusiveGroup | priority | tick |
 |--------|------|----------|-------|-------------|----------------|----------|------|
 | stun | 眩晕 | 1500ms | blocksMovement=true, blocksAttack=true, blocksSkill=true | refresh | hard_cc | 3 | 无 |
-| freeze | 冰冻 | 2000ms | blocksMovement=true, blocksAttack=true, speedMultiplier=0.0 | refresh | hard_cc | 3 | 无 |
+| freeze | 冰冻 | 2000ms | blocksMovement=true, blocksAttack=true | refresh | hard_cc | 3 | 无 |
 | slow | 减速 | 3000ms | speedMultiplier=0.5 | max_duration | — | 1 | 无 |
 | root | 定身 | 2000ms | blocksMovement=true | refresh | hard_cc | 2 | 无 |
 | knockback | 击退 | 瞬时(0ms) | knockbackImmune=true(self) | refresh | — | 0 | 无 |

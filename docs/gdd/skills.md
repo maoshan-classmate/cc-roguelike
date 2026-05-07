@@ -69,13 +69,18 @@
 useSkill(player, skillIndex):
   1. 检查 player.skills[skillIndex] 是否存在
   2. 检查能量：player.energy >= skill.energyCost
-  3. 检查冷却：Date.now() - lastUseTime >= skill.cooldown
+  3. 检查冷却：player.cooldowns[skillIndex] > 0（服务端权威冷却，非 Date.now()）
   4. 检查状态：player.statusManager.getAggregatedFlags().blocksSkill === false
-  5. 扣除能量：player.energy -= skill.energyCost
-  6. 记录冷却时间
+  5. 拒绝时：推送 skill:rejected 事件（reason: 'cooldown'|'energy'|'stunned'|'silenced'|'dead'|'blocked'）
+  6. 成功时：扣除能量、设置冷却、推送 skill:accepted 事件（含 serverTimestamp + effectiveCooldown）
   7. 按 skill.type 路由到对应 handler
-  8. 服务端推送技能使用事件（成功/失败）给客户端
+  8. 冷却同步：服务端发送冷却剩余时间（ms），客户端转换为本地 performance.now() 绝对时间
 ```
+
+> **施法模式分支**（详见 player-control.md 子系统三）：
+> - **即时技能**（Dash/Shield Bash/War Cry/Holy Light/Dodge Roll）：key-down 直接执行上述流程
+> - **AoE 技能**（Arrow Rain/Meteor/Frost Nova/Sanctuary）：key-down 检查条件 + 显示范围预览指示器 → key-up 发送 `{ skill: index, targetPos? }` → 执行上述流程
+> - **输入缓冲**：技能被拒绝时，客户端存入 150ms 缓冲窗口（last-write-wins），条件满足时自动执行
 
 #### 技能 Handler 路由
 

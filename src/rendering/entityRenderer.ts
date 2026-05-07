@@ -309,12 +309,12 @@ export function drawPlayers(
     let spriteIndex = charConfig.spriteIndex.front
     let spriteNameArr = charConfig.spriteName?.front ?? ['']
     let flipH = false
-    if (player.angle !== undefined) {
-      const angle = player.angle
-      if (angle > Math.PI/4 && angle <= 3*Math.PI/4) {
+    const facingAngle = player.aimAngle ?? player.angle
+    if (facingAngle !== undefined) {
+      if (facingAngle > Math.PI/4 && facingAngle <= 3*Math.PI/4) {
         spriteIndex = charConfig.spriteIndex.back
         spriteNameArr = charConfig.spriteName?.back ?? ['']
-      } else if (angle > 3*Math.PI/4 || angle <= -3*Math.PI/4) {
+      } else if (facingAngle > 3*Math.PI/4 || facingAngle <= -3*Math.PI/4) {
         spriteIndex = charConfig.spriteIndex.front
         spriteNameArr = charConfig.spriteName?.front ?? ['']
         flipH = true
@@ -344,7 +344,7 @@ export function drawPlayers(
       ctx.restore()
     }
 
-    const pAngle = player.angle ?? 0
+    const pAngle = player.aimAngle ?? player.angle ?? 0
     const facingRight = pAngle > -Math.PI / 2 && pAngle <= Math.PI / 2
     const charDef = CHARACTER_DEFS[player.characterType as CharacterType]
     const wSprite = charDef?.weaponSprite || 'weapon_knight_sword'

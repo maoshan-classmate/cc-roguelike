@@ -108,7 +108,11 @@ export interface PlayerState {
   skills: SkillId[];
   alive: boolean;
   invincible: number;
-  angle: number;
+  angle: number;           // @deprecated 迁移期保留，由 aimAngle 替代
+  aimAngle: number;        // 鼠标瞄准角度（弧度，替代原 angle）
+  velocity: { x: number; y: number };  // 当前速度向量（加减速惯性模型）
+  cooldowns: number[];     // 各技能冷却剩余时间（ms），索引对应 skills 数组
+  inputBuffer?: { skillIndex: number; timestamp: number };  // 输入缓冲（服务端权威）
   gold: number;
   keys: number;
   statusEffects: SerializedStatusEffect[];

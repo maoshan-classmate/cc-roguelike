@@ -13,6 +13,7 @@ import { ENEMY_DEFS } from '../../shared/enemy-definitions';
 import { ITEM_DEFS, ARENA_HP_MULTIPLIER, ARENA_ATK_MULTIPLIER, ARENA_TRIGGER_CHANCE, ARENA_WAVE_INTER_DELAY, ARENA_WAVE_HP_RECOVERY, ARENA_DORMANT_SPEED_MULTIPLIER, ARENA_RING_OUTER_COL_MIN, ARENA_RING_OUTER_ROW_MIN, ARENA_RING_OUTER_COL_MAX, ARENA_RING_OUTER_ROW_MAX, MAZE_TRIGGER_CHANCE, TRAP_TYPES, TRAP_DETECTION_RADIUS, PILLAR_HP, TILE_SIZE } from '../../shared/constants';
 import { EnemyAI, type EnemyAIDeps } from './enemy/EnemyAI';
 import { StatusManager, type TickContext } from './status/StatusManager';
+import { GameMessages } from '../../shared/protocol';
 
 export type { PlayerState, EnemyState, BulletState, GameState, HealWaveState, BossEvent, DungeonData, GamePhase, EnvObjectState };
 
@@ -95,6 +96,9 @@ export class GameRoom {
       alive: true,
       invincible: 0,
       angle: 0,
+      aimAngle: 0,
+      velocity: { x: 0, y: 0 },
+      cooldowns: [],
       gold: 0,
       keys: 0,
       statusEffects: [],
@@ -295,24 +299,47 @@ export class GameRoom {
     dx: number;
     dy: number;
     angle: number;
+    aimAngle?: number;
     attack?: boolean;
     skill?: number;
+    targetPos?: { x: number; y: number };
     mouseX?: number;
     mouseY?: number;
-  }): void {
+  }, emitEvent?: (event: string, data: unknown) => void): void {
     const player = this.players.get(playerId);
     if (!player || !player.alive) return;
 
     if (input.dx !== undefined) player.dx = input.dx;
     if (input.dy !== undefined) player.dy = input.dy;
-    if (input.angle !== undefined) player.angle = input.angle;
+    // 迁移期双写：aimAngle 优先，fallback 到 angle
+    if (input.aimAngle !== undefined) {
+      player.aimAngle = input.aimAngle;
+      player.angle = input.aimAngle; // 双写兼容
+    } else if (input.angle !== undefined) {
+      player.angle = input.angle;
+      player.aimAngle = input.angle;
+    }
 
     if (input.attack) {
       this.combat.playerAttack(player);
     }
 
     if (input.skill !== undefined) {
-      this.combat.useSkill(player, input.skill);
+      const result = this.combat.useSkill(player, input.skill);
+      if (emitEvent && result) {
+        if (result.accepted) {
+          emitEvent(GameMessages.SKILL_ACCEPTED, {
+            skillIndex: input.skill,
+            serverTimestamp: Date.now(),
+            effectiveCooldown: result.effectiveCooldown,
+          });
+        } else {
+          emitEvent(GameMessages.SKILL_REJECTED, {
+            skillIndex: input.skill,
+            reason: result.reason,
+          });
+        }
+      }
     }
   }
 
@@ -339,27 +366,61 @@ export class GameRoom {
         player.invincible = sm.getAggregatedFlags().invulnerable ? 999 : Math.max(0, player.invincible - dt);
       }
 
-      // Movement — use StatusManager speedMultiplier
+      // Movement — exponential approach model (player-control.md F1)
       const flags = sm?.getAggregatedFlags();
-      const speedMultiplier = flags?.speedMultiplier ?? (player.speedBuff || 1.0);
       const baseSpeed = CHARACTER_DEFS[player.characterType as keyof typeof CHARACTER_DEFS]?.speed || 180;
+      const accelRate = CHARACTER_DEFS[player.characterType as keyof typeof CHARACTER_DEFS]?.accelRate || 50;
 
-      // Skip movement if blocksMovement flag is set
-      if (!flags?.blocksMovement) {
-        const speed = baseSpeed * speedMultiplier * dt;
-        const newX = player.x + player.dx * speed;
-        const newY = player.y + player.dy * speed;
+      if (flags?.blocksMovement) {
+        // blocksMovement: instant stop, bypass acceleration
+        player.velocity.x = 0;
+        player.velocity.y = 0;
+      } else {
+        // Speed multiplier from StatusManager (product of all multipliers)
+        const speedMultiplier = Math.max(0.1, Math.min(2.0, flags?.speedMultiplier ?? 1.0));
+        const targetSpeed = baseSpeed * speedMultiplier;
 
-        // 玩家碰撞半径 16px，用 5 点检测防止穿墙（中心+4角）
+        // Diagonal normalization
+        let inputDx = player.dx;
+        let inputDy = player.dy;
+        const inputLen = Math.sqrt(inputDx * inputDx + inputDy * inputDy);
+        if (inputLen > 1.0) {
+          inputDx /= inputLen;
+          inputDy /= inputLen;
+        }
+
+        // Exponential approach factor
+        const safeDt = Math.min(dt, 0.05);
+        const factor = 1 - Math.exp(-safeDt * accelRate);
+
+        if (inputDx !== 0 || inputDy !== 0) {
+          // Accelerate toward target velocity
+          const targetVx = inputDx * targetSpeed;
+          const targetVy = inputDy * targetSpeed;
+          player.velocity.x += (targetVx - player.velocity.x) * factor;
+          player.velocity.y += (targetVy - player.velocity.y) * factor;
+        } else {
+          // Decelerate toward zero
+          player.velocity.x += (0 - player.velocity.x) * factor;
+          player.velocity.y += (0 - player.velocity.y) * factor;
+          if (Math.abs(player.velocity.x) < 1.0 && Math.abs(player.velocity.y) < 1.0) {
+            player.velocity.x = 0;
+            player.velocity.y = 0;
+          }
+        }
+
+        // Position update (velocity is in px/s, multiply by dt)
+        const newX = player.x + player.velocity.x * dt;
+        const newY = player.y + player.velocity.y * dt;
+
+        // Collision detection (5-point + wall sliding)
         const PLAYER_RADIUS = 16;
         if (this.isWalkableRadius(newX, newY, PLAYER_RADIUS)) {
           player.x = newX;
           player.y = newY;
         } else if (this.isWalkableRadius(newX, player.y, PLAYER_RADIUS)) {
-          // Slide along X
           player.x = newX;
         } else if (this.isWalkableRadius(player.x, newY, PLAYER_RADIUS)) {
-          // Slide along Y
           player.y = newY;
         }
 
@@ -374,10 +435,8 @@ export class GameRoom {
           if (obj.type !== 'pillar' || !obj.alive) continue;
           const hw = obj.width / 2, hh = obj.height / 2;
           const px = obj.x - hw, py = obj.y - hh;
-          // Check if player center is inside pillar rect (with player radius)
           if (player.x + PLAYER_RADIUS > px && player.x - PLAYER_RADIUS < px + obj.width
             && player.y + PLAYER_RADIUS > py && player.y - PLAYER_RADIUS < py + obj.height) {
-            // Push out on the axis with least overlap
             const overlapL = (player.x + PLAYER_RADIUS) - px;
             const overlapR = (px + obj.width) - (player.x - PLAYER_RADIUS);
             const overlapT = (player.y + PLAYER_RADIUS) - py;
@@ -388,6 +447,13 @@ export class GameRoom {
             else if (minOverlap === overlapT) player.y = py - PLAYER_RADIUS;
             else player.y = py + obj.height + PLAYER_RADIUS;
           }
+        }
+      }
+
+      // Cooldown tick: decrement remaining cooldowns
+      for (let i = 0; i < player.cooldowns.length; i++) {
+        if (player.cooldowns[i] > 0) {
+          player.cooldowns[i] = Math.max(0, player.cooldowns[i] - dt * 1000);
         }
       }
 

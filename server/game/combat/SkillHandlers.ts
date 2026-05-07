@@ -18,16 +18,18 @@ export type SkillHandler = (ctx: SkillContext) => void;
 function handleDash(ctx: SkillContext): void {
   const { player, skill, sm, deps } = ctx;
   const dashDist = skill.value || 200;
-  const dashX = player.x + Math.cos(player.angle) * dashDist;
-  const dashY = player.y + Math.sin(player.angle) * dashDist;
+  // Dash direction: aimAngle (mouse direction), not movement direction
+  const dashAngle = player.aimAngle ?? player.angle;
+  const dashX = player.x + Math.cos(dashAngle) * dashDist;
+  const dashY = player.y + Math.sin(dashAngle) * dashDist;
 
   if (deps.isWalkable(dashX, dashY)) {
     player.x = dashX;
     player.y = dashY;
   } else {
     const halfDist = dashDist / 2;
-    const halfX = player.x + Math.cos(player.angle) * halfDist;
-    const halfY = player.y + Math.sin(player.angle) * halfDist;
+    const halfX = player.x + Math.cos(dashAngle) * halfDist;
+    const halfY = player.y + Math.sin(dashAngle) * halfDist;
     if (deps.isWalkable(halfX, halfY)) {
       player.x = halfX;
       player.y = halfY;
@@ -79,9 +81,9 @@ function handleShieldBash(ctx: SkillContext): void {
 
     if (dist > range + 20) continue;
 
-    // Check arc (front-facing 90)
+    // Check arc (front-facing 90° centered on aimAngle)
     const angle = Math.atan2(dy, dx);
-    const diff = normalizeAngleDiff(angle, player.angle);
+    const diff = normalizeAngleDiff(angle, player.aimAngle ?? player.angle);
 
     if (Math.abs(diff) < Math.PI / 4) {
       // Apply knockback (instant position push)
@@ -156,8 +158,9 @@ function handleArrowRain(ctx: SkillContext): void {
   const damageMult = skill.damageMult || 0.5;
   const delay = 500;
 
-  const targetX = player.x + Math.cos(player.angle) * 150;
-  const targetY = player.y + Math.sin(player.angle) * 150;
+  const aimAngle = player.aimAngle ?? player.angle;
+  const targetX = player.x + Math.cos(aimAngle) * 150;
+  const targetY = player.y + Math.sin(aimAngle) * 150;
 
   const pAttack = player.attack;
   const pId = player.id;
@@ -211,9 +214,10 @@ function handleMeteor(ctx: SkillContext): void {
   const delay = skill.duration || 1000;
   const maxRange = skill.range || 300;
 
+  const aimAngle = player.aimAngle ?? player.angle;
   const meteorTarget = clampToDungeon(
-    player.x + Math.cos(player.angle) * maxRange,
-    player.y + Math.sin(player.angle) * maxRange,
+    player.x + Math.cos(aimAngle) * maxRange,
+    player.y + Math.sin(aimAngle) * maxRange,
   );
   const targetX = meteorTarget.x;
   const targetY = meteorTarget.y;
