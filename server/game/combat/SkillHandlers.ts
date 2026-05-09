@@ -1,8 +1,11 @@
 import type { PlayerState, SkillType } from '../../../shared/types';
 import type { SkillTemplate } from '../../config/constants';
+import { GAME_CONFIG } from '../../config/constants';
 import type { StatusManager } from '../status/StatusManager';
 import type { CombatDeps } from './Combat';
 import { clampToDungeon, normalizeAngleDiff } from '../../utils/math';
+
+const PLAYER_RADIUS = GAME_CONFIG.PLAYER_BASE.radius;
 
 export interface SkillContext {
   player: PlayerState;
@@ -19,23 +22,29 @@ export type SkillHandler = (ctx: SkillContext) => void;
 function handleDash(ctx: SkillContext): void {
   const { player, skill, sm, deps } = ctx;
   const dashDist = skill.value || 200;
-  // Dash direction: aimAngle (mouse direction), not movement direction
   const dashAngle = player.aimAngle ?? player.angle;
-  const dashX = player.x + Math.cos(dashAngle) * dashDist;
-  const dashY = player.y + Math.sin(dashAngle) * dashDist;
+  const dirX = Math.cos(dashAngle);
+  const dirY = Math.sin(dashAngle);
 
-  if (deps.isWalkable(dashX, dashY)) {
-    player.x = dashX;
-    player.y = dashY;
-  } else {
-    const halfDist = dashDist / 2;
-    const halfX = player.x + Math.cos(dashAngle) * halfDist;
-    const halfY = player.y + Math.sin(dashAngle) * halfDist;
-    if (deps.isWalkable(halfX, halfY)) {
-      player.x = halfX;
-      player.y = halfY;
+  // Stepped collision: move in 20px increments, stop at first wall
+  const stepSize = 20;
+  const steps = Math.ceil(dashDist / stepSize);
+  let bestX = player.x, bestY = player.y;
+
+  for (let s = 1; s <= steps; s++) {
+    const dist = Math.min(s * stepSize, dashDist);
+    const tryX = player.x + dirX * dist;
+    const tryY = player.y + dirY * dist;
+    if (deps.isWalkableRadius(tryX, tryY, PLAYER_RADIUS)) {
+      bestX = tryX;
+      bestY = tryY;
+    } else {
+      break;
     }
   }
+
+  player.x = bestX;
+  player.y = bestY;
   const clamped = clampToDungeon(player.x, player.y);
   player.x = clamped.x;
   player.y = clamped.y;
@@ -53,7 +62,7 @@ function handleWarCry(ctx: SkillContext): void {
 
   // Taunt all enemies in radius
   for (const enemy of state.enemies) {
-    if (!enemy.alive) continue;
+    if (!enemy.alive || enemy.dormant) continue;
     const dist = Math.hypot(enemy.x - player.x, enemy.y - player.y);
     if (dist <= radius) {
       const esm = deps.getEnemyStatus(enemy.id);
@@ -111,44 +120,61 @@ function handleDodgeRoll(ctx: SkillContext): void {
   const rollAngle = (player.dx !== 0 || player.dy !== 0)
     ? Math.atan2(player.dy, player.dx)
     : player.angle;
+  const dirX = Math.cos(rollAngle);
+  const dirY = Math.sin(rollAngle);
 
-  const rollX = player.x + Math.cos(rollAngle) * rollDist;
-  const rollY = player.y + Math.sin(rollAngle) * rollDist;
+  // Stepped collision: move in 20px increments, stop at first wall
+  const stepSize = 20;
+  const steps = Math.ceil(rollDist / stepSize);
+  let bestX = player.x, bestY = player.y;
 
-  if (deps.isWalkable(rollX, rollY)) {
-    player.x = rollX;
-    player.y = rollY;
-  } else {
-    const halfDist = rollDist / 2;
-    const halfX = player.x + Math.cos(rollAngle) * halfDist;
-    const halfY = player.y + Math.sin(rollAngle) * halfDist;
-    if (deps.isWalkable(halfX, halfY)) {
-      player.x = halfX;
-      player.y = halfY;
+  for (let s = 1; s <= steps; s++) {
+    const dist = Math.min(s * stepSize, rollDist);
+    const tryX = player.x + dirX * dist;
+    const tryY = player.y + dirY * dist;
+    if (deps.isWalkableRadius(tryX, tryY, PLAYER_RADIUS)) {
+      bestX = tryX;
+      bestY = tryY;
+    } else {
+      break;
     }
   }
+
+  player.x = bestX;
+  player.y = bestY;
   const rollClamped = clampToDungeon(player.x, player.y);
   player.x = rollClamped.x;
   player.y = rollClamped.y;
+
+  // Save landing position for persistent trap
+  const landX = player.x;
+  const landY = player.y;
 
   // Iframes during roll
   sm?.apply('iframes', player.id, 0, 400);
   player.invincible = 0.4;
 
-  // Place slow trap at landing position (via applying slow to enemies when they enter range)
-  // For now, apply slow to enemies already at landing position
+  // Persistent slow trap at landing position
   const trapRadius = skill.trapRadius || 40;
   const trapDuration = skill.trapDuration || 3000;
   const trapSlow = skill.trapSlow || 0.5;
-  const state = deps.getState();
+  const checkInterval = 500;
+  const ticks = Math.ceil(trapDuration / checkInterval);
+  const pId = player.id;
 
-  for (const enemy of state.enemies) {
-    if (!enemy.alive) continue;
-    const dist = Math.hypot(enemy.x - player.x, enemy.y - player.y);
-    if (dist <= trapRadius) {
-      const esm = deps.getEnemyStatus(enemy.id);
-      esm?.apply('slow', player.id, trapSlow, trapDuration);
-    }
+  for (let t = 0; t < ticks; t++) {
+    setTimeout(() => {
+      const state = deps.getState();
+      for (const enemy of state.enemies) {
+        if (!enemy.alive) continue;
+        const dist = Math.hypot(enemy.x - landX, enemy.y - landY);
+        if (dist <= trapRadius) {
+          const esm = deps.getEnemyStatus(enemy.id);
+          const remainingMs = trapDuration - t * checkInterval;
+          esm?.apply('slow', pId, trapSlow, Math.max(remainingMs, checkInterval + 200));
+        }
+      }
+    }, t * checkInterval);
   }
 }
 

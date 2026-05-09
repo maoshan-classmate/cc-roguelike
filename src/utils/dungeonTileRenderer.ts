@@ -71,8 +71,16 @@ function drawWallTiles(
 
       if (!adjFloor) continue
 
-      const hasLeftWall = c > 0 && !grid[r][c - 1]
-      const sprite = hasLeftWall ? 'wall_right' : 'wall_mid'
+      const leftIsFloor = c > 0 && grid[r][c - 1]
+      const rightIsFloor = c < cols - 1 && grid[r][c + 1]
+      let sprite: string
+      if (leftIsFloor) {
+        sprite = 'wall_left'
+      } else if (rightIsFloor) {
+        sprite = 'wall_right'
+      } else {
+        sprite = 'wall_mid'
+      }
 
       // 朝向房间内部的面有亮边（地板上方/下方的墙壁），裁掉顶部2源像素的亮边
       if (above || below) {
@@ -250,6 +258,21 @@ export function renderDungeonFromRooms(
       const r = Math.floor(tile.y / TILE)
       if (r >= 0 && r < rows && c >= 0 && c < cols) {
         grid[r][c] = true
+      }
+    }
+  }
+
+  // Exclude pillar/envObject areas from walkable grid
+  if (excludeRects) {
+    for (const rect of excludeRects) {
+      const startCol = Math.floor((rect.x - rect.width / 2) / TILE)
+      const startRow = Math.floor((rect.y - rect.height / 2) / TILE)
+      const endCol = Math.ceil((rect.x + rect.width / 2) / TILE)
+      const endRow = Math.ceil((rect.y + rect.height / 2) / TILE)
+      for (let r = startRow; r < endRow && r < rows; r++) {
+        for (let c = startCol; c < endCol && c < cols; c++) {
+          if (r >= 0 && c >= 0) grid[r][c] = false
+        }
       }
     }
   }

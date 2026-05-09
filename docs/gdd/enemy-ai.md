@@ -29,14 +29,19 @@
 ## Formulas
 
 **仇恨检测**：
-- 无范围限制——始终追踪全局最近存活玩家
-- 每个服务端 tick（20Hz）重新计算最近目标
-- `nearestPlayer = argmin(players.alive, dist(enemy, player))`
+- 每种敌人有 `aggroRange`（定义于 `ENEMY_DEFS`），玩家进入 aggroRange **且** 视线可达 → 产生仇恨，进入 chase
+- **威胁表**（Threat Table）：`EnemyState.threatTable` — 累加制，被攻击时 `threatTable[attackerId] += damage`
+- **目标选择**：威胁表最高威胁的存活玩家 > 最近距离玩家
+- **威胁衰减**：每 tick -1（约 -20/s），50 tick 清零
+- **仇恨记忆 + Leash**：已有目标时 leash = `aggroRange × 2`，超出脱战，清 aggroTargetId + threatTable
+- **目标锁定**：选定目标后锁定 500ms，期间不切换；目标死亡立即解锁
+- **视线检测**：首次进入 aggroRange 时检查 `hasLineOfSight`（射线步进 8px），无视线不产生仇恨。已在 chase 不受视线限制。ghost 跳过视线
+- **被攻击产生仇恨**：`damageEnemy` 收到 `attackerId` 时调 `addThreat`，远程/近战/DOT 均产生仇恨
 
 **攻击频率**：
-- 无显式冷却——每 tick 尝试攻击，受玩家无敌帧限制
-- 有效攻击间隔 = 0.5s（`player.invincible` 持续时间）
-- 每秒最大伤害 = `enemy.attack × 2`（basic=16/s, boss=50/s）
+- 显式冷却 per type：`ENEMY_DEFS[type].attackCooldown`（basic=1000ms, fast=800ms, ghost=1200ms, tank=1500ms, boss=500ms）
+- 近战攻击范围：普通敌人 30px，Boss 40px
+- 接触碰撞伤害：玩家-敌人距离 < 双方 radius 之和时触发 30% attack 伤害，0.5s 冷却
 
 **移动算法**（直接追踪 + 墙壁滑行）：
 ```
@@ -52,8 +57,9 @@
 **状态机**（普通敌人）：
 | 状态 | 转换条件 | 持续时间 |
 |------|---------|---------|
-| idle → chase | 首次 tick（无 aggro 范围，立即触发） | 持续 |
-| chase → attack | dist ≤ 30px | 直到 dist > 30px |
+| idle → chase | 玩家进入 aggroRange 且视线可达（或被攻击产生仇恨） | 持续 |
+| chase → attack | dist ≤ 30px 且 attackCooldown 已过 | 直到 dist > 30px |
+| chase → idle | 超出 leash（aggroRange × 2）且无威胁表 | 重置仇恨 |
 | attack → chase | dist > 30px | 持续 |
 | any → dying | hp ≤ 0 | 500ms（deathTimer） |
 | dying → alive=false | deathTimer ≤ 0 | 永久 |
@@ -63,6 +69,7 @@
 |------|---------|------|
 | idle | 脱战（>`ENEMY_DEFS.boss.aggroRange` 即 400px，无蓄力） | 重置技能计时器 |
 | chase | 有玩家在 aggroRange 内 | 速度 50px/s |
+| chase | 被嘲讽（forcedTarget） | Boss 受嘲讽影响，追击嘲讽者 |
 | casting | 蓄力中（弹幕500ms/震地800ms） | 不可被脱战中断 |
 | attack | 近战冷却 500ms | 距离 ≤ 40px |
 | phase2 | HP ≤ 50% | 回复20% HP，弹幕/震地冷却缩短 |
@@ -75,10 +82,10 @@
 
 | 优先级 | 优化项 | 描述 | 预期效果 |
 |--------|--------|------|---------|
-| P0 | **仇恨范围** ✅ 2026-05-03 | 已实现于 `GameRoom.ts updateEnemy()`，`ENEMY_DEFS[type].aggroRange` 配置 | 避免"全图感知"，增加潜行/策略空间 |
+| P0 | **仇恨范围** ✅ 2026-05-03 → ✅ 2026-05-09 增强 | aggroRange + 视线检测 + 威胁表 + Leash 脱战 + 目标锁定 + 被攻击产生仇恨 | 完整仇恨系统，支持策略性仇恨管理 |
 | P0 | **攻击冷却** ✅ 2026-05-03 | 已实现，EnemyState 新增 `lastAttackTime`，`ENEMY_DEFS[type].attackCooldown` 配置 | 敌人间攻击节奏差异化 |
 | P0 | **Ghost 穿墙** ✅ 2026-05-03 | ghost 类型跳过 `isWalkableRadius`，仅检查地图边界 | 差异化敌人行为，增加战术压力 |
-| P1 | **Boss 攻击模式** ✅ 2026-05-03 | `updateBossEnemy()` 实现3种攻击（近战+5颗扇形弹幕+震地AoE）+两阶段切换(HP<50%回复20%+加速)+蓄力前摇(弹幕500ms/震地800ms)+避障逃逸+脱战机制+动作切换(idle/run/casting帧) | Boss 战成为 floor 高潮而非大号普通怪 |
+| P1 | **Boss 攻击模式** ✅ 2026-05-03 → ✅ 2026-05-09 增强 | `updateBossEnemy()` 实现3种攻击（近战+5颗扇形弹幕+震地AoE）+两阶段切换+蓄力前摇+避障逃逸+脱战机制+嘲讽支持 | Boss 战成为 floor 高潮而非大号普通怪 |
 | P1 | **分类型 AI** ✅ 2026-05-03 | boss独立AI方法，tank减伤40%，fast闪避20%，ghost穿墙，basic/fast共用追击 | 每种敌人有独特体验 |
 | P2 | **A* 寻路** | 替代直接追踪，支持绕障碍物追击 | 避免敌人卡在墙角 |
 | P2 | **脱战机制** ✅ 2026-05-03 | Boss超出aggroRange(400px)后idle，重置技能计时器 | 允许玩家撤退/战术重整 |
@@ -105,6 +112,12 @@
 | basic 速度 | 60 px/s | 30-120 | 移动速率 |
 | boss HP | 800 | 200-1000 | Boss 战时长 |
 | boss ATK | 25 | 10-50 | Boss 伤害 |
+| 威胁衰减速率 | -1/tick (~-20/s) | 0-50 | 仇恨记忆持久度 |
+| 目标锁定时间 | 500ms | 0-2000 | 防止目标抖动 |
+| Leash 倍率 | aggroRange × 2 | 1-4 | 追击距离上限 |
+| 视线步进 | 8px | 4-16 | 精度/性能 |
+| 接触伤害倍率 | 30% | 10-50% | 近身惩罚 |
+| 接触伤害冷却 | 500ms | 200-1000 | 接触频率 |
 
 ## Acceptance Criteria
 

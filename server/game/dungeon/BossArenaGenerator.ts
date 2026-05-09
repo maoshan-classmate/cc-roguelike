@@ -82,7 +82,17 @@ export const bossArenaGenerator: TerrainGenerator = {
         hp: PILLAR_HP,
         hpMax: PILLAR_HP,
       });
-      // Don't mark collision grid — pillar collision handled via entity-based rect check
+      // Bake pillar collision into grid so EnemyAI and bullets respect pillars
+      const col = Math.floor(pos.x / TILE_SIZE);
+      const row = Math.floor(pos.y / TILE_SIZE);
+      for (let dr = 0; dr < 2; dr++) {
+        for (let dc = 0; dc < 2; dc++) {
+          const r = row + dr, c = col + dc;
+          if (r >= 0 && r < MAP_ROWS && c >= 0 && c < MAP_COLS) {
+            collisionGrid[r][c] = false;
+          }
+        }
+      }
     }
 
     // Decorations using atlas sprites that match dungeon theme

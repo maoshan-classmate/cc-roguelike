@@ -305,15 +305,21 @@ export class DungeonGenerator implements TerrainGenerator {
       }
     }
 
-    // Mark corridors
+    // Mark corridors — pad only perpendicular to corridor direction to avoid fat corners
     const corridorPadding = 1;
     for (const corridor of corridors) {
-      const minC = Math.floor(Math.min(corridor.x1, corridor.x2) / TILE_SIZE) - corridorPadding;
-      const maxC = Math.floor(Math.max(corridor.x1, corridor.x2) / TILE_SIZE) + corridorPadding;
-      const minR = Math.floor(Math.min(corridor.y1, corridor.y2) / TILE_SIZE) - corridorPadding;
-      const maxR = Math.floor(Math.max(corridor.y1, corridor.y2) / TILE_SIZE) + corridorPadding;
-      for (let r = minR; r <= maxR && r < rows; r++) {
-        for (let c = minC; c <= maxC && c < cols; c++) {
+      const minC = Math.floor(Math.min(corridor.x1, corridor.x2) / TILE_SIZE);
+      const maxC = Math.floor(Math.max(corridor.x1, corridor.x2) / TILE_SIZE);
+      const minR = Math.floor(Math.min(corridor.y1, corridor.y2) / TILE_SIZE);
+      const maxR = Math.floor(Math.max(corridor.y1, corridor.y2) / TILE_SIZE);
+      const isHorizontal = Math.abs(corridor.y1 - corridor.y2) < TILE_SIZE;
+      // Horizontal: pad rows; Vertical: pad cols
+      const rMin = isHorizontal ? minR - corridorPadding : minR;
+      const rMax = isHorizontal ? maxR + corridorPadding : maxR;
+      const cMin = isHorizontal ? minC : minC - corridorPadding;
+      const cMax = isHorizontal ? maxC : maxC + corridorPadding;
+      for (let r = rMin; r <= rMax && r < rows; r++) {
+        for (let c = cMin; c <= cMax && c < cols; c++) {
           if (r >= 0 && c >= 0) grid[r][c] = true;
         }
       }
@@ -532,7 +538,7 @@ export class DungeonGenerator implements TerrainGenerator {
 
   /**
    * 将走廊线段光栅化为瓦片坐标列表（用于客户端渲染）
-   * corridorPadding 与碰撞网格一致（1 tile 宽度扩展）
+   * corridorPadding 与碰撞网格一致 — 只沿垂直方向扩展
    */
   private generateCorridorTiles(corridors: Corridor[], mapW: number, mapH: number): { x: number; y: number }[] {
     const tileSize = 32;
@@ -542,15 +548,19 @@ export class DungeonGenerator implements TerrainGenerator {
     const tiles = new Set<string>();
 
     for (const corridor of corridors) {
-      const minC = Math.floor(Math.min(corridor.x1, corridor.x2) / tileSize) - corridorPadding;
-      const maxC = Math.floor(Math.max(corridor.x1, corridor.x2) / tileSize) + corridorPadding;
-      const minR = Math.floor(Math.min(corridor.y1, corridor.y2) / tileSize) - corridorPadding;
-      const maxR = Math.floor(Math.max(corridor.y1, corridor.y2) / tileSize) + corridorPadding;
+      const minC = Math.floor(Math.min(corridor.x1, corridor.x2) / tileSize);
+      const maxC = Math.floor(Math.max(corridor.x1, corridor.x2) / tileSize);
+      const minR = Math.floor(Math.min(corridor.y1, corridor.y2) / tileSize);
+      const maxR = Math.floor(Math.max(corridor.y1, corridor.y2) / tileSize);
+      const isHorizontal = Math.abs(corridor.y1 - corridor.y2) < tileSize;
+      const rMin = isHorizontal ? minR - corridorPadding : minR;
+      const rMax = isHorizontal ? maxR + corridorPadding : maxR;
+      const cMin = isHorizontal ? minC : minC - corridorPadding;
+      const cMax = isHorizontal ? maxC : maxC + corridorPadding;
 
-      for (let r = minR; r <= maxR && r < rows; r++) {
-        for (let c = minC; c <= maxC && c < cols; c++) {
+      for (let r = rMin; r <= rMax && r < rows; r++) {
+        for (let c = cMin; c <= cMax && c < cols; c++) {
           if (r >= 0 && c >= 0) {
-            // 瓦片像素中心坐标
             tiles.add(`${c * tileSize + tileSize / 2},${r * tileSize + tileSize / 2}`);
           }
         }

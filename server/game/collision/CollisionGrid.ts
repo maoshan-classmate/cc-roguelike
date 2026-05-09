@@ -51,6 +51,20 @@ export class CollisionGrid {
       && this.isWalkable(x + radius, y + radius);
   }
 
+  hasLineOfSight(x1: number, y1: number, x2: number, y2: number): boolean {
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const dist = Math.hypot(dx, dy);
+    const steps = Math.ceil(dist / 8);
+    for (let i = 1; i < steps; i++) {
+      const t = i / steps;
+      const px = x1 + dx * t;
+      const py = y1 + dy * t;
+      if (!this.isWalkable(px, py)) return false;
+    }
+    return true;
+  }
+
   separateEnemies(enemies: { x: number; y: number; type: string; alive: boolean }[]): void {
     const separationForce = 0.5;
     for (let i = 0; i < enemies.length; i++) {
@@ -60,9 +74,19 @@ export class CollisionGrid {
         const minDist = r1 + r2;
         const dx = e2.x - e1.x, dy = e2.y - e1.y;
         const dist = Math.hypot(dx, dy);
-        if (dist < minDist && dist > 0) {
-          const overlap = minDist - dist;
-          const dirX = dx / dist, dirY = dy / dist;
+        if (dist < minDist) {
+          let dirX: number, dirY: number, overlap: number;
+          if (dist === 0) {
+            // Enemies at same position — apply random separation direction
+            const angle = Math.random() * Math.PI * 2;
+            dirX = Math.cos(angle);
+            dirY = Math.sin(angle);
+            overlap = minDist;
+          } else {
+            dirX = dx / dist;
+            dirY = dy / dist;
+            overlap = minDist - dist;
+          }
           const totalR = r1 + r2;
           const push1 = overlap * (r2 / totalR) * separationForce;
           const push2 = overlap * (r1 / totalR) * separationForce;

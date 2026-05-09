@@ -368,7 +368,11 @@ export function drawPlayers(
     const smoothHp = Math.abs(hpDiff) < 0.5 ? player.hp : displayHp + hpDiff * 0.15
     displayHpRef.set(hpKey, smoothHp)
 
-    drawHPBar(ctx, ppos.x - 24, ppos.y - 34, 48, 6, smoothHp, player.hpMax, charConfig.color)
+    drawHPBar(ctx, ppos.x - 24, ppos.y - 36, 48, 6, smoothHp, player.hpMax, '#CC2222')
+    // Energy bar — only for local player, below HP bar
+    if (isLocal && player.energyMax > 0) {
+      drawHPBar(ctx, ppos.x - 24, ppos.y - 28, 48, 6, player.energy, player.energyMax, '#4488CC')
+    }
     drawNameTag(ctx, ppos.x, ppos.y - 40, player.name, charConfig.color)
   }
 }

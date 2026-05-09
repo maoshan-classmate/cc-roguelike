@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { networkClient } from '../network/socket'
 import { GameMessages } from '@shared/protocol'
 import { SFX_IDS, type SfxId } from '../audio/sfx'
+import { SKILL_INFO } from '../config/skills'
 
 export interface SkillPreviewState {
   active: boolean
@@ -26,9 +27,9 @@ interface UseGameInputDeps {
   setShowDebug: React.Dispatch<React.SetStateAction<boolean>>
   playDash: () => void
   play: (id: SfxId) => void
-  onSkillCast?: (skillIndex: number) => void
+  onSkillCast?: (skillIndex: number, targetPos?: { x: number; y: number }) => void
   onSkillPreview?: (preview: SkillPreviewState | null) => void
-  getLocalPlayer?: () => { x: number; y: number; aimAngle: number; skills: string[] } | undefined
+  getLocalPlayer?: () => { x: number; y: number; aimAngle: number; skills: string[]; energy: number } | undefined
   isSkillOnCooldown?: (skillIndex: number) => boolean
 }
 
@@ -69,6 +70,9 @@ export function useGameInput(deps: UseGameInputDeps): void {
         } else {
           // Instant skill: fire immediately on key-down
           if (isSkillOnCooldown?.(skillIndex)) return
+          // Local energy pre-check: don't fire if insufficient energy
+          const skillInfo = SKILL_INFO[skillId]
+          if (skillInfo && player.energy < skillInfo.energyCost) return
           networkClient.emit(GameMessages.INPUT, { skill: skillIndex })
           onSkillCast?.(skillIndex)
           switch (skillId) {
@@ -101,6 +105,12 @@ export function useGameInput(deps: UseGameInputDeps): void {
             onSkillPreview?.(null)
             return
           }
+          // Local energy pre-check
+          const skillInfo = SKILL_INFO[skillId]
+          if (skillInfo && player.energy < skillInfo.energyCost) {
+            onSkillPreview?.(null)
+            return
+          }
           // 鼠标 canvas 坐标即世界坐标（无相机变换）
           let targetPos: { x: number; y: number } | undefined
           const canvas = canvasRef.current
@@ -111,7 +121,7 @@ export function useGameInput(deps: UseGameInputDeps): void {
             }
           }
           networkClient.emit(GameMessages.INPUT, { skill: skillIndex, targetPos })
-          onSkillCast?.(skillIndex)
+          onSkillCast?.(skillIndex, targetPos)
           onSkillPreview?.(null)
           play(SFX_IDS.SKILL_HEAL)
         } else {

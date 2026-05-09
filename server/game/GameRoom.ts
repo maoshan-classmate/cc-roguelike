@@ -29,6 +29,7 @@ export class GameRoom {
   private dungeonGenerator: DungeonGenerator;
   private combat: Combat;
   private enemyAI: EnemyAI;
+  private playerLastEnergyUse: Map<string, number> = new Map();
   private currentDungeon: DungeonData | null = null;
   private _gameOver: boolean = false;
   private _victory: boolean = false;
@@ -292,6 +293,8 @@ export class GameRoom {
       bossCastTimer: type === 'boss' ? 0 : undefined,
       bossTargetAngle: type === 'boss' ? 0 : undefined,
       statusEffects: [],
+      lastAggroTime: 0,
+      targetLockUntil: 0,
     };
   }
 
@@ -362,8 +365,11 @@ export class GameRoom {
           restoreEnergy: (_id: string, amount: number) => { player.energy = Math.min(player.energyMax, player.energy + amount); },
         };
         sm.tick(dt * 1000, ctx);
-        // Dual-write: sync invulnerable flag to old invincible field
-        player.invincible = sm.getAggregatedFlags().invulnerable ? 999 : Math.max(0, player.invincible - dt);
+        // Decrement legacy invincible only when NOT invulnerable via StatusManager
+        // (damagePlayer checks both, so no need to sync invulnerable→999)
+        if (!sm.getAggregatedFlags().invulnerable) {
+          player.invincible = Math.max(0, player.invincible - dt);
+        }
       }
 
       // Movement — exponential approach model (player-control.md F1)
@@ -414,7 +420,7 @@ export class GameRoom {
         const newY = player.y + player.velocity.y * dt;
 
         // Collision detection (5-point + wall sliding)
-        const PLAYER_RADIUS = 16;
+        const PLAYER_RADIUS = GAME_CONFIG.PLAYER_BASE.radius;
         if (this.isWalkableRadius(newX, newY, PLAYER_RADIUS)) {
           player.x = newX;
           player.y = newY;
@@ -427,8 +433,8 @@ export class GameRoom {
         // Clamp to dungeon bounds
         const W = GAME_CONFIG.DUNGEON_WIDTH;
         const H = GAME_CONFIG.DUNGEON_HEIGHT;
-        player.x = Math.max(16, Math.min(W - 16, player.x));
-        player.y = Math.max(16, Math.min(H - 16, player.y));
+        player.x = Math.max(PLAYER_RADIUS, Math.min(W - PLAYER_RADIUS, player.x));
+        player.y = Math.max(PLAYER_RADIUS, Math.min(H - PLAYER_RADIUS, player.y));
 
         // Pillar collision: push player out of alive pillar rects
         for (const obj of this.envObjects) {
@@ -457,15 +463,11 @@ export class GameRoom {
         }
       }
 
-      // Energy regen (respect energyRegenMultiplier from status)
+      // Energy regen (respect energyRegenMultiplier from status + delay after last use)
       const energyRegenMult = flags?.energyRegenMultiplier ?? 1.0;
-      if (player.energy < player.energyMax) {
+      const lastEnergyUse = this.playerLastEnergyUse.get(player.id) || 0;
+      if (player.energy < player.energyMax && Date.now() - lastEnergyUse >= GAME_CONFIG.ENERGY_REGEN_DELAY) {
         player.energy = Math.min(player.energyMax, player.energy + GAME_CONFIG.ENERGY_REGEN * dt * energyRegenMult);
-      }
-
-      // Invincibility timer (legacy, dual-write transition)
-      if (player.invincible > 0 && !sm?.getAggregatedFlags().invulnerable) {
-        player.invincible -= dt;
       }
 
       // Speed buff timer (legacy, dual-write transition)
@@ -495,7 +497,7 @@ export class GameRoom {
       if (esm) {
         const ctx: TickContext = {
           entityId: enemy.id,
-          dealDamage: (_id: string, amount: number) => { this.damageEnemy(enemy.id, amount); },
+          dealDamage: (_id: string, amount: number, sourceId?: string) => { this.damageEnemy(enemy.id, amount, sourceId); },
           healTarget: (_id: string, amount: number) => { enemy.hp = Math.min(enemy.hpMax, enemy.hp + amount); },
           restoreEnergy: () => {},
         };
@@ -507,6 +509,12 @@ export class GameRoom {
 
     // Separate overlapping enemies
     this.separateEnemies();
+
+    // Contact collision damage
+    const contactPlayers = Array.from(this.players.values()).filter(p => p.alive);
+    for (const enemy of this.enemies.values()) {
+      this.enemyAI.applyContactDamage(enemy, contactPlayers);
+    }
 
     // Tick environment objects (traps, etc.)
     this.tickEnvObjects(dt);
@@ -800,6 +808,8 @@ export class GameRoom {
       state: 'idle',
       dormant: true,
       statusEffects: [],
+      lastAggroTime: 0,
+      targetLockUntil: 0,
     };
   }
 
@@ -1129,6 +1139,14 @@ export class GameRoom {
     return this.collisionGrid.isWalkableRadius(x, y, radius);
   }
 
+  hasLineOfSight(x1: number, y1: number, x2: number, y2: number): boolean {
+    return this.collisionGrid.hasLineOfSight(x1, y1, x2, y2);
+  }
+
+  trackEnergyUse(playerId: string): void {
+    this.playerLastEnergyUse.set(playerId, Date.now());
+  }
+
   getState(): GameState {
     // Serialize player status effects
     const players = Array.from(this.players.values()).map(p => {
@@ -1223,11 +1241,6 @@ export class GameRoom {
       this.triggerArenaCombat();
     }
 
-    // Track last attacker for trap kill attribution
-    if (attackerId) {
-      enemy.lastAttackerId = attackerId;
-    }
-
     // Check invulnerable via StatusManager
     const esm = this.enemyStatus.get(enemyId);
     if (esm?.getAggregatedFlags().invulnerable) return;
@@ -1242,6 +1255,12 @@ export class GameRoom {
     // Apply damageMultiplier from StatusManager (vulnerable/shield)
     const dmgMult = esm?.getAggregatedFlags().damageMultiplier ?? 1.0;
     effectiveDamage = Math.round(effectiveDamage * dmgMult);
+
+    // Track last attacker for trap kill attribution + threat table
+    if (attackerId) {
+      enemy.lastAttackerId = attackerId;
+      this.enemyAI.addThreat(enemy, attackerId, effectiveDamage);
+    }
 
     enemy.hp -= effectiveDamage;
     if (enemy.hp <= 0) {

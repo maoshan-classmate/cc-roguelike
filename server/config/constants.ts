@@ -24,7 +24,7 @@ export const GAME_CONFIG = {
     maxEnergy: 50,
     armor: 0,
     pickupRange: 50,
-    radius: 20
+    radius: 10
   },
 
   // 战斗
@@ -109,7 +109,7 @@ export const SKILL_TEMPLATES: Record<string, SkillTemplate> = {
   shield_bash: { name: '盾击', type: 'knockback', cooldown: 5000, energyCost: 25, range: 80, knockbackDist: 60, stunDuration: 1000 },
 
   // ── Ranger ──
-  dodge_roll: { name: '翻滚', type: 'dodge_roll', cooldown: 6000, energyCost: 25, value: 150, trapDuration: 3000, trapRadius: 40, trapSlow: 0.5 },
+  dodge_roll: { name: '翻滚', type: 'dodge_roll', cooldown: 6000, energyCost: 25, value: 150, trapDuration: 3000, trapRadius: 60, trapSlow: 0.5 },
   arrow_rain: { name: '箭雨', type: 'aoe_delayed', cooldown: 10000, energyCost: 35, radius: 160, waves: 3, damageMult: 0.5 },
 
   // ── Mage ──

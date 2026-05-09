@@ -9,7 +9,7 @@ let nextId = 0;
 
 export interface TickContext {
   entityId: string;
-  dealDamage(targetId: string, amount: number): void;
+  dealDamage(targetId: string, amount: number, sourceId?: string): void;
   healTarget(targetId: string, amount: number): void;
   restoreEnergy(entityId: string, amount: number): void;
 }
@@ -130,7 +130,7 @@ export class StatusManager {
           effect.tickAccumulator -= def.tickIntervalMs;
           const amount = effect.value * effect.stacks;
           switch (def.tickAction) {
-            case 'damage': ctx.dealDamage(ctx.entityId, amount); break;
+            case 'damage': ctx.dealDamage(ctx.entityId, amount, effect.sourceId); break;
             case 'heal': ctx.healTarget(ctx.entityId, amount); break;
             case 'energy': ctx.restoreEnergy(ctx.entityId, amount); break;
           }

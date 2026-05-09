@@ -141,6 +141,11 @@ export interface EnemyState {
   bossCastTimer?: number;
   bossTargetAngle?: number;
   statusEffects: SerializedStatusEffect[];
+  aggroTargetId?: string;
+  lastAggroTime: number;
+  targetLockUntil: number;
+  threatTable?: Record<string, number>;
+  contactDamageCooldown?: number;
 }
 
 export interface BulletState {

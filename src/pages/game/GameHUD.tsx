@@ -32,6 +32,8 @@ interface GameHUDProps {
   cooldownEndMap: Map<number, number>
   hoveredSkill: number | null
   onHoverSkill: (index: number | null) => void
+  energy: number
+  energyMax: number
 }
 
 export function GameHUD({
@@ -47,6 +49,8 @@ export function GameHUD({
   cooldownEndMap,
   hoveredSkill,
   onHoverSkill,
+  energy,
+  energyMax,
 }: GameHUDProps) {
   return (
     <>
@@ -98,6 +102,7 @@ export function GameHUD({
           const now = Date.now()
           const remaining = Math.max(0, cdEnd - now)
           const cdRatio = info.cooldown > 0 ? remaining / (info.cooldown * 1000) : 0
+          const energyInsufficient = energy < info.energyCost
 
           return (
             <motion.div
@@ -112,11 +117,11 @@ export function GameHUD({
               <div style={{
                 width: 56, height: 56,
                 background: '#1A1210',
-                border: `2px solid ${info.color}`,
+                border: `2px solid ${energyInsufficient ? '#662222' : info.color}`,
                 borderRadius: 4,
                 display: 'flex', flexDirection: 'column',
                 alignItems: 'center', justifyContent: 'center',
-                boxShadow: `2px 2px 0 rgba(0,0,0,0.5), inset 0 0 8px ${info.color}22`,
+                boxShadow: `2px 2px 0 rgba(0,0,0,0.5), inset 0 0 8px ${energyInsufficient ? '#AA333344' : `${info.color}22`}`,
                 cursor: 'pointer', position: 'relative', overflow: 'hidden',
               }}>
                 {/* Icon */}
@@ -126,7 +131,7 @@ export function GameHUD({
                   style={{
                     width: 32, height: 32, objectFit: 'contain',
                     imageRendering: 'pixelated',
-                    opacity: cdRatio > 0 ? 0.4 : 1,
+                    opacity: cdRatio > 0 ? 0.4 : energyInsufficient ? 0.5 : 1,
                   }}
                 />
                 {/* Skill name */}
@@ -146,7 +151,8 @@ export function GameHUD({
                 {/* Energy cost */}
                 <div style={{
                   position: 'absolute', bottom: 2, right: 3,
-                  fontSize: 8, color: '#88AACC', fontFamily: 'monospace',
+                  fontSize: 8, color: energyInsufficient ? '#CC4444' : '#88AACC', fontFamily: 'monospace',
+                  textDecoration: energyInsufficient ? 'line-through' : 'none',
                 }}>
                   {info.energyCost}
                 </div>

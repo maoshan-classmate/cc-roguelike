@@ -13,6 +13,8 @@ export interface SkillCastEffect {
   color: string
   // particle state (initialized on create)
   particles: Particle[]
+  targetX?: number
+  targetY?: number
 }
 
 interface Particle {
@@ -32,7 +34,7 @@ interface Particle {
 interface SkillVisual {
   duration: number
   color: string
-  spawnParticles?: (x: number, y: number, angle?: number) => Particle[]
+  spawnParticles?: (x: number, y: number, angle?: number, targetPos?: { x: number; y: number }) => Particle[]
   renderer: (ctx: CanvasRenderingContext2D, fx: SkillCastEffect, progress: number) => void
   shake?: { intensity: number; window: number }
 }
@@ -82,9 +84,9 @@ const SKILL_VISUALS: Record<string, SkillVisual> = {
   arrow_rain: {
     duration: 1800,
     color: '#44AA44',
-    spawnParticles: (x, y, angle) => {
-      const tx = x + Math.cos(angle ?? 0) * 150
-      const ty = y + Math.sin(angle ?? 0) * 150
+    spawnParticles: (x, y, angle, targetPos) => {
+      const tx = targetPos?.x ?? x + Math.cos(angle ?? 0) * 150
+      const ty = targetPos?.y ?? y + Math.sin(angle ?? 0) * 150
       return spawnRingParticles(tx, ty, 20, 2, ['#88AA44', '#AADD55', '#668833'], [25, 45])
     },
     renderer: drawArrowRain,
@@ -100,9 +102,9 @@ const SKILL_VISUALS: Record<string, SkillVisual> = {
   meteor: {
     duration: 1800,
     color: '#FF4400',
-    spawnParticles: (x, y, angle) => {
-      const tx = x + Math.cos(angle ?? 0) * 300
-      const ty = y + Math.sin(angle ?? 0) * 300
+    spawnParticles: (x, y, angle, targetPos) => {
+      const tx = targetPos?.x ?? x + Math.cos(angle ?? 0) * 300
+      const ty = targetPos?.y ?? y + Math.sin(angle ?? 0) * 300
       return spawnBurstParticles(tx, ty, 40, 5, ['#FF4400', '#FF6600', '#FFaa00', '#FF2200', '#FFCC00'], [25, 50])
     },
     renderer: drawMeteor,
@@ -126,7 +128,7 @@ export function createSkillEffectStore() {
   return {
     effects: [] as SkillCastEffect[],
 
-    add(type: string, x: number, y: number, angle?: number) {
+    add(type: string, x: number, y: number, angle?: number, targetPos?: { x: number; y: number }) {
       const visual = SKILL_VISUALS[type]
       if (!visual) return
       this.effects.push({
@@ -137,7 +139,9 @@ export function createSkillEffectStore() {
         duration: visual.duration,
         angle,
         color: visual.color,
-        particles: visual.spawnParticles ? visual.spawnParticles(x, y, angle) : [],
+        particles: visual.spawnParticles ? visual.spawnParticles(x, y, angle, targetPos) : [],
+        targetX: targetPos?.x,
+        targetY: targetPos?.y,
       })
     },
 
@@ -414,8 +418,8 @@ function drawDodgeRoll(ctx: CanvasRenderingContext2D, fx: SkillCastEffect, progr
 
 // ── Arrow Rain: targeting reticle + falling arrows + ground impact ──
 function drawArrowRain(ctx: CanvasRenderingContext2D, fx: SkillCastEffect, progress: number) {
-  const targetX = fx.x + Math.cos(fx.angle ?? 0) * 150
-  const targetY = fx.y + Math.sin(fx.angle ?? 0) * 150
+  const targetX = fx.targetX ?? fx.x + Math.cos(fx.angle ?? 0) * 150
+  const targetY = fx.targetY ?? fx.y + Math.sin(fx.angle ?? 0) * 150
   const radius = 160
   ctx.save()
 
@@ -536,8 +540,8 @@ function drawFrostNova(ctx: CanvasRenderingContext2D, fx: SkillCastEffect, progr
 
 // ── Meteor: falling fireball + trail + explosion + scorch ──
 function drawMeteor(ctx: CanvasRenderingContext2D, fx: SkillCastEffect, progress: number) {
-  const targetX = fx.x + Math.cos(fx.angle ?? 0) * 300
-  const targetY = fx.y + Math.sin(fx.angle ?? 0) * 300
+  const targetX = fx.targetX ?? fx.x + Math.cos(fx.angle ?? 0) * 300
+  const targetY = fx.targetY ?? fx.y + Math.sin(fx.angle ?? 0) * 300
   const radius = 150
   ctx.save()
 

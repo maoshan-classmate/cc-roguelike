@@ -384,12 +384,12 @@ export default function GamePage() {
   }, [])
 
   // Input handling
-  const handleSkillCast = useCallback((skillIndex: number) => {
+  const handleSkillCast = useCallback((skillIndex: number, targetPos?: { x: number; y: number }) => {
     const localPlayer = gameStateRef.current.players.find(p => p.id === user?.id)
     if (!localPlayer) return
     const skillId = localPlayer.skills[skillIndex]
     if (!skillId) return
-    skillEffectStoreRef.current.add(skillId, localPlayer.x, localPlayer.y, localPlayer.aimAngle ?? localPlayer.angle)
+    skillEffectStoreRef.current.add(skillId, localPlayer.x, localPlayer.y, localPlayer.aimAngle ?? localPlayer.angle, targetPos)
     // 冷却预测：本地立即设置，100ms 后若未收到服务端确认则回滚
     const info = SKILL_INFO[skillId]
     if (info) {
@@ -405,7 +405,7 @@ export default function GamePage() {
 
   const getLocalPlayer = useCallback(() => {
     const p = gameStateRef.current.players.find(p => p.id === user?.id)
-    return p ? { x: p.x, y: p.y, aimAngle: p.aimAngle ?? p.angle, skills: p.skills } : undefined
+    return p ? { x: p.x, y: p.y, aimAngle: p.aimAngle ?? p.angle, skills: p.skills, energy: p.energy } : undefined
   }, [user])
 
   useGameInput({
@@ -579,6 +579,8 @@ export default function GamePage() {
   // Derive local player skills for HUD
   const localPlayerForSkills = gameStateRef.current.players.find(p => p.id === user?.id)
   const localPlayerSkills = localPlayerForSkills?.skills ?? []
+  const localPlayerEnergy = localPlayerForSkills?.energy ?? 0
+  const localPlayerEnergyMax = localPlayerForSkills?.energyMax ?? 50
 
   const { gold, keys } = gameStateRef.current
 
@@ -597,6 +599,8 @@ export default function GamePage() {
         cooldownEndMap={cooldownEndRef.current}
         hoveredSkill={hoveredSkill}
         onHoverSkill={setHoveredSkill}
+        energy={localPlayerEnergy}
+        energyMax={localPlayerEnergyMax}
       />
 
       <GameCanvas canvasRef={canvasRef} />

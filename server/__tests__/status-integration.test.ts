@@ -27,7 +27,7 @@ function makeEntity(id: string, hp = 100, energy = 50): MockEntity {
 function makeTickCtx(e: MockEntity): TickContext {
   return {
     entityId: e.id,
-    dealDamage(_id: string, amount: number) { e.hp -= amount; },
+    dealDamage(_id: string, amount: number, _sourceId?: string) { e.hp -= amount; },
     healTarget(_id: string, amount: number) { e.hp = Math.min(e.hpMax, e.hp + amount); },
     restoreEnergy(_id: string, amount: number) { e.energy = Math.min(e.energyMax, e.energy + amount); },
   };

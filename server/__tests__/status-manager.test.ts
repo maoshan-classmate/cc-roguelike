@@ -5,7 +5,7 @@ function makeCtx(): TickContext & { dmg: number; heal: number; energy: number } 
   return {
     entityId: 'test',
     dmg: 0, heal: 0, energy: 0,
-    dealDamage(_id: string, amount: number) { this.dmg += amount; },
+    dealDamage(_id: string, amount: number, _sourceId?: string) { this.dmg += amount; },
     healTarget(_id: string, amount: number) { this.heal += amount; },
     restoreEnergy(_id: string, amount: number) { this.energy += amount; },
   };

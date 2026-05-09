@@ -30,10 +30,12 @@ export interface CombatDeps {
   damagePlayer(playerId: string, damage: number): void;
   removeBullet(bulletId: string): void;
   isWalkable(x: number, y: number): boolean;
+  isWalkableRadius(x: number, y: number, radius: number): boolean;
   getPlayerStatus(playerId: string): StatusManager | undefined;
   getEnemyStatus(enemyId: string): StatusManager | undefined;
   getEnvObjects(): EnvObjectState[];
   damageEnvObject(id: string, damage: number, attackerId?: string): void;
+  trackEnergyUse(playerId: string): void;
 }
 
 export interface SkillResult {
@@ -56,9 +58,7 @@ export class Combat {
     const weapon = WEAPON_TEMPLATES[player.weapon] || WEAPON_TEMPLATES.pistol;
 
     if (now - lastAttack < weapon.cooldown) return;
-    if (player.energy < weapon.energyCost) return;
 
-    player.energy -= weapon.energyCost;
     this.lastAttackTime.set(player.id, now);
 
     const def = CHARACTER_DEFS[player.characterType as CharacterType];
@@ -112,7 +112,7 @@ export class Combat {
       const diff = normalizeAngleDiff(angle, player.aimAngle ?? player.angle);
 
       if (Math.abs(diff) < arc / 2) {
-        this.room.damageEnemy(enemy.id, effectiveDamage);
+        this.room.damageEnemy(enemy.id, effectiveDamage, player.id);
       }
     }
   }
@@ -157,6 +157,7 @@ export class Combat {
     // Execute
     player.energy -= skill.energyCost;
     player.cooldowns[skillIndex] = effectiveCooldown;
+    this.room.trackEnergyUse(player.id);
 
     // Route to handler via registry
     const handler = SKILL_HANDLERS[skill.type];
@@ -198,7 +199,7 @@ export class Combat {
         if (psm?.getAggregatedFlags().invulnerable || player.invincible > 0) continue;
 
         const dist = Math.hypot(bullet.x - player.x, bullet.y - player.y);
-        if (dist < bullet.radius + 16) {
+        if (dist < bullet.radius + GAME_CONFIG.PLAYER_BASE.radius) {
           this.room.damagePlayer(player.id, bullet.damage);
           bullet.piercing--;
 

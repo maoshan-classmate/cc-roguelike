@@ -13,7 +13,7 @@ import {
   TRAP_TYPES,
   TRAP_DETECTION_RADIUS,
 } from '../../../shared/constants';
-import type { EnvObjectState, DungeonData, DungeonRoom } from '../../../shared/types';
+import type { EnvObjectState, DungeonData, DungeonRoom, ItemPickupType } from '../../../shared/types';
 import { MathUtils } from '../../utils/MathUtils';
 import type { TerrainGenerator, TerrainData } from './types';
 import { registerTerrain } from './types';
@@ -113,7 +113,8 @@ export const mazeGenerator: TerrainGenerator = {
 
   // ── Step 7: Dead-End Rewards ──
   const envObjects: EnvObjectState[] = [];
-  const deadEndsWithRewards = placeDeadEndRewards(grid, deadEnds, combatPockets, envObjects, envId, random);
+  const items: { id: string; x: number; y: number; type: ItemPickupType }[] = [];
+  const deadEndsWithRewards = placeDeadEndRewards(grid, deadEnds, combatPockets, envObjects, items, envId, random);
 
   // ── Step 8: Place Combat Pocket enemies ──
   // Enemies are returned as env objects? No — enemies are spawned by GameRoom.
@@ -210,7 +211,7 @@ export const mazeGenerator: TerrainGenerator = {
     collisionGrid: grid,
     envObjects,
     enemySpawns: [],
-    itemSpawns: [],
+    itemSpawns: items,
   };
   },
 };
@@ -535,6 +536,7 @@ function placeDeadEndRewards(
   deadEnds: { cx: number; cy: number; tileCol: number; tileRow: number }[],
   combatPockets: CombatPocket[],
   envObjects: EnvObjectState[],
+  items: { id: string; x: number; y: number; type: ItemPickupType }[],
   envId: () => string,
   random: () => number,
 ): void {
@@ -555,20 +557,16 @@ function placeDeadEndRewards(
     const roll = random();
 
     if (roll < 0.6) {
-      // 60% item (health / energy / coin)
+      // 60% item (health / energy / coin) — use ITEM_DEFS compatible types
       const itemRoll = random();
-      const spriteKey =
-        itemRoll < 0.33 ? 'flask_big_red' : itemRoll < 0.66 ? 'flask_big_blue' : 'coin_pile';
+      const itemType: ItemPickupType =
+        itemRoll < 0.33 ? 'health' : itemRoll < 0.66 ? 'energy' : 'coin';
 
-      envObjects.push({
+      items.push({
         id: envId(),
-        type: 'decoration',
         x: de.tileCol * TILE_SIZE + TILE_SIZE / 2,
         y: de.tileRow * TILE_SIZE + TILE_SIZE / 2,
-        width: TILE_SIZE,
-        height: TILE_SIZE,
-        alive: true,
-        spriteKey,
+        type: itemType,
       });
     } else if (roll < 0.8) {
       // 20% trap (spike 60% / fire 30% / slow 10%)
