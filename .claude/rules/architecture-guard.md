@@ -19,8 +19,6 @@
 | server/game/combat/ | 伤害计算、技能效果 | 敌人 AI、碰撞、地牢生成 |
 | server/game/collision/ | 碰撞检测、实体分离 | 游戏逻辑、AI |
 | server/game/dungeon/ | 地牢生成算法 | 运行时游戏逻辑 |
-| server/game/player/ | 玩家逻辑 | 敌人/碰撞/道具 |
-| server/game/skill/ | 技能系统 | 伤害计算（归 combat） |
 | server/game/item/ | 道具逻辑 | 碰撞、伤害 |
 | src/rendering/ | 纯绘制 (ctx, data) => void | React hooks/import、游戏逻辑 |
 | src/hooks/ | React 副作用封装 | ctx.fillRect 等 Canvas 绘制调用 |
@@ -134,7 +132,7 @@ server/ ←→ src/（只通过 socket 协议，禁止直接 import）
 - 删功能同步删 import/常量/配置
 - `package.json` 新依赖 3 天无引用则移除
 - 注释掉的代码 >10 行直接删
-- 禁止 import 废弃文件：`src/assets/0x72/index.ts`、`src/assets/kenney/index.ts`、`spriteRegistry.ts`
+- 禁止 import 废弃文件：`src/assets/kenney/index.ts`、`spriteRegistry.ts`
 
 ### Sprint 扫描
 

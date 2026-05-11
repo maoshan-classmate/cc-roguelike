@@ -108,7 +108,7 @@ export interface PlayerState {
   skills: SkillId[];
   alive: boolean;
   invincible: number;
-  angle: number;           // @deprecated 迁移期保留，由 aimAngle 替代
+  angle: number;           // 兼容保留：Combat/SkillHandlers 仍依赖，与 aimAngle 双写
   aimAngle: number;        // 鼠标瞄准角度（弧度，替代原 angle）
   velocity: { x: number; y: number };  // 当前速度向量（加减速惯性模型）
   cooldowns: number[];     // 各技能冷却剩余时间（ms），索引对应 skills 数组

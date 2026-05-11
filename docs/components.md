@@ -1,7 +1,7 @@
 # 像素风格组件库
 
 > 入口：`src/components/pixel/index.ts`
-> API/设计详情：`docs/superpowers/specs/2026-04-01-pixel-component-library-design.md`
+> 设计详情：`src/components/pixel/` 源码
 
 ## Atoms
 
@@ -30,6 +30,6 @@
 
 ## 已用页面
 
-- `LoginPage` → PixelButton / PixelInput / PixelCard
-- `LobbyPage` → PixelRoomCard / PixelHeader
+- `LoginPage` → motion / DungeonParticles / AnimatedSprite（未使用像素组件库）
+- `LobbyPage` → PixelRoomCard
 - `RoomPage` → PixelPlayerSlot / PixelPanel

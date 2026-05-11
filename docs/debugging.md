@@ -39,9 +39,9 @@
 - 修复：在 GameRoom 中添加专用方法（如 `removeBullet()`）直接修改 Map
 
 ### 4. 服务端/客户端类型必须匹配
-- `FLOOR_CONFIG.enemyTypes` 用 `'slime'/'bat'`，但 `ENEMIES` 用 `'basic'/'fast'/'tank'`
-- `DungeonGenerator` 生成 `'health_pack'`，但 `ITEMS` 配置是 `'health'`
-- 修复：确保服务端 `constants.ts` 和客户端 config 文件使用相同的 ID
+- ~~`FLOOR_CONFIG.enemyTypes` 用 'slime'/'bat'，但 `ENEMIES` 用 'basic'/'fast'/'tank'~~ → 已统一为 basic/fast/ghost/tank
+- ~~`DungeonGenerator` 生成 'health_pack'，但 `ITEMS` 配置是 'health'~~ → 已统一
+- 教训：服务端和客户端必须使用相同的实体 ID
 
 ### 5. Switch case 用 skill.type 的陷阱
 - `shield` 和 `speed_boost` 的 type 都是 `'active'`

@@ -121,7 +121,7 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 │   ├── components/        # React 组件（像素风格组件库）
 │   ├── hooks/             # React 副作用封装（useGameRenderer/useGameInput）
 │   ├── rendering/         # 纯绘制函数（ctx,data）=>void，无 React 依赖
-│   ├── pages/            # Hook 组合 + JSX 布局（GamePage/LoginPage）
+│   ├── pages/            # Hook 组合 + JSX 布局（game/ 目录/LobbyPage/LoginPage）
 │   ├── store/            # Zustand 状态管理
 │   ├── network/          # Socket.io 客户端
 │   ├── audio/            # 音效系统（jsfxr + Howler.js）
@@ -181,8 +181,7 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 - [调试经验 + Bug 模式](docs/debugging.md)
 - [UI 设计规范](docs/ui-design.md)
 - **[组件库](docs/components.md)** — 像素风格组件索引与 API 文档
-- **[Pencil UI 设计架构](pencil/docs/architecture.md)** — 三层架构（Tokens/Components/Pages），组件索引+目录结构
-- **[贴图资产清单（交互）](sprite-viewer.html)** — 109个精灵可视化，0x72+Kenney双源，代码引用可点击
+- **[贴图资产清单（交互）](sprite-viewer.html)** — 精灵可视化，0x72+Kenney双源，代码引用可点击
 - **[贴图资产清单（文档）](docs/sprite-inventory.md)** — 与上方HTML 1:1 对应，静态检索
 - **[音效系统概述](docs/audio/README.md)** — 55个音效按系统分类，jsfxr生成+Howler.js播放
 - **[音效清单](docs/audio/sfx-inventory.md)** — 55个音效完整列表，按8大系统分类
@@ -215,7 +214,7 @@ Leader 负责全局压力等级管理和跨 teammate 失败传递。
 ```bash
 npm run dev          # 启动前后端（前端3000 + 后端3001）
 taskkill //PID <pid> //F && sleep 2 && npm run dev  # 重启
-netstat -ano | grep LISTENING | grep -E "300[01]"   # 检查端口
+netstat -ano | findstr "300[01]"                     # 检查端口
 npx tsc --noEmit                                # TypeScript 编译检查
 ```
 
@@ -234,9 +233,9 @@ npx tsc --noEmit                                # TypeScript 编译检查
 
 **出口坐标对齐**：服务端 `exitPoint` 是房间中心（浮点坐标如 933.3），客户端渲染出口效果必须先对齐：`Math.floor(exitPoint.x / 32) * 32`
 
-**killAll 后敌人检查**：服务端 `killAll` 设 `enemy.alive = false` 但不删除。判断"无活怪"必须用 `enemies.filter((e: any) => e.alive !== false).length === 0`
+**killAll 后敌人检查**：服务端 `killAll` 设 `enemy.alive = false` + `state = 'dying'` + `deathTimer = 0`。判断"无活怪"必须用 `enemies.filter((e: any) => e.alive !== false).length === 0`
 
-**已知缺失**：`slime_idle_anim_f0` 不存在于 atlas，basic 敌人 fallback 到 `goblin_idle_anim_f0`
+**已知**：basic 敌人使用 `slime_idle`（source: sheet），fast 使用 `bat_idle`，ghost 使用 `ghost_idle`
 
 ## Playwright MCP 验证流程
 
@@ -266,14 +265,11 @@ npx tsc --noEmit                                # TypeScript 编译检查
 
 ## 资源管理流程（外源素材引入）
 
-**入口目录**: `assets/inbox/` — 外部资源手动下载后放入，Agent 负责分类和集成。
-
-**UI 设计入口**：`assets/inbox/ui-design/` — 用户提供的 UI 参考素材
-**图片资源入口**：`assets/inbox/art-assets/` — 游戏图片素材（角色/怪物/道具/瓦片等）
+**入口目录**: 新资源手动下载后放入 `src/assets/` 对应子目录，Agent 负责分类和集成。
 
 **流程**：
-1. 下载 CC0 素材 → 丢进 `assets/inbox/art-assets/`
-2. 用户提供 UI 参考 → 丢进 `assets/inbox/ui-design/`
+1. 下载 CC0 素材 → 放入 `src/assets/` 对应子目录
+2. 用户提供 UI 参考 → 放入 `src/assets/custom/`
 3. 告知 Agent 文件名
 4. Agent 执行：**分析格式** → **移动到 `src/assets/{source}/`** → **更新 `sprites.ts` 的 SPRITE_REGISTRY** → **同步更新 `docs/sprite-inventory.md` + `sprite-viewer.html`** → **编译验证**
 
@@ -283,8 +279,6 @@ npx tsc --noEmit                                # TypeScript 编译检查
 - `src/assets/0x72/atlas_floor-16x16.png` — 地板瓦片
 - `src/assets/0x72/atlas_walls_high-16x32.png` / `atlas_walls_low-16x16.png` — 墙壁瓦片
 
-**⚠️ 废弃文件**（勿更新）：
-- `src/assets/0x72/index.ts` — 已废弃
 
 **Config → Registry 映射规则**：
 - `characters.ts` 的 `spriteName.front/back` = Registry key（例：`'knight_m_idle_anim_f0'`）
@@ -301,15 +295,15 @@ npx tsc --noEmit                                # TypeScript 编译检查
 
 > 职业属性、敌人配置、攻击路径、色系、地牢尺寸等常量详见 `.claude/rules/game-constants.md`。
 
-- **职业映射** SocketServer validTypes: warrior/ranger/mage 直传，healer→cleric 映射，cleric→cleric 直传
-- **4 技能槽**: dash/shield/heal/speed_boost 按职业不同排列
+- **职业映射** SocketServer validTypes: warrior/ranger/mage/cleric 直传（healer→cleric 为历史兼容映射）
+- **3 技能槽**: 每职业 dash + 2 独有技能（war_cry/shield_bash, dodge_roll/arrow_rain, frost_nova/meteor, holy_light/sanctuary）
 - **碰撞半径**: `isWalkableRadius(x,y,r)` 检查中心+4角共5点
 
 ## 常见 Bug 模式
 
 > 19 个反模式详见 `.claude/rules/bug-patterns.md`，完整调试经验详见 [调试经验 + Bug 模式](docs/debugging.md)。
 
-- **弃用文件**：`src/assets/0x72/index.ts` 和 `spriteRegistry.ts` 为弃用，运行时代码只读 `src/config/sprites.ts`
+- **弃用文件**：`spriteRegistry.ts` 已弃用，运行时代码只读 `src/config/sprites.ts`
 - **Zustand + immer 渲染失效**：immer proxy 对象引用不变时不触发重渲染，本地玩家头像用 React state 而非 Zustand store
 - **[前端动画与自适应规范](docs/frontend-animation.md)** — framer-motion/tsparticles 踩坑、自适应原则
 

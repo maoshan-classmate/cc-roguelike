@@ -159,7 +159,7 @@ export function getItemById(id: string): ItemConfig | undefined {
  * - shield: 盾牌图标（已使用 dungeon 索引 34）
  *
  * 装备覆盖规则：
- * - 装备图标叠加在角色精灵上方（通过 drawEquipmentOverlay 实现）
+ * - 装备图标叠加在角色精灵上方（待实现）
  * - 不同装备槽位对应角色精灵不同偏移量
  */
 export const EQUIPMENT_SLOTS = {

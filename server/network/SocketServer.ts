@@ -100,7 +100,7 @@ export class SocketServer {
       socket.on('room:selectClass', (data: { characterType: string }) => this.handleSelectClass(socket, data));
 
       // Game handlers
-      socket.on(GameMessages.INPUT, (data: { dx: number; dy: number; angle: number; attack?: boolean; skill?: number; mouseX?: number; mouseY?: number }) => this.handleGameInput(socket, data));
+      socket.on(GameMessages.INPUT, (data: { dx: number; dy: number; angle: number; aimAngle?: number; attack?: boolean; skill?: number; targetPos?: { x: number; y: number }; mouseX?: number; mouseY?: number }) => this.handleGameInput(socket, data));
       socket.on(GameMessages.CHAT, (data: { message: string }) => this.handleGameChat(socket, data));
       socket.on(GameMessages.DEBUG, (data: { action: string; floor?: number; invincible?: boolean }) => this.handleGameDebug(socket, data));
 

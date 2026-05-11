@@ -30,7 +30,7 @@
 - `public/fonts/`
 
 **搜索下载规则**：
-1. 首选 Kenney.nl（已下载的资源在 `resources/kenney/`）
+1. 首选 Kenney.nl（资源在 `src/assets/` 下对应目录）
 2. 其次 itch.io / opengameart.org（必须 CC0 或 commercial use allowed）
 3. 下载后放入对应目录并更新资源索引
 4. 禁止直接链接外部图片 URL
@@ -45,16 +45,6 @@
 - 像素艺术元素（血条、皇冠、箭头等）统一用 `fillRect` 绘制
 - 添加 3D 立体感：高光线（顶部/左侧亮色）+ 阴影线（底部/右侧暗色）
 - 名称标签需添加半透明暗色背景面板
-
-## pencil UI 设计架构
-
-pencil 文件夹已建立完整三层架构，详见 [Pencil UI 设计架构](pencil/docs/architecture.md)。
-
-**设计风格**：Hybrid 暗黑像素风（像素底层 + 哥特 UI 质感）
-**实现方案**：A（CSS+SVG）为主 + B（PNG 装饰）为辅
-**覆盖范围**：Login + Room + Lobby + Game 全链路
-
-> 后续 UI 设计稿统一在 `pencil/` 目录下对应的 .pen 文件中，架构变更同步更新 `pencil/docs/architecture.md`。
 
 ## UI 组件规范
 - SVG 组件放置在 `src/components/PixelIcons.tsx`

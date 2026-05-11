@@ -1,7 +1,7 @@
 ---
 description: Canvas 渲染管线规则 — 绘制顺序、精灵渲染规范、像素渲染
 globs:
-  - "src/pages/GamePage.tsx"
+  - "src/pages/game/**"
   - "src/config/sprites.ts"
   - "src/components/DungeonBackground.tsx"
   - "src/components/AnimatedSprite.tsx"

@@ -50,11 +50,11 @@ export const SPRITE_REGISTRY: Record<string, UnifiedSpriteEntry> = {
   wizzard_f_idle_anim_f1: { category: 'CHARACTER', source: '0x72', atlasKey: 'wizzard_f_idle_anim_f1', size: 48, animated: true,  frameCount: 4 },
   dwarf_m_idle_anim_f0:   { category: 'CHARACTER', source: '0x72', atlasKey: 'dwarf_m_idle_anim_f0',   size: 48, animated: true,  frameCount: 4 },
   dwarf_m_idle_anim_f1:   { category: 'CHARACTER', source: '0x72', atlasKey: 'dwarf_m_idle_anim_f1',   size: 48, animated: true,  frameCount: 4 },
-  // wizzard_f_idle_anim_f2/f3: 存在于atlas但未被任何角色使用（cleric仅用f0/f1），不注册
+  // wizzard_f_idle_anim_f2/f3: 已在下方第 64-65 行注册
   // orc_shaman_idle_anim_f0/f1: ⚠️ 已废弃，代码无引用，不注册
 
   // ── CHARACTER 动画帧补全 ──────────────────────────────────────────────────
-  // idle f2/f3（characters.ts 仅用 f0/f1 但 atlas 有完整4帧，补齐以备后用）
+  // idle f2/f3 — atlas 完整4帧补齐
   knight_m_idle_anim_f2:  { category: 'CHARACTER', source: '0x72', atlasKey: 'knight_m_idle_anim_f2',  size: 48, animated: true, frameCount: 4 },
   knight_m_idle_anim_f3:  { category: 'CHARACTER', source: '0x72', atlasKey: 'knight_m_idle_anim_f3',  size: 48, animated: true, frameCount: 4 },
   elf_m_idle_anim_f2:     { category: 'CHARACTER', source: '0x72', atlasKey: 'elf_m_idle_anim_f2',      size: 48, animated: true, frameCount: 4 },

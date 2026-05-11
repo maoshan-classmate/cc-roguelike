@@ -93,7 +93,7 @@
 
 - **React 组件**：仅负责 UI 渲染和本地状态，不直接引用游戏逻辑
 - **游戏逻辑**：全部在 `src/` 或 `server/` 的纯逻辑模块，React 仅作桥接
-- **Canvas 渲染**：集中在 `GamePage.tsx` 的 `requestAnimationFrame` 循环内，绘制函数从 `sprites.ts` 引入
+- **Canvas 渲染**：集中在 `src/pages/game/index.tsx` 的 `requestAnimationFrame` 循环内，绘制函数从 `sprites.ts` 引入
 
 ---
 
@@ -185,7 +185,7 @@ server/config/
     ↓
 游戏逻辑层（server/game/）
     ↓
-数据层（MySQL via ORM）
+数据层（SQLite via better-sqlite3）
 ```
 
 > 模块职责与代码归属规则详见 `.claude/rules/architecture-guard.md`。
