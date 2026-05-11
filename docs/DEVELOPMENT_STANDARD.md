@@ -185,7 +185,7 @@ server/config/
     ↓
 游戏逻辑层（server/game/）
     ↓
-数据层（SQLite via better-sqlite3）
+数据层（MySQL via ORM）
 ```
 
 > 模块职责与代码归属规则详见 `.claude/rules/architecture-guard.md`。
