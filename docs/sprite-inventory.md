@@ -3,7 +3,7 @@
 > 项目所有贴图资产的完整分类目录
 > 资产策略：优先使用 0x72 Dungeon Tileset II (PWYW商业可用)，Kenney CC0 作为 fallback
 > 生成时间：2026-03-29
-> **交互预览（推荐）**：`sprite-viewer.html` — 97个精灵全部可视化，含 0x72 PNG 预览 + Kenney canvas 渲染
+> **交互预览（推荐）**：`sprite-viewer.html` — 精灵全部可视化，含 0x72 PNG 预览 + AI 生成精灵
 > **静态文档**：`docs/sprite-inventory.md` — 本文档，快速检索用
 
 ---
@@ -17,7 +17,7 @@ src/assets/
 │   ├── spriteIndex.ts             # 精灵坐标映射 (SPRITE_ATLAS)
 │   ├── spriteRegistry.ts          # 分类注册表 (SPRITE_REGISTRY)
 │   ├── index.ts                   # 模块导出
-│   └── frames/                    # 预提取单帧 PNG（~280个，供人工预览）
+│   └── frames/                    # 预提取单帧 PNG（370+个，供人工预览）
 │       ├── CHARACTER/             # 角色精灵
 │       ├── MONSTER/               # 怪物精灵
 │       ├── WEAPON/                # 武器精灵
@@ -37,28 +37,28 @@ src/assets/
 
 ## 二、分类清单（与 `sprite-viewer.html` 完全 1:1 对应）
 
-### 2.1 角色 (CHARACTER) — 18 0x72 + 4 Kenney
+### 2.1 角色 (CHARACTER) — 0x72
 
 #### 0x72（18个）预览路径：`frames/CHARACTER/*.png`
 
 | 贴图名称 | Atlas坐标 | 尺寸 | 游戏用途 | 状态 | 代码引用 |
 |---------|----------|------|---------|------|---------|
-| `knight_m_idle_anim_f0` | (128,100) | 16×28 | 战士 warrior 正面 | ✅ | `characters.ts:35` |
-| `knight_m_idle_anim_f1` | (144,100) | 16×28 | 战士 warrior 背面 | ✅ | `characters.ts:35` |
+| `knight_m_idle_anim_f0` | (128,100) | 16×28 | 战士 warrior 正面 | ✅ | `character-definitions.ts` |
+| `knight_m_idle_anim_f1` | (144,100) | 16×28 | 战士 warrior 背面 | ✅ | `character-definitions.ts` |
 | `knight_m_idle_anim_f2` | (160,100) | 16×28 | — | ❌ | |
 | `knight_m_idle_anim_f3` | (176,100) | 16×28 | — | ❌ | |
 | `knight_f_idle_anim_f0` | (128,68) | 16×28 | — | ❌ | |
-| `elf_m_idle_anim_f0` | (128,36) | 16×28 | 游侠 ranger 正面 | ✅ | `characters.ts:49` |
-| `elf_m_idle_anim_f1` | (144,36) | 16×28 | 游侠 ranger 背面 | ✅ | `characters.ts:49` |
+| `elf_m_idle_anim_f0` | (128,36) | 16×28 | 游侠 ranger 正面 | ✅ | `character-definitions.ts` |
+| `elf_m_idle_anim_f1` | (144,36) | 16×28 | 游侠 ranger 背面 | ✅ | `character-definitions.ts` |
 | `elf_m_idle_anim_f2` | (160,36) | 16×28 | — | ❌ | |
 | `elf_m_idle_anim_f3` | (176,36) | 16×28 | — | ❌ | |
 | `elf_f_idle_anim_f0` | (128,4) | 16×28 | — | ❌ | |
-| `wizzard_m_idle_anim_f0` | (128,164) | 16×28 | 法师 mage 正面 | ✅ | `characters.ts:63` |
-| `wizzard_m_idle_anim_f1` | (144,164) | 16×28 | 法师 mage 背面 | ✅ | `characters.ts:63` |
+| `wizzard_m_idle_anim_f0` | (128,164) | 16×28 | 法师 mage 正面 | ✅ | `character-definitions.ts` |
+| `wizzard_m_idle_anim_f1` | (144,164) | 16×28 | 法师 mage 背面 | ✅ | `character-definitions.ts` |
 | `wizzard_f_idle_anim_f0` | (128,132) | 16×28 | — | ❌ | |
 | `wizzard_f_idle_anim_f1` | (144,132) | 16×28 | — | ❌ | |
-| `dwarf_m_idle_anim_f0` | (128,292) | 16×28 | 牧师 cleric 正面 | ✅ | `characters.ts:77` |
-| `dwarf_m_idle_anim_f1` | (144,292) | 16×28 | 牧师 cleric 背面 | ✅ | `characters.ts:77` |
+| `dwarf_m_idle_anim_f0` | (128,292) | 16×28 | 牧师 cleric 正面 | ✅ | `character-definitions.ts` |
+| `dwarf_m_idle_anim_f1` | (144,292) | 16×28 | 牧师 cleric 背面 | ✅ | `character-definitions.ts` |
 | `dwarf_f_idle_anim_f0` | (128,260) | 16×28 | — | ❌ | |
 | `lizard_m_idle_anim_f0` | (128,228) | 16×28 | — | ❌ | |
 | `lizard_f_idle_anim_f0` | (128,196) | 16×28 | — | ❌ | |
@@ -81,8 +81,8 @@ src/assets/
 | 贴图名称 | Atlas坐标 | 尺寸 | 游戏用途 | 状态 | 代码引用 |
 |---------|----------|------|---------|------|---------|
 | `goblin_idle_anim_f0` | (368,40) | 16×16 | ⚠️ 已被 generated 替代 | ❌ | |
-| `skelet_idle_anim_f0` | (368,88) | 16×16 | tank 敌人 | ✅ | `enemies.ts:58` |
-| `big_demon_idle_anim_f0` | (16,428) | 32×36 | boss 敌人 | ✅ | `enemies.ts:74` |
+| `skelet_idle_anim_f0` | (368,88) | 16×16 | tank 敌人 | ✅ | `enemy-definitions.ts` |
+| `big_demon_idle_anim_f0` | (16,428) | 32×36 | boss 敌人 | ✅ | `enemy-definitions.ts` |
 | `big_demon_run_anim_f0` | (144,428) | 32×36 | boss 敌人奔跑动画 | ✅ | `useGameRenderer.ts:389,434` |
 | `angel_idle_anim_f0` | (368,304) | 16×16 | — | ❌ | |
 | `chort_idle_anim_f0` | (368,273) | 16×23 | — | ❌ | |
@@ -108,9 +108,9 @@ src/assets/
 
 | 贴图名称 | 来源 | 帧数 | 游戏用途 | 状态 | 代码引用 |
 |---------|------|------|---------|------|---------|
-| `slime_idle` | Gemini AI | 16帧 | basic 敌人 | ✅ | `enemies.ts:28` |
-| `bat_idle` | Gemini AI | 16帧 | fast 敌人 | ✅ | `enemies.ts:43` |
-| `ghost_idle` | Gemini AI | 16帧 | ghost 敌人 | ✅ | `enemies.ts:55` |
+| `slime_idle` | Gemini AI | 16帧 | basic 敌人 | ✅ | `enemy-definitions.ts` |
+| `bat_idle` | Gemini AI | 16帧 | fast 敌人 | ✅ | `enemy-definitions.ts` |
+| `ghost_idle` | Gemini AI | 16帧 | ghost 敌人 | ✅ | `enemy-definitions.ts` |
 
 #### 敌人→精灵映射
 
@@ -130,17 +130,17 @@ src/assets/
 
 | 贴图名称 | Atlas坐标 | 尺寸 | 游戏用途 | 状态 | 代码引用 |
 |---------|----------|------|---------|------|---------|
-| `weapon_knight_sword` | (339,98) | 10×29 | 战士武器 | ✅ | `GamePage.tsx:548` |
+| `weapon_knight_sword` | (339,98) | 10×29 | 战士武器 | ✅ | `game/index.tsx` |
 | `weapon_arrow` | (324,202) | 7×21 | 子弹(bullet视觉) | ✅ | `sprites.ts:68` |
-| `weapon_red_magic_staff` | (324,129) | 8×30 | 法师/牧师武器 | ✅ | `GamePage.tsx:550` |
-| `weapon_bow` | (289,195) | 14×26 | 游侠武器 | ✅ | `GamePage.tsx:549` |
+| `weapon_red_magic_staff` | (324,129) | 8×30 | 法师/牧师武器 | ✅ | `game/index.tsx` |
+| `weapon_bow` | (289,195) | 14×26 | 游侠武器 | ✅ | `game/index.tsx` |
 | `weapon_axe` | (341,74) | 9×21 | — | ❌ |
 | `weapon_katana` | (293,66) | 6×29 | — | ❌ |
 | `weapon_spear` | (309,161) | 6×30 | — | ❌ |
 | `weapon_mace` | (339,39) | 10×24 | — | ❌ | |
 | `weapon_hammer` | (307,39) | 10×24 | — | ❌ |
 | `weapon_big_hammer` | (291,26) | 10×37 | — | ❌ |
-| `weapon_anime_sword` | (322,65) | 12×30 | — | ✅ | `GamePage.tsx:410` |
+| `weapon_anime_sword` | (322,65) | 12×30 | — | ✅ | `game/index.tsx` |
 | `weapon_duel_sword` | (325,97) | 9×30 | — | ❌ |
 | `weapon_golden_sword` | (291,137) | 10×22 | — | ❌ |
 | `weapon_lavish_sword` | (307,129) | 10×30 | — | ❌ |
@@ -251,14 +251,14 @@ src/assets/
 characters.ts ──→ SPRITE_REGISTRY ──→ draw0x72Sprite() ──→ main_atlas.png
 enemies.ts ────→ SPRITE_REGISTRY ──→ draw0x72Sprite() ──→ main_atlas.png
 items.ts ──────→ SPRITE_REGISTRY ──→ draw0x72Sprite() ──→ main_atlas.png
-GamePage.tsx ──→ WEAPON_SPRITE ─────→ drawWeaponSprite() ──→ main_atlas.png
+game/index.tsx ──→ WEAPON_SPRITE ─────→ drawWeaponSprite() ──→ main_atlas.png
 ```
 
 ---
 
 ## 五、相关文档索引
 
-- [交互预览（推荐）](../sprite-viewer.html) — 97精灵可视化
+- [交互预览（推荐）](../sprite-viewer.html) — 精灵可视化
 - [角色配置](../src/config/characters.ts)
 - [敌人配置](../src/config/enemies.ts)
 - [统一精灵注册表](../src/config/sprites.ts)

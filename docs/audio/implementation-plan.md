@@ -21,7 +21,7 @@ case 'energy':
 
 ### 1.2 接入玩家攻击音效
 
-**文件**: `src/pages/GamePage.tsx`
+**文件**: `src/pages/game/index.tsx`
 
 **修改位置**: L462 附近，`attackFlashRef.current = 1.0` 处
 
@@ -43,7 +43,7 @@ if (isAttacking && !prevAttackRef.current) {
 
 ### 1.3 接入玩家死亡音效
 
-**文件**: `src/pages/GamePage.tsx`
+**文件**: `src/pages/game/index.tsx`
 
 **修改位置**: L280-306 的 HP 检测逻辑
 
@@ -65,7 +65,7 @@ const prevAliveRef = useRef<Map<string, boolean>>(new Map())
 
 ### 1.4 接入技能音效
 
-**文件**: `src/pages/GamePage.tsx`
+**文件**: `src/pages/game/index.tsx`
 
 **修改位置**: L387 的技能按键处理
 
@@ -76,7 +76,7 @@ const { playDash, playShield, playSpeed, play } = useSound()
 
 // 在技能触发处添加
 const skillKey = e.key
-if (['1', '2', '3', '4'].includes(skillKey) && !skillKeysDown.has(skillKey)) {
+if (['1', '2', '3'].includes(skillKey) && !skillKeysDown.has(skillKey)) {
   skillKeysDown.add(skillKey)
   networkClient.emit('game:input', { skill: parseInt(skillKey) - 1 })
 
@@ -98,7 +98,7 @@ if (['1', '2', '3', '4'].includes(skillKey) && !skillKeysDown.has(skillKey)) {
 
 **方案**: 客户端通过 hp 变化推断，不修改服务端
 
-**文件**: `src/pages/GamePage.tsx`
+**文件**: `src/pages/game/index.tsx`
 
 **代码**:
 ```typescript
@@ -117,7 +117,7 @@ if (isPlayer && e.id === user?.id) {
 
 ### 2.2 接入楼梯/出口音效
 
-**文件**: `src/pages/GamePage.tsx`
+**文件**: `src/pages/game/index.tsx`
 
 **代码**:
 ```typescript
@@ -136,7 +136,7 @@ if (localPlayer && state.dungeon?.exitPoint && allEnemiesDead) {
 
 ### 2.3 接入环境音循环
 
-**文件**: `src/pages/GamePage.tsx`
+**文件**: `src/pages/game/index.tsx`
 
 **代码**:
 ```typescript
@@ -208,7 +208,7 @@ const handleMouseEnter = () => {
 
 ### 3.3 聊天消息音效
 
-**文件**: `GamePage.tsx`, `LobbyPage.tsx`
+**文件**: `src/pages/game/index.tsx`, `LobbyPage.tsx`
 
 **代码**:
 ```typescript
@@ -226,7 +226,7 @@ networkClient.on('game:chat:push', (data: any) => {
 - [ ] 道具拾取音效正确（health/energy 映射修复）
 - [ ] 4 种职业攻击音效触发正确
 - [ ] 玩家死亡音效触发正确
-- [ ] 4 个技能音效触发正确
+- [ ] 3 个技能音效触发正确
 - [ ] 楼梯音效触发正确
 - [ ] 环境音循环播放
 - [ ] 多人联机音效触发正确

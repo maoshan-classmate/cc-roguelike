@@ -18,10 +18,10 @@
 
 ### 016. enemy_hit — 敌人受击
 
-**触发位置**: `GamePage.tsx:293`
+**触发位置**: `src/pages/game/index.tsx:293`
 
 ```typescript
-// GamePage.tsx:292-296
+// src/pages/game/index.tsx:292-296
 } else if (!isPlayer) {
   play(SFX_IDS.ENEMY_HIT)
   // 打击感：敌人受击（顿帧 3 帧 + 震动 3px）
@@ -35,10 +35,10 @@
 
 ### 017. enemy_die_basic — 普通敌人死亡
 
-**触发位置**: `GamePage.tsx:301`
+**触发位置**: `src/pages/game/index.tsx:301`
 
 ```typescript
-// GamePage.tsx:300-304
+// src/pages/game/index.tsx:300-304
 if (!state.players?.some((p: any) => p.id === key) && e.hp <= 0 && prevHp !== undefined && prevHp > 0) {
   playEnemyDie(e.type || 'basic')
   // 打击感：敌人死亡（顿帧 5 帧 + 震动 5px）
@@ -54,7 +54,7 @@ if (!state.players?.some((p: any) => p.id === key) && e.hp <= 0 && prevHp !== un
 
 ### 018. enemy_die_ghost — 幽灵死亡
 
-**触发位置**: `GamePage.tsx:301`
+**触发位置**: `src/pages/game/index.tsx:301`
 
 ```typescript
 // 同上，playEnemyDie(e.type || 'basic')
@@ -70,7 +70,7 @@ case 'ghost':
 
 ### 019. enemy_die_boss — Boss 死亡
 
-**触发位置**: `GamePage.tsx:301`
+**触发位置**: `src/pages/game/index.tsx:301`
 
 ```typescript
 // 同上，playEnemyDie(e.type || 'basic')
@@ -86,10 +86,10 @@ case 'boss':
 
 ### 020. player_hurt — 玩家受伤
 
-**触发位置**: `GamePage.tsx:289`
+**触发位置**: `src/pages/game/index.tsx:289`
 
 ```typescript
-// GamePage.tsx:288-291
+// src/pages/game/index.tsx:288-291
 if (isPlayer && e.id === user?.id) {
   playHurt()
   // 打击感：玩家受伤（顿帧 2 帧 + 震动 2px）
@@ -103,10 +103,10 @@ if (isPlayer && e.id === user?.id) {
 
 ### 022. player_die — 玩家死亡
 
-**触发位置**: `GamePage.tsx:311`
+**触发位置**: `src/pages/game/index.tsx:311`
 
 ```typescript
-// GamePage.tsx:307-314
+// src/pages/game/index.tsx:307-314
 const prevAlive = prevAliveRef.current.get(key)
 if (prevAlive !== undefined && e.alive === false && prevAlive === true) {
   const isPlayer = state.players?.some((p: any) => p.id === key)
@@ -125,10 +125,10 @@ prevAliveRef.current.set(key, e.alive)
 
 ### 032. pickup_gold — 拾取金币
 
-**触发位置**: `GamePage.tsx:334`
+**触发位置**: `src/pages/game/index.tsx:334`
 
 ```typescript
-// GamePage.tsx:322-337
+// src/pages/game/index.tsx:322-337
 const prevItems = gameStateRef.current.items || []
 const newItems = state.items || []
 if (newItems.length < prevItems.length) {
@@ -153,7 +153,7 @@ if (newItems.length < prevItems.length) {
 
 ### 033. pickup_potion_hp — 拾取血瓶
 
-**触发位置**: `GamePage.tsx:334`
+**触发位置**: `src/pages/game/index.tsx:334`
 
 ```typescript
 // 同上，playPickup(item.type || 'gold')
@@ -169,7 +169,7 @@ case 'health':
 
 ### 034. pickup_potion_mp — 拾取蓝瓶
 
-**触发位置**: `GamePage.tsx:334`
+**触发位置**: `src/pages/game/index.tsx:334`
 
 ```typescript
 // 同上，playPickup(item.type || 'gold')
@@ -185,7 +185,7 @@ case 'energy':
 
 ### 035. pickup_key — 拾取钥匙
 
-**触发位置**: `GamePage.tsx:334`
+**触发位置**: `src/pages/game/index.tsx:334`
 
 ```typescript
 // 同上，playPickup(item.type || 'gold')
@@ -201,10 +201,10 @@ case 'key':
 
 ### 038. floor_transition — 楼层切换
 
-**触发位置**: `GamePage.tsx:363`
+**触发位置**: `src/pages/game/index.tsx:363`
 
 ```typescript
-// GamePage.tsx:353-364
+// src/pages/game/index.tsx:353-364
 networkClient.on('game:floor:start', (data: any) => {
   prevPositions.current.clear()
   targetPositions.current.clear()
@@ -244,10 +244,10 @@ const handleClick = useCallback(() => {
 
 ### 050. game_over — 游戏结束
 
-**触发位置**: `GamePage.tsx:373`
+**触发位置**: `src/pages/game/index.tsx:373`
 
 ```typescript
-// GamePage.tsx:366-375
+// src/pages/game/index.tsx:366-375
 networkClient.on('game:end', (data: any) => {
   setGameOver(true, data.win)
 
@@ -266,7 +266,7 @@ networkClient.on('game:end', (data: any) => {
 
 ### 051. victory — 胜利
 
-**触发位置**: `GamePage.tsx:371`
+**触发位置**: `src/pages/game/index.tsx:371`
 
 ```typescript
 // 同上
@@ -283,10 +283,10 @@ if (data.win) {
 
 ### 025. skill_dash — 冲刺
 
-**触发位置**: `GamePage.tsx:404`
+**触发位置**: `src/pages/game/index.tsx:404`
 
 ```typescript
-// GamePage.tsx:397-408
+// src/pages/game/index.tsx:397-408
 const skillKey = e.key
 if (['1', '2', '3', '4'].includes(skillKey) && !skillKeysDown.has(skillKey)) {
   skillKeysDown.add(skillKey)
@@ -308,7 +308,7 @@ if (['1', '2', '3', '4'].includes(skillKey) && !skillKeysDown.has(skillKey)) {
 
 ### 026. skill_shield_on — 护盾开启
 
-**触发位置**: `GamePage.tsx:405`
+**触发位置**: `src/pages/game/index.tsx:405`
 
 **触发条件**: 按键 `2`（技能槽 1 = shield）
 
@@ -316,7 +316,7 @@ if (['1', '2', '3', '4'].includes(skillKey) && !skillKeysDown.has(skillKey)) {
 
 ### 028. skill_heal — 自我治疗
 
-**触发位置**: `GamePage.tsx:406`
+**触发位置**: `src/pages/game/index.tsx:406`
 
 **触发条件**: 按键 `3`（技能槽 2 = heal）
 
@@ -324,7 +324,7 @@ if (['1', '2', '3', '4'].includes(skillKey) && !skillKeysDown.has(skillKey)) {
 
 ### 029. skill_speed_on — 加速开启
 
-**触发位置**: `GamePage.tsx:407`
+**触发位置**: `src/pages/game/index.tsx:407`
 
 **触发条件**: 按键 `4`（技能槽 3 = speed_boost）
 
@@ -334,10 +334,10 @@ if (['1', '2', '3', '4'].includes(skillKey) && !skillKeysDown.has(skillKey)) {
 
 ### 001. warrior_slash — 战士攻击
 
-**触发位置**: `GamePage.tsx:488`
+**触发位置**: `src/pages/game/index.tsx:488`
 
 ```typescript
-// GamePage.tsx:482-490
+// src/pages/game/index.tsx:482-490
 const isAttacking = mouseRef.current.down
 if (isAttacking && !prevAttackRef.current) {
   attackFlashRef.current = 1.0
@@ -357,7 +357,7 @@ if (isAttacking && !prevAttackRef.current) {
 
 ### 004. ranger_shoot — 游侠攻击
 
-**触发位置**: `GamePage.tsx:488`
+**触发位置**: `src/pages/game/index.tsx:488`
 
 **音效路由**: `playAttack('ranger')` → `playSfx(SFX_IDS.RANGER_SHOOT)` (`sfx.ts:187`)
 
@@ -365,7 +365,7 @@ if (isAttacking && !prevAttackRef.current) {
 
 ### 006. mage_cast — 法师攻击
 
-**触发位置**: `GamePage.tsx:488`
+**触发位置**: `src/pages/game/index.tsx:488`
 
 **音效路由**: `playAttack('mage')` → `playSfx(SFX_IDS.MAGE_CAST)` (`sfx.ts:190`)
 
@@ -373,7 +373,7 @@ if (isAttacking && !prevAttackRef.current) {
 
 ### 009. cleric_cast — 牧师攻击
 
-**触发位置**: `GamePage.tsx:488`
+**触发位置**: `src/pages/game/index.tsx:488`
 
 **音效路由**: `playAttack('cleric')` → `playSfx(SFX_IDS.CLERIC_CAST)` (`sfx.ts:193`)
 
@@ -383,15 +383,15 @@ if (isAttacking && !prevAttackRef.current) {
 
 ### useHitEffect Hook
 
-**引入位置**: `GamePage.tsx:176`
+**引入位置**: `src/pages/game/index.tsx:176`
 
 ```typescript
-// GamePage.tsx:175-176
+// src/pages/game/index.tsx:175-176
 const { play, playAttack, playHurt, playEnemyDie, playPickup, playFloorTransition, playVictory, playGameOver, playDash, playShield, playSpeed, playDie } = useSound()
 const { triggerHitEffect, updateShake, isHitlagging, updateHitlag } = useHitEffect()
 ```
 
-**顿帧处理**: `GamePage.tsx:494-500`
+**顿帧处理**: `src/pages/game/index.tsx:494-500`
 
 ```typescript
 // 打击感：顿帧处理
@@ -403,7 +403,7 @@ if (isHitlagging()) {
 }
 ```
 
-**屏幕震动**: `GamePage.tsx:502-515`
+**屏幕震动**: `src/pages/game/index.tsx:502-515`
 
 ```typescript
 // 打击感：屏幕震动
@@ -426,10 +426,10 @@ if (canvas && (shake.x !== 0 || shake.y !== 0)) {
 
 | 事件 | 顿帧 | 震动强度 | 震动时长 | 代码位置 |
 |------|------|---------|---------|---------|
-| 玩家受伤 | 2帧 | 2px | 100ms | GamePage.tsx:291 |
-| 敌人受击 | 3帧 | 3px | 150ms | GamePage.tsx:295 |
-| 敌人死亡 | 5帧 | 5px | 200ms | GamePage.tsx:303 |
-| 玩家死亡 | 8帧 | 6px | 300ms | GamePage.tsx:313 |
+| 玩家受伤 | 2帧 | 2px | 100ms | src/pages/game/index.tsx:291 |
+| 敌人受击 | 3帧 | 3px | 150ms | src/pages/game/index.tsx:295 |
+| 敌人死亡 | 5帧 | 5px | 200ms | src/pages/game/index.tsx:303 |
+| 玩家死亡 | 8帧 | 6px | 300ms | src/pages/game/index.tsx:313 |
 
 ---
 
@@ -437,14 +437,14 @@ if (canvas && (shake.x !== 0 || shake.y !== 0)) {
 
 | ID | 音效 | 预期触发位置 | 预期触发条件 | 修改文件 |
 |----|------|---------|---------|---------|
-| 002 | warrior_hit | GamePage.tsx:293 | 战士命中敌人（需按职业区分命中音效）CC0: hammer_02.ogg | GamePage.tsx |
-| 005 | ranger_hit | GamePage.tsx:293 | 游侠命中敌人 | GamePage.tsx |
-| 008 | mage_hit | GamePage.tsx:293 | 法师命中敌人 | GamePage.tsx |
-| 010 | cleric_heal | GamePage.tsx:293 | 牧师治疗命中 | GamePage.tsx |
-| 040 | stairs_down | GamePage.tsx | 接近出口 + 敌人全灭 | GamePage.tsx |
-| 041 | ambient_drip | GamePage.tsx | 进入地牢循环播放 | GamePage.tsx |
-| 042 | ambient_chain | GamePage.tsx | 进入地牢循环播放 | GamePage.tsx |
-| 043 | ambient_wind | GamePage.tsx | 进入地牢循环播放 | GamePage.tsx |
+| 002 | warrior_hit | src/pages/game/index.tsx:293 | 战士命中敌人（需按职业区分命中音效）CC0: hammer_02.ogg | src/pages/game/index.tsx |
+| 005 | ranger_hit | src/pages/game/index.tsx:293 | 游侠命中敌人 | src/pages/game/index.tsx |
+| 008 | mage_hit | src/pages/game/index.tsx:293 | 法师命中敌人 | src/pages/game/index.tsx |
+| 010 | cleric_heal | src/pages/game/index.tsx:293 | 牧师治疗命中 | src/pages/game/index.tsx |
+| 040 | stairs_down | src/pages/game/index.tsx | 接近出口 + 敌人全灭 | src/pages/game/index.tsx |
+| 041 | ambient_drip | src/pages/game/index.tsx | 进入地牢循环播放 | src/pages/game/index.tsx |
+| 042 | ambient_chain | src/pages/game/index.tsx | 进入地牢循环播放 | src/pages/game/index.tsx |
+| 043 | ambient_wind | src/pages/game/index.tsx | 进入地牢循环播放 | src/pages/game/index.tsx |
 
 ---
 
@@ -452,18 +452,18 @@ if (canvas && (shake.x !== 0 || shake.y !== 0)) {
 
 | ID | 音效 | 预期触发位置 | 预期触发条件 | 修改文件 |
 |----|------|---------|---------|---------|
-| 003 | ranger_draw | GamePage.tsx | 游侠拉弓（攻击前摇） | GamePage.tsx |
-| 007 | mage_orb_fly | useGameRenderer.ts | 能量弹飞行中（循环） | GamePage.tsx |
+| 003 | ranger_draw | src/pages/game/index.tsx | 游侠拉弓（攻击前摇） | src/pages/game/index.tsx |
+| 007 | mage_orb_fly | useGameRenderer.ts | 能量弹飞行中（循环） | src/pages/game/index.tsx |
 | 011 | enemy_basic_attack | GameRoom.ts | basic 敌人攻击 | 服务端+客户端 |
 | 012 | enemy_ghost_attack | GameRoom.ts | 幽灵攻击 | 服务端+客户端 |
 | 013 | enemy_tank_attack | GameRoom.ts | tank 攻击 | 服务端+客户端 |
 | 014 | enemy_boss_attack | GameRoom.ts | Boss 攻击 | 服务端+客户端 |
 | 015 | enemy_boss_special | GameRoom.ts | Boss 技能 | 服务端+客户端 |
-| 021 | player_heal | GamePage.tsx | 被治疗（healWaves 检测） | GamePage.tsx |
-| 023 | player_respawn | GamePage.tsx | 楼层切换复活 | GamePage.tsx |
+| 021 | player_heal | src/pages/game/index.tsx | 被治疗（healWaves 检测） | src/pages/game/index.tsx |
+| 023 | player_respawn | src/pages/game/index.tsx | 楼层切换复活 | src/pages/game/index.tsx |
 | 045 | ui_hover | 全部页面 | 鼠标悬停按钮 | 全部页面 |
 | 046 | ui_select | RoomPage.tsx | 职业选择 | RoomPage.tsx |
-| 047 | ui_back | GamePage.tsx | 退出游戏 | GamePage.tsx |
+| 047 | ui_back | src/pages/game/index.tsx | 退出游戏 | src/pages/game/index.tsx |
 | 048 | ui_error | LobbyPage.tsx | 房间错误 | LobbyPage.tsx |
 | 049 | game_start | RoomPage.tsx | 游戏开始 | RoomPage.tsx |
 | 052 | chat_message | 全部页面 | 收到聊天消息 | 全部页面 |
